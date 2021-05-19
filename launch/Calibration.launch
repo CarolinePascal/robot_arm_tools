@@ -1,4 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
 	<node pkg="robot_arm_acoustic" type="MicroCalibration.py" name="MicroCalibration" output="screen"/>
+
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_calibration_node" name="robot_arm_acoustic_calibration_node" output="screen" args=
 </launch>
