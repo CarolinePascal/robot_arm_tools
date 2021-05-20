@@ -1,6 +1,14 @@
 <?xml version="1.0" ?>
 <launch>
-	<node pkg="robot_arm_acoustic" type="MicroCalibration.py" name="MicroCalibration" output="screen"/>
+	<arg name="micro" default="micro2"/>
+	<arg name="simulation" default="false"/>
 
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_calibration_node" name="robot_arm_acoustic_calibration_node" output="screen" args=
+	<include file="$(find robot_arm_tools)/launch/Setup.launch">
+		<arg name="load_$(arg micro)" value="true"/>
+		<arg name="simulation" value="$(arg simulation)"/>
+	</include>
+
+	<node pkg="robot_arm_acoustic" type="Calibration.py" name="micro_calibration" output="screen"/>
+
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_calibration_node" name="robot_arm_acoustic_calibration_node" output="screen" args="$(arg micro) /micro_calibration_server"/>
 </launch>
