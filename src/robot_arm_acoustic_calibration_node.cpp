@@ -8,6 +8,8 @@
 #include <tf2_ros/transform_listener.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
+#include <yaml-cpp/yaml.h>
+
 int main(int argc, char **argv)
 {
     //ROS node initialisation
@@ -32,7 +34,6 @@ int main(int argc, char **argv)
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
-    visualTools.setupU2IS();
 
     //Move the robot to its initial configuration
     robot.init();

@@ -36,7 +36,6 @@ int main(int argc, char **argv)
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
-    visualTools.setupU2IS();
 
     //Move the robot to its initial configuration
     robot.init();
@@ -54,16 +53,18 @@ int main(int argc, char **argv)
     centerPose.position.z = poseObject[2];
 
     tf2::Quaternion initialQuaternion, offsetQuaternion;
-    offsetQuaternion.setRPY(-M_PI/2 + + atan2(centerPose.position.y,centerPose.position.x),0,0)
+    offsetQuaternion.setRPY(-M_PI/2 + + atan2(centerPose.position.y,centerPose.position.x),0,0);
 
     int N=18;   //Waypoints number
     std::vector<geometry_msgs::Pose> waypoints;
 
-    sphericInclinationTrajectory(radiusTrajectory,M_PI/2,M_PI/2,3*M_PI/2,0,centerPose,N,waypoints);
+    sphericInclinationTrajectory(centerPose,0.0,M_PI/2,M_PI/2,3*M_PI/2,N,waypoints);
     
     //Create .csv file for positions recording - Folder was already created in MicroService node
     std::ofstream myfile;
     myfile.open("/tmp/AcousticMeasurement/Positions.csv");
+
+    std_srvs::Empty request;
 
     //Acquisition loop
     for(int i = 0; i < waypoints.size(); i++)
@@ -75,17 +76,17 @@ int main(int argc, char **argv)
         ROS_INFO("Waypoint %i out of %i", i+1, (int)waypoints.size());
         //std::cout<<waypoints[i]<<std::endl;
 
-        visualTools.addAxis("waypoint",waypoints[i]);
+        visualTools.addFrame("waypoint",waypoints[i]);
         
         try
         {
             robot.goToTarget(waypoints[i],false);
-            visualTools.deleteMarker("waypoint");
+            visualTools.deleteObject("waypoint");
         }
         catch(const std::runtime_error& e)
         {
             ROS_WARN("Skipping unreachable waypoint");
-            visualTools.deleteMarker("waypoint");
+            visualTools.deleteObject("waypoint");
             continue;
         }
 

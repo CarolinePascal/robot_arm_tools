@@ -36,7 +36,6 @@ int main(int argc, char **argv)
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
-    visualTools.setupU2IS();
 
     //Move the robot to its initial configuration
     robot.init();
@@ -56,16 +55,18 @@ int main(int argc, char **argv)
     centerPose.position.x = poseObject[0];
     centerPose.position.y = poseObject[1];
     centerPose.position.z = poseObject[2];
+
+    std::cout<<radiusObject<<std::endl;
     
     if(radiusObject != 0)
     {
-        visualTools.addSphere("collisionSphere", radiusObject, centerPose, true);
+        visualTools.addSphere("collisionSphere", centerPose, radiusObject, false);
     }
 
     //Compute spherical scanning trajectory points
     tf2::Quaternion leftQuaternion, rightQuaternion;
-    leftQuaternion.setRPY(M_PI/2,-M_PI/2 + atan2(centerPose.position.y,centerPose.position.x),0);
-    rightQuaternion.setRPY(-M_PI/2,M_PI/2 - atan2(centerPose.position.y,centerPose.position.x),0);
+    leftQuaternion.setRPY(M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
+    rightQuaternion.setRPY(-M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
 
     int N=10;   //Waypoints number
     std::vector<geometry_msgs::Pose> waypoints;
@@ -74,18 +75,23 @@ int main(int argc, char **argv)
 
     for(int i = 0; i < N; i++)
     {
-        sphericInclinationTrajectory(radiusTrajectory, i*dinclination, 0, 2*M_PI, 0, centerPose, N*(i > 0 ? 1 : 0), waypoints); //1+round((N-1)*sin(i*dinclination))   
+        sphericInclinationTrajectory(centerPose, radiusTrajectory, i*dinclination, 0, 2*M_PI, N*(i > 0 ? 1 : 0), waypoints); //1+round((N-1)*sin(i*dinclination))   
     }
+
+    rotateTrajectory(waypoints,centerPose.position,-M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
     
     //Create .csv file for positions recording - Folder was already created in MicroService node
     std::ofstream myfile;
     myfile.open("/tmp/AcousticMeasurement/Positions.csv");
 
+    std_srvs::Empty request;
+
     //Acquisition loop
     for(int i = 0; i < waypoints.size(); i++)
-    {        
+    {      
         //Pre-processing
-        if(waypoints[i].position.x*centerPose.position.y/centerPose.position.y > waypoints[i].position.y)
+
+        if(waypoints[i].position.x*centerPose.position.y/centerPose.position.x > waypoints[i].position.y)
         {
             waypoints[i].orientation = tf2::toMsg(rightQuaternion); 
         }
@@ -97,33 +103,33 @@ int main(int argc, char **argv)
         ROS_INFO("Waypoint %i out of %i", i+1, (int)waypoints.size());
         //std::cout<<waypoints[i]<<std::endl;
 
-        visualTools.addAxis("waypoint",waypoints[i]);
+        visualTools.addFrame("waypoint",waypoints[i]);
         
         try
         {
             robot.goToTarget(waypoints[i],false);
-            visualTools.deleteMarker("waypoint");
+            visualTools.deleteObject("waypoint");
         }
         catch(const std::runtime_error& e)
         {
             ROS_WARN("Skipping unreachable waypoint");
-            visualTools.deleteMarker("waypoint");
+            visualTools.deleteObject("waypoint");
             continue;
         }
 
         ros::WallDuration(1.0).sleep();
 
-        if(measurementClient.call(request))
-        {
-            ROS_INFO("Measurement - done !");
-        }
-
-        else
-        {
-            throw std::runtime_error("ERROR DURING Measurement !");
-            ros::waitForShutdown();
-            return 1;
-        }
+        //if(measurementClient.call(request))
+        //{
+        //    ROS_INFO("Measurement - done !");
+        //}
+//
+        //else
+        //{
+        //    throw std::runtime_error("ERROR DURING Measurement !");
+        //    ros::waitForShutdown();
+        //    return 1;
+        //}
 
         tf2::Quaternion quaternion;
         tf2::fromMsg(waypoints[i].orientation,quaternion);
