@@ -12,6 +12,7 @@ find_package(catkin REQUIRED COMPONENTS
   tf2
   tf2_ros
   robot_arm_tools
+  measurement_tools
 )
 
 ## System dependencies are found with CMake's conventions
@@ -106,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES robot_arm_acoustic
-  CATKIN_DEPENDS roscpp tf2 tf2_ros robot_arm_tools
+  CATKIN_DEPENDS roscpp tf2 tf2_ros robot_arm_tools measurement_tools
 #  DEPENDS system_lib
 )
 
