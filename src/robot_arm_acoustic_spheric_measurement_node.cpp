@@ -30,10 +30,6 @@ int main(int argc, char **argv)
     //Robot initialisation TODO More generic approach
     Robot robot("panda_arm", argv[1], "panda_" + std::string(argv[1]));
 
-    //Get ROS service measurement server name and create client
-    ros::NodeHandle n;
-    ros::ServiceClient measurementClient = n.serviceClient<std_srvs::Empty>(argv[2]);
-
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
 
@@ -47,6 +43,7 @@ int main(int argc, char **argv)
 
     ROS_INFO("Getting acquisition parameters");
 
+    ros::NodeHandle n;
     n.getParam("poseObject",poseObject);
     n.getParam("radiusObject",radiusObject);
     n.getParam("radiusTrajectory",radiusTrajectory);
@@ -78,19 +75,11 @@ int main(int argc, char **argv)
         sphericInclinationTrajectory(centerPose, radiusTrajectory, i*dinclination, 0, 2*M_PI, N*(i > 0 ? 1 : 0), waypoints); //1+round((N-1)*sin(i*dinclination))   
     }
 
+    //Post-processing
     rotateTrajectory(waypoints,centerPose.position,-M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
-    
-    //Create .csv file for positions recording - Folder was already created in MicroService node
-    std::ofstream myfile;
-    myfile.open("/tmp/AcousticMeasurement/Positions.csv");
 
-    std_srvs::Empty request;
-
-    //Acquisition loop
     for(int i = 0; i < waypoints.size(); i++)
     {      
-        //Pre-processing
-
         if(waypoints[i].position.x*centerPose.position.y/centerPose.position.x > waypoints[i].position.y)
         {
             waypoints[i].orientation = tf2::toMsg(rightQuaternion); 
@@ -99,61 +88,11 @@ int main(int argc, char **argv)
         {
             waypoints[i].orientation = tf2::toMsg(leftQuaternion); 
         }
-
-        ROS_INFO("Waypoint %i out of %i", i+1, (int)waypoints.size());
-        //std::cout<<waypoints[i]<<std::endl;
-
-        visualTools.addFrame("waypoint",waypoints[i]);
-        
-        try
-        {
-            robot.goToTarget(waypoints[i],false);
-            visualTools.deleteObject("waypoint");
-        }
-        catch(const std::runtime_error& e)
-        {
-            ROS_WARN("Skipping unreachable waypoint");
-            visualTools.deleteObject("waypoint");
-            continue;
-        }
-
-        ros::WallDuration(1.0).sleep();
-
-        //if(measurementClient.call(request))
-        //{
-        //    ROS_INFO("Measurement - done !");
-        //}
-//
-        //else
-        //{
-        //    throw std::runtime_error("ERROR DURING Measurement !");
-        //    ros::waitForShutdown();
-        //    return 1;
-        //}
-
-        tf2::Quaternion quaternion;
-        tf2::fromMsg(waypoints[i].orientation,quaternion);
-        double roll, pitch, yaw;
-        tf2::Matrix3x3(quaternion).getRPY(roll, pitch, yaw);
-
-        myfile << i+1;
-        myfile << ",";
-        myfile << waypoints[i].position.x;
-        myfile << ",";
-        myfile << waypoints[i].position.y;
-        myfile << ",";
-        myfile << waypoints[i].position.z;
-        myfile << ",";
-        myfile << roll;
-        myfile << ",";
-        myfile << pitch;
-        myfile << ",";
-        myfile << yaw;
-        myfile << "\n";
     }
 
-    //Close .csv file and shut down ROS node
-    myfile.close();
+    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/AcousticMeasurement/Positions.csv");
+
+    //Shut down ROS node
     robot.init();   
     ros::waitForShutdown();
     return 0;
