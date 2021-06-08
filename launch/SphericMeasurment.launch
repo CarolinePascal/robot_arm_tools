@@ -1,16 +1,16 @@
 <?xml version="1.0" ?>
 <launch>
-	<arg name="micro" default="micro2"/>
+	<arg name="tool" default="micro2"/>
 	<arg name="simulation" default="false"/>
 
     <rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
 
 	<include file="$(find robot_arm_tools)/launch/Setup.launch">
-		<arg name="load_$(arg micro)" value="true"/>
+		<arg name="load_$(arg tool)" value="true"/>
 		<arg name="simulation" value="$(arg simulation)"/>
 	</include>
 
-	<node pkg="robot_arm_acoustic" type="Measurement.py" name="micro_measurement" output="screen"/>
+	<node pkg="robot_arm_acoustic" type="SoundMeasurementServer.py" name="sound_measurement_server" output="screen"/>
 
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_spheric_measurement_node" output="screen" args="$(arg micro) /sound_measurement_server"/>
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" args="$(arg tool) /sound_measurement_server"/>
 </launch>

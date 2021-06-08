@@ -15,7 +15,7 @@
 int main(int argc, char **argv)
 {
     //ROS node initialisation
-    ros::init(argc, argv, "robot_arm_acoustic_measurement_node");  
+    ros::init(argc, argv, "robot_arm_acoustic_directivity_node");  
     ros::AsyncSpinner spinner(0);
     spinner.start();
     ros::WallDuration(1.0).sleep();
@@ -23,7 +23,7 @@ int main(int argc, char **argv)
     //Command line arguments handling
     if(argc < 3)
     {
-        throw std::invalid_argument("MISSING CMD LINE ARGUMENT FOR acoustic_micro_node !");
+        throw std::invalid_argument("MISSING CMD LINE ARGUMENT FOR robot_arm_acoustic_directivity_node !");
         return(1);
     }
 
@@ -64,7 +64,7 @@ int main(int argc, char **argv)
         waypoints[i].orientation = tf2::toMsg(initialQuaternion*offsetQuaternion);
     }
 
-    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/AcousticMeasurement/Positions.csv");
+    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/SoundMeasurements/Positions.csv");
 
     //Shut down ROS node
     robot.init();   
