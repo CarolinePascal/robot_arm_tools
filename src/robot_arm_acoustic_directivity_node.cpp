@@ -37,34 +37,35 @@ int main(int argc, char **argv)
     robot.init();
 
     //Load object geometry
-    std::vector<double> poseObject;
+    std::vector<double> poseReference;
 
     ROS_INFO("Getting acquisition parameters");
     
     ros::NodeHandle n;
-    n.getParam("poseObject",poseObject);
+    n.getParam("poseReference",poseReference);
 
     geometry_msgs::Pose centerPose;
-    centerPose.position.x = poseObject[0];
-    centerPose.position.y = poseObject[1];
-    centerPose.position.z = poseObject[2];
-
-    tf2::Quaternion initialQuaternion, offsetQuaternion;
-    offsetQuaternion.setRPY(-M_PI/2 + + atan2(centerPose.position.y,centerPose.position.x),0,0);
+    centerPose.position.x = poseReference[0];
+    centerPose.position.y = poseReference[1];
+    centerPose.position.z = poseReference[2];
+    
+    tf2::Quaternion offsetQuaternion;
+    offsetQuaternion.setRPY(0.0,0.0,M_PI/2 - poseReference[5]);
 
     int N=18;   //Waypoints number
     std::vector<geometry_msgs::Pose> waypoints;
 
-    sphericInclinationTrajectory(centerPose,0.0,M_PI/2,M_PI/2,3*M_PI/2,N,waypoints);
+    sphericInclinationTrajectory(centerPose,0.0,M_PI/2,0,M_PI,N,waypoints,false,0.0);
 
     //Post-processing
+    tf2::Quaternion initialQuaternion;
     for(int i = 0; i < waypoints.size(); i++)
     {        
         tf2::fromMsg(waypoints[i].orientation,initialQuaternion);
-        waypoints[i].orientation = tf2::toMsg(initialQuaternion*offsetQuaternion);
+        waypoints[i].orientation = tf2::toMsg(offsetQuaternion*initialQuaternion);
     }
 
-    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/AcousticMeasurement/Positions.csv");
+    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/SoundMeasurements/Positions.csv");
 
     //Shut down ROS node
     robot.init();   
