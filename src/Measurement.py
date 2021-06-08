@@ -27,7 +27,7 @@ class MicroProcessing :
         ### Data 
 
         #Storage folder
-        self.storageFolder = "/tmp/MicroMeasurement/"
+        self.storageFolder = "/tmp/SoundMeasurements/"
         try:
             os.mkdir(self.storageFolder)
             rospy.loginfo("The folder " + self.storageFolder + "was created")
@@ -49,9 +49,9 @@ class MicroProcessing :
     def task(self, req):
         self.measureCounter += 1
 
-        rospy.sleep(2.0)
-        self.M1.runMeasure()
-        self.M1.saveRecordedSound(self.storageFolder+"Measure1RecordedSound"+str(self.measureCounter)+".wav")
+        #rospy.sleep(2.0)
+        #self.M1.runMeasure()
+        #self.M1.saveRecordedSound(self.storageFolder+"Measure1RecordedSound"+str(self.measureCounter)+".wav")
 
         rospy.sleep(2.0)
         self.M2.runMeasure()
