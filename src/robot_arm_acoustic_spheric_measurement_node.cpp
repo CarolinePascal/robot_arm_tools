@@ -34,6 +34,7 @@ int main(int argc, char **argv)
     RobotVisualTools visualTools;
 
     //Move the robot to its initial configuration
+    visualTools.setupUME();
     robot.init();
 
     //Load object geometry
@@ -44,20 +45,26 @@ int main(int argc, char **argv)
     ROS_INFO("Getting acquisition parameters");
 
     ros::NodeHandle n;
-    n.getParam("poseObject",poseObject);
+    n.getParam("poseReference",poseObject);
     n.getParam("radiusObject",radiusObject);
     n.getParam("radiusTrajectory",radiusTrajectory);
 
     geometry_msgs::Pose centerPose;
     centerPose.position.x = poseObject[0];
     centerPose.position.y = poseObject[1];
-    centerPose.position.z = poseObject[2];
+    centerPose.position.z = poseObject[2] - 0.04;
+
+    std::cout << centerPose << std::endl;
 
     std::cout<<radiusObject<<std::endl;
+
+    geometry_msgs::Pose boxPose = centerPose;
+    boxPose.position.z -= radiusObject + 0.1;
     
     if(radiusObject != 0)
     {
-        visualTools.addSphere("collisionSphere", centerPose, radiusObject, false);
+        visualTools.addSphere("collisionSphere", centerPose, radiusObject + 0.025, false);
+        visualTools.addBox("collisionBox", boxPose, 0.05, 0.05, 0.2, false);
     }
 
     //Compute spherical scanning trajectory points
@@ -90,7 +97,8 @@ int main(int argc, char **argv)
         }
     }
 
-    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/AcousticMeasurement/Positions.csv");
+    //Check creation
+    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/SoundMeasurements/Positions.csv");
 
     //Shut down ROS node
     robot.init();   
