@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ### Microphone gain calibration ###
 
@@ -9,7 +9,7 @@ import os
 import matplotlib.pyplot as plt
 
 import measpy as mp
-from measpy.audio import audio_run_measurement, audio_get_devices
+from measpy.audio import audio_run_measurement
 
 class MicrophoneCalibrationServer :
     
@@ -63,7 +63,7 @@ def main():
         try:
             rospy.spin()
         except KeyboardInterrupt:
-            print("Shutting down ROS microphone_calibration_sever node")
+            print("Shutting down ROS microphone calibration sever")
             break
 
 if __name__ == "__main__":

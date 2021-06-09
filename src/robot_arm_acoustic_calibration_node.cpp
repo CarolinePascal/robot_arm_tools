@@ -21,7 +21,7 @@ int main(int argc, char **argv)
     //Command line arguments handling
     if(argc < 3)
     {
-        throw std::invalid_argument("MISSING CMD LINE ARGUMENT FOR acoustic_micro_node !");
+        throw std::invalid_argument("MISSING CMD LINE ARGUMENT FOR robot_arm_acoustic_calibration_node !");
         return(1);
     }
 

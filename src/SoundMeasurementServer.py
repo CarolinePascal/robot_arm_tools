@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 ### Sound measurements ###
 
@@ -8,7 +8,7 @@ from std_srvs.srv import Empty,EmptyResponse
 import os
 
 import measpy as mp
-from measpy.audio import audio_run_measurement, audio_get_devices
+from measpy.audio import audio_run_measurement
 
 class SoundMeasurementServer :
     
@@ -81,7 +81,7 @@ def main():
         try:
             rospy.spin()
         except KeyboardInterrupt:
-            print("Shutting down ROS sound_measurement_server node")
+            print("Shutting down ROS sound measurement server")
             break
 
 if __name__ == "__main__":
