@@ -36,7 +36,7 @@ int main(int argc, char **argv)
     RobotVisualTools visualTools;
 
     //Move the robot to its initial configuration
-    robot.init();
+    //robot.init();
 
     //Tf listenner initialisation
     tf2_ros::Buffer tfBuffer;
