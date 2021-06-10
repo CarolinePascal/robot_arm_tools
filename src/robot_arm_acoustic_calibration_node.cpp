@@ -31,6 +31,7 @@ int main(int argc, char **argv)
     //Get ROS service calibration server name and create client
     ros::NodeHandle n;
     ros::ServiceClient calibrationClient = n.serviceClient<std_srvs::Empty>(argv[2]);
+    calibrationClient.waitForExistence();
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
