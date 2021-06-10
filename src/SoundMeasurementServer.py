@@ -18,26 +18,28 @@ class SoundMeasurementServer :
         self.M1 = mp.Measurement(out_sig='noise',
                     out_map=[4],
                     out_desc=['Out4'],
-                    out_dbfs=[1.0],
+                    out_dbfs=[1.0/1.53],
                     in_map=[1],
                     in_desc=['In1'],
                     in_cal=[1.0],
                     in_unit=['Pa'],
-                    in_dbfs=[1.0],
-                    extrat=[1.0,2.0],
-                    dur=2)
+                    in_dbfs=[1.0/0.593],
+                    extrat=[0.0,0.0],
+                    out_sig_fades=[0.0,0.0],
+                    dur=5)
 
         self.M2 = mp.Measurement(out_sig='logsweep',
                     out_map=[4],
                     out_desc=['Out4'],
-                    out_dbfs=[1.0],
+                    out_dbfs=[1.0/1.53],
                     in_map=[1],
                     in_desc=['In1'],
                     in_cal=[1.0],
                     in_unit=['Pa'],
-                    in_dbfs=[1.0],
-                    extrat=[1.0,2.0],
-                    dur=2)
+                    in_dbfs=[1.0/0.593],
+                    extrat=[0.0,0.0],
+                    out_sig_fades=[0.0,0.0],
+                    dur=5)
 
         ### Data 
 
@@ -58,11 +60,11 @@ class SoundMeasurementServer :
     def measure(self, req):
         self.measureCounter += 1
 
-        rospy.sleep(2.0)
-        audio_run_measurement(self.M1)
+        #rospy.sleep(2.0)
+        #audio_run_measurement(self.M1)
         #self.M1.plot()
         #plt.show()
-        self.M1.to_csvwav(self.storageFolder+"noise_measurement"+str(self.measureCounter))
+        #self.M1.to_csvwav(self.storageFolder+"noise_measurement"+str(self.measureCounter))
 
         rospy.sleep(2.0)
         audio_run_measurement(self.M2)
