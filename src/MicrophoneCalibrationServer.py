@@ -7,6 +7,8 @@ from std_srvs.srv import Empty,EmptyResponse
 
 import os
 import matplotlib.pyplot as plt
+import _thread
+import time
 
 import measpy as mp
 from measpy.audio import audio_run_measurement
@@ -25,25 +27,39 @@ class MicrophoneCalibrationServer :
                 in_cal=[1.0],
                 in_unit=['Pa'],
                 in_dbfs=[1.0],
-                extrat=[1.0,2.0],
-                dur=2)
+                extrat=[0.0,0.0],
+                out_sig_fades=[0.0,0.0],
+                dur=5)
 
         ### ROS Service Server
 
         self.microCalibrationServer = rospy.Service("/microphone_calibration_server",Empty,self.measure)
+
+    def plotting_thread(self,fig,ax):
+        while(True):
+            time.sleep(2)
+            ax.clear()
+            self.M0.data['Out4'].plot(ax=ax)
+            self.M0.data['In1'].plot(ax=ax)
+            fig.canvas.draw_idle()
 
     def measure(self, req):
 
         isGainOK = False
         print("Running micro gain setting test...")
 
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+
         while(not isGainOK):
             audio_run_measurement(self.M0)
-            self.M0.plot()
+
+            _thread.start_new_thread(self.plotting_thread,(fig,ax))
+            plt.show()
 
             a = ""
             try:
-                a = raw_input("Run the test again ? y/n (default is yes)")
+                a = input("Run the test again ? y/n (default is yes)")
             except SyntaxError: #default
                 a = 'y'
 
