@@ -1,0 +1,10 @@
+#goal definition
+int32 duration
+int32 minimumPower
+int32 maximumPower
+int32 samples
+---
+#result definition
+bool success
+---
+#feedback

@@ -8,15 +8,17 @@ project(robot_arm_acoustic)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  actionlib
+  actionlib_msgs
+  message_generation
   roscpp
   tf2
   tf2_ros
   robot_arm_tools
-  measurement_tools
 )
 
 ## System dependencies are found with CMake's conventions
-# find_package(Boost REQUIRED COMPONENTS system)
+find_package(Boost REQUIRED COMPONENTS system)
 
 
 ## Uncomment this if the package has a setup.py. This macro ensures
@@ -63,17 +65,15 @@ find_package(catkin REQUIRED COMPONENTS
 # )
 
 ## Generate actions in the 'action' folder
-# add_action_files(
-#   FILES
-#   Action1.action
-#   Action2.action
-# )
+add_action_files(
+  DIRECTORY action
+  FILES Propeller.action
+)
 
 ## Generate added messages and services with any dependencies listed here
-# generate_messages(
-#   DEPENDENCIES
-#   std_msgs  # Or other packages containing msgs
-# )
+generate_messages(
+  DEPENDENCIES actionlib_msgs std_msgs # Or other packages containing msgs
+)
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -107,7 +107,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
 #  LIBRARIES robot_arm_acoustic
-  CATKIN_DEPENDS roscpp tf2 tf2_ros robot_arm_tools measurement_tools
+  CATKIN_DEPENDS roscpp tf2 tf2_ros robot_arm_tools actionlib actionlib_msgs message_generation
 #  DEPENDS system_lib
 )
 
@@ -120,6 +120,7 @@ catkin_package(
 include_directories(
   include
   ${catkin_INCLUDE_DIRS}
+  ${Boost_INCLUDE_DIRS}
 )
 
 ## Declare a C++ library
@@ -138,6 +139,8 @@ include_directories(
 add_executable(${PROJECT_NAME}_calibration_node src/robot_arm_acoustic_calibration_node.cpp)
 add_executable(${PROJECT_NAME}_spheric_measurement_node src/robot_arm_acoustic_spheric_measurement_node.cpp)
 add_executable(${PROJECT_NAME}_directivity_node src/robot_arm_acoustic_directivity_node.cpp)
+
+add_executable(propeller_action_server src/PropellerActionServer.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,6 +163,15 @@ target_link_libraries(${PROJECT_NAME}_spheric_measurement_node
 target_link_libraries(${PROJECT_NAME}_directivity_node
   ${catkin_LIBRARIES}
 )
+
+target_link_libraries(propeller_action_server
+  ${catkin_LIBRARIES}
+)
+add_dependencies(
+  propeller_action_server
+  ${robot_arm_acoustic_EXPORTED_TARGETS}
+)
+
 
 #############
 ## Install ##
