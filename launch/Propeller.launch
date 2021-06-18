@@ -1,0 +1,6 @@
+<?xml version="1.0" ?>
+<launch>
+    <rosparam command="load" file="$(find robot_arm_acoustic)/config/PropellerUDPServer.yaml"/>
+
+	<node pkg="robot_arm_acoustic" type="propeller_action_server" name="propeller_action_server" output="screen"/>
+</launch>
