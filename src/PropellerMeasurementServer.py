@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 
 ### Propeller measurements ###
+### Do not forget to set the following environment variables : ###
+### export ROS_MASTER_URI=http://this_computer_IP_address:11311 ###
+### export ROS_IP=this_computer_IP_address ###
 
 import rospy
 from std_srvs.srv import Empty,EmptyResponse
 
-import actionlib
-import robot_arm_acoustic.msg
-
 import os
+import threading
 
 import measpy as mp
 from measpy.audio import audio_run_measurement
@@ -25,7 +26,7 @@ class PropellerMeasurementServer :
                     in_dbfs=[1.0/0.593],
                     extrat=[0.0,0.0],
                     out_sig_fades=[0.0,0.0],
-                    dur=5)
+                    dur=5+1)
 
         ### Data 
 
@@ -43,21 +44,26 @@ class PropellerMeasurementServer :
         self.microServer = rospy.Service("/propeller_measurement_server",Empty,self.measure)
         self.measureCounter = 0
 
-        ### ROS Action Client
+        ### ROS Service Client
 
-        self.propellerActionClient = actionlib.SimpleActionClient("propeller_action", robot_arm_acoustic.msg.PropellerAction)
-        self.propellerActionClient.wait_for_server()
+        rospy.wait_for_service("propeller_server")
 
     def measure(self, req):
         self.measureCounter += 1
 
         rospy.sleep(2.0)
 
-        goal = robot_arm_acoustic.msg.PropellerGoal(minimumPower = 1100, maximumPower = 2000, duration = 5, samples = 100)
-        self.propellerActionClient.send_goal(goal)
-        self.propellerActionClient.wait_for_result()
+        thread = threading.Thread(target=audio_run_measurement, args=(self.M1,))
+        thread.start()
 
-        audio_run_measurement(self.M1)
+        rospy.sleep(0.5)
+
+        rospy.ServiceProxy("propeller_server", Empty)()
+
+        rospy.sleep(0.5)
+
+        thread.join()
+
         #self.M1.plot()
         #plt.show()
         self.M1.to_csvwav(self.storageFolder+"noise_measurement"+str(self.measureCounter))
