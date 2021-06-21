@@ -1,6 +1,16 @@
 <?xml version="1.0" ?>
 <launch>
-    <rosparam command="load" file="$(find robot_arm_acoustic)/config/PropellerUDPServer.yaml"/>
+	<arg name="tool" default="micro2"/>
+	<arg name="simulation" default="false"/>
 
-	<node pkg="robot_arm_acoustic" type="propeller_action_server" name="propeller_action_server" output="screen"/>
+    <rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+
+	<include file="$(find robot_arm_tools)/launch/Setup.launch">
+		<arg name="load_$(arg tool)" value="true"/>
+		<arg name="simulation" value="$(arg simulation)"/>
+	</include>
+
+	<node pkg="robot_arm_acoustic" type="PropellerMeasurementServer.py" name="propeller_measurement_server" output="screen"/>
+
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" args="$(arg tool) /propeller_measurement_server"/>
 </launch>
