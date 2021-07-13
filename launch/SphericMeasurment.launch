@@ -1,16 +1,25 @@
 <?xml version="1.0" ?>
 <launch>
+
+	<!-- GENERAL ARGUMENTS -->
+	<arg name="robot" default="panda"/>
 	<arg name="tool" default="micro2"/>
 	<arg name="simulation" default="false"/>
 
-    <rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
-
-	<include file="$(find robot_arm_tools)/launch/Setup.launch">
+	<!-- ROBOT SETUP -->
+	<include file="$(find robot_arm_tools)/launch/Setup_$(arg panda).launch">
 		<arg name="load_$(arg tool)" value="true"/>
 		<arg name="simulation" value="$(arg simulation)"/>
 	</include>
 
+	<!-- MEASUREMENT SERVER -->
 	<node pkg="robot_arm_acoustic" type="SoundMeasurementServer.py" name="sound_measurement_server" output="screen"/>
+	
+	<!-- MAIN NODE -->
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen">
+    	<param name="measurementServerName" value="/sound_measurement_server"/>
+		<param name="storageFolderName" value="/tmp/SoundMeasurements/"/>
+		<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+	</node>
 
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" args="$(arg tool) /sound_measurement_server"/>
 </launch>

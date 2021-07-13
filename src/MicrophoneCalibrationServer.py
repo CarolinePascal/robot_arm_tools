@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-### Microphone gain calibration ###
+## Definition file of the MicrophoneCalibrationServer class
+#
+# Defines the attributes and methods used to trigger a microphone calibration measurement
 
 import rospy
 from std_srvs.srv import Empty,EmptyResponse
@@ -13,11 +15,15 @@ import time
 import measpy as mp
 from measpy.audio import audio_run_measurement
 
+## MicrophoneCalibrationServer
+#
+# Defines the attributes and methods used to trigger a microphone calibration measurement
 class MicrophoneCalibrationServer :
     
+    ## Constructor
     def __init__(self):
-        ### Measurements
 
+        ## Calibration sound measurement
         self.M0 = mp.Measurement(out_sig='noise',
                 out_map=[4],
                 out_desc=['Out4'],
@@ -31,10 +37,12 @@ class MicrophoneCalibrationServer :
                 out_sig_fades=[0.0,0.0],
                 dur=5)
 
-        ### ROS Service Server
-
+        ## ROS Service Server used to trigger the calibration measurement
         self.microCalibrationServer = rospy.Service("/microphone_calibration_server",Empty,self.measure)
 
+    ## Thread safe plotting method for calibration measurements display
+    #  @param fig A matplotlib figure
+    #  @param ax A matplotlib axes
     def plotting_thread(self,fig,ax):
         while(True):
             time.sleep(2)
@@ -43,20 +51,27 @@ class MicrophoneCalibrationServer :
             self.M0.data['In1'].plot(ax=ax)
             fig.canvas.draw_idle()
 
+    ## Method triggering a microphone calibration measurement
+    #  @param req An empty ROS service request
     def measure(self, req):
 
         isGainOK = False
         print("Running micro gain setting test...")
 
+        #Creating figure and axes for calibration measurements display
         fig = plt.figure()
         ax = fig.add_subplot(111)
 
+        #Measurement loop
         while(not isGainOK):
+            #Run measurement
             audio_run_measurement(self.M0)
 
+            #Dispay measurements
             _thread.start_new_thread(self.plotting_thread,(fig,ax))
             plt.show()
 
+            #Repeat while microphone calibration is not acceptable
             a = ""
             try:
                 a = input("Run the test again ? y/n (default is yes)")
@@ -71,8 +86,10 @@ class MicrophoneCalibrationServer :
         return EmptyResponse()
 
 def main():
+    #Launch ROS node
     rospy.init_node('microphone_calibration_server')
 
+    #Launch ROS service
     MicrophoneCalibrationServer()
 
     while not rospy.is_shutdown():

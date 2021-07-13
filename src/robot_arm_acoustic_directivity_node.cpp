@@ -20,29 +20,24 @@ int main(int argc, char **argv)
     spinner.start();
     ros::WallDuration(1.0).sleep();
 
-    //Command line arguments handling
-    if(argc < 3)
-    {
-        throw std::invalid_argument("MISSING CMD LINE ARGUMENT FOR robot_arm_acoustic_directivity_node !");
-        return(1);
-    }
-
     //Robot initialisation TODO More generic approach
-    Robot robot("panda_arm", argv[1], "panda_" + std::string(argv[1]));
+    Robot robot;
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
 
     //Move the robot to its initial configuration
+    visualTools.setupUME();
     robot.init();
 
-    //Load object geometry
+    //Get the measurement reference pose
     std::vector<double> poseReference;
-
-    ROS_INFO("Getting acquisition parameters");
-    
     ros::NodeHandle n;
-    n.getParam("poseReference",poseReference);
+    if(!n.getParam("poseReference",poseReference))
+    {
+        ROS_ERROR("Unable to retrieve measurements reference pose !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
 
     geometry_msgs::Pose centerPose;
     centerPose.position.x = poseReference[0];
@@ -52,20 +47,29 @@ int main(int argc, char **argv)
     tf2::Quaternion offsetQuaternion;
     offsetQuaternion.setRPY(0.0,0.0,M_PI/2 - poseReference[5]);
 
-    int N=18;   //Waypoints number
+    //Create measurement waypoints poses
+    int N=18;   //10° spaced measurements
     std::vector<geometry_msgs::Pose> waypoints;
 
     sphericInclinationTrajectory(centerPose,0.0,M_PI/2,0,M_PI,N,waypoints,false,0.0);
 
-    //Post-processing
-    tf2::Quaternion initialQuaternion;
-    for(int i = 0; i < waypoints.size(); i++)
-    {        
-        tf2::fromMsg(waypoints[i].orientation,initialQuaternion);
-        waypoints[i].orientation = tf2::toMsg(offsetQuaternion*initialQuaternion);
+    //Get the measurement server name
+    std::string measurementServerName, storageFolderName;
+    if(!n.getParam("measurementServerName",measurementServerName))
+    {
+        ROS_ERROR("Unable to retrieve measurement server name !");
+        throw std::runtime_error("MISSING PARAMETER");
     }
 
-    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/SoundMeasurements/Positions.csv");
+    //Get the storage folder name
+    if(!n.getParam("storageFolderName",storageFolderName))
+    {
+        ROS_ERROR("Unable to retrieve positions file name !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    //Main loop 
+    robot.runMeasurementRountine(waypoints,measurementServerName,false,storageFolderName+"Positions.csv");
 
     //Shut down ROS node
     robot.init();   
