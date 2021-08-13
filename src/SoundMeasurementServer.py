@@ -52,9 +52,9 @@ class SoundMeasurementServer :
         self.storageFolderName = rospy.get_param("storageFolderName")
         try:
             os.mkdir(self.storageFolderName)
-            rospy.loginfo("The folder " + self.storageFolderName + "was created")
+            rospy.loginfo("Creating " + self.storageFolderName + " ...")
         except OSError:
-            rospy.logwarn("The folder " + self.storageFolderName + "already exists : its contents will be ereased !")
+            rospy.logwarn(self.storageFolderName + "already exists : its contents will be overwritten !")
             pass 
 
         ## ROS Service Server
