@@ -18,18 +18,19 @@ class MicrophoneCalibrationServer :
     def __init__(self):
         ### Measurements
 
-        self.M0 = mp.Measurement(out_sig='noise',
-                out_map=[4],
-                out_desc=['Out4'],
-                out_dbfs=[1.0],
-                in_map=[1],
-                in_desc=['In1'],
-                in_cal=[1.0],
-                in_unit=['Pa'],
-                in_dbfs=[1.0],
-                extrat=[0.0,0.0],
-                out_sig_fades=[0.0,0.0],
-                dur=5)
+        self.M0 = mp.Measurement(out_sig='logsweep',
+                    out_amp = 0.2,
+                    out_map=[4],
+                    out_desc=['Out4'],
+                    out_dbfs=[1.0/1.53],
+                    in_map=[1],
+                    in_desc=['In1'],
+                    in_cal=[1.0],
+                    in_unit=['Pa'],
+                    in_dbfs=[1.0/0.593],
+                    extrat=[0.0,0.0],
+                    out_sig_fades=[0.0,0.0],
+                    dur=5)
 
         ### ROS Service Server
 
