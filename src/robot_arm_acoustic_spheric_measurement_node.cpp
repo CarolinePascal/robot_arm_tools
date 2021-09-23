@@ -35,7 +35,7 @@ int main(int argc, char **argv)
 
     //Move the robot to its initial configuration
     visualTools.setupUME();
-    robot.init();
+    //robot.init();
 
     //Load object geometry
     std::vector<double> poseObject;
@@ -52,19 +52,19 @@ int main(int argc, char **argv)
     geometry_msgs::Pose centerPose;
     centerPose.position.x = poseObject[0];
     centerPose.position.y = poseObject[1];
-    centerPose.position.z = poseObject[2] - 0.04;
+    centerPose.position.z = poseObject[2] + 0.035;
 
     std::cout << centerPose << std::endl;
 
     std::cout<<radiusObject<<std::endl;
 
     geometry_msgs::Pose boxPose = centerPose;
-    boxPose.position.z -= radiusObject + 0.1;
+    boxPose.position.z += radiusObject + 0.3;
     
     if(radiusObject != 0)
     {
         visualTools.addSphere("collisionSphere", centerPose, radiusObject + 0.025, false);
-        visualTools.addBox("collisionBox", boxPose, 0.05, 0.05, 0.2, false);
+        visualTools.addBox("collisionBox", boxPose, 0.05, 0.05, 0.6, false);
     }
 
     //Compute spherical scanning trajectory points
@@ -75,6 +75,8 @@ int main(int argc, char **argv)
     int N=10;   //Waypoints number
     std::vector<geometry_msgs::Pose> waypoints;
 
+    /*
+    //Close field measurements
     double dinclination = M_PI / (N-1);
 
     for(int i = 0; i < N; i++)
@@ -96,6 +98,10 @@ int main(int argc, char **argv)
             waypoints[i].orientation = tf2::toMsg(leftQuaternion); 
         }
     }
+    */
+
+    //Far field measurement
+    //sphericAzimuthTrajectory(centerPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, N, waypoints);
 
     robot.runMeasurementRountine(waypoints,argv[2],"/tmp/SoundMeasurements/Positions.csv");
 
