@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
-### Sound measurements ###
+## Definition file of the SoundMeasurementServer class
+#
+# Defines the attributes and methods used to trigger a sound measurement
 
 import rospy
 from std_srvs.srv import Empty,EmptyResponse
@@ -10,13 +12,21 @@ import os
 import measpy as mp
 from measpy.audio import audio_run_measurement
 
+## SoundMeasurementServer
+#
+# Defines the attributes and methods used to trigger a sound measurement
 class SoundMeasurementServer :
     
+    ## Constructor
     def __init__(self):
-        ### Measurements
 
+<<<<<<< HEAD
         self.M1 = mp.Measurement(out_sig='logsweep',
                     out_amp=0.4,
+=======
+        ## First sound measurement
+        self.M1 = mp.Measurement(out_sig='noise',
+>>>>>>> 5bb42d74a28bdec257027f2adbd29f9e31341976
                     out_map=[4],
                     out_desc=['Out4'],
                     out_dbfs=[1.0/1.53],
@@ -29,6 +39,7 @@ class SoundMeasurementServer :
                     out_sig_fades=[0.0,0.0],
                     dur=5)
 
+        ## Second sound measurement
         self.M2 = mp.Measurement(out_sig='logsweep',
                     out_amp=1,
                     out_map=[4],
@@ -43,33 +54,44 @@ class SoundMeasurementServer :
                     out_sig_fades=[0.0,0.0],
                     dur=5)
 
-        ### Data 
-
-        #Storage folder
-        self.storageFolder = "/tmp/SoundMeasurements/"
+        ## Storage folder name
+        self.storageFolderName = rospy.get_param("storageFolderName")
         try:
-            os.mkdir(self.storageFolder)
-            rospy.loginfo("The folder " + self.storageFolder + "was created")
+            os.mkdir(self.storageFolderName)
+            rospy.loginfo("Creating " + self.storageFolderName + " ...")
         except OSError:
-            rospy.logwarn("The folder " + self.storageFolder + "already exists : its contents will be ereased !")
+            rospy.logwarn(self.storageFolderName + "already exists : its contents will be overwritten !")
             pass 
 
-        ### ROS Service Server
-
+        ## ROS Service Server
         self.microServer = rospy.Service("/sound_measurement_server",Empty,self.measure)
-        self.measureCounter = 0
 
+        ## Measurement counter
+        self.measurementCounter = 0
+
+    ## Method triggering a sound measurement
+    #  @param req An empty ROS service request
     def measure(self, req):
-        self.measureCounter += 1
+        self.measurementCounter += 1
 
+        #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
+
+        #Run measurement #2
         audio_run_measurement(self.M1)
+
+        #[Debug] Plot measurement
         #self.M1.plot()
         #plt.show()
         self.M1.to_csvwav(self.storageFolder+"sweep_measurement_0_"+str(self.measureCounter))
 
+        #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
+
+        #Run measurement #2
         audio_run_measurement(self.M2)
+
+        #[Debug] Plot measurement
         #self.M2.plot()
         #plt.show()
         self.M2.to_csvwav(self.storageFolder+"sweep_measurement_1_"+str(self.measureCounter))
@@ -77,8 +99,10 @@ class SoundMeasurementServer :
         return EmptyResponse()
 
 def main():
+    #Launch ROS node
     rospy.init_node('sound_measurement_server')
 
+    #Launch ROS service
     SoundMeasurementServer()
 
     while not rospy.is_shutdown():

@@ -1,14 +1,24 @@
 <?xml version="1.0" ?>
 <launch>
+
+	<!-- GENERAL ARGUMENTS -->
+	<arg name="robot" default="panda"/>
 	<arg name="tool" default="micro2"/>
 	<arg name="simulation" default="false"/>
 
-	<include file="$(find robot_arm_tools)/launch/Setup.launch">
+	<!-- ROBOT SETUP -->
+	<include file="$(find robot_arm_tools)/launch/Setup_$(arg robot).launch">
 		<arg name="load_$(arg tool)" value="true"/>
 		<arg name="simulation" value="$(arg simulation)"/>
 	</include>
 
+    <!-- MEASUREMENT (CALIBRATION) SERVER -->
 	<node pkg="robot_arm_acoustic" type="MicrophoneCalibrationServer.py" name="microphone_calibration_server" output="screen"/>
 
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_calibration_node" name="robot_arm_acoustic_calibration_node" output="screen" args="$(arg tool) /microphone_calibration_server"/>
+	<!-- MAIN NODE -->
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_calibration_node" name="robot_arm_acoustic_calibration_node" output="screen">
+		<param name="measurementServerName" value="/microphone_calibration_server"/>
+		<param name="storageFolderName" value="/tmp/MircrophoneCalibrationMeasurements/"/>
+	</node>
+
 </launch>

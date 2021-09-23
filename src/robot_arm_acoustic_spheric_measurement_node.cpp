@@ -20,15 +20,8 @@ int main(int argc, char **argv)
     spinner.start();
     ros::WallDuration(1.0).sleep();
 
-    //Command line arguments handling
-    if(argc < 3)
-    {
-        throw std::invalid_argument("MISSING CMD LINE ARGUMENT FOR robot_arm_acoustic_spheric_measurement_node !");
-        return(1);
-    }
-
     //Robot initialisation TODO More generic approach
-    Robot robot("panda_arm", argv[1], "panda_" + std::string(argv[1]));
+    Robot robot;
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
@@ -37,27 +30,36 @@ int main(int argc, char **argv)
     visualTools.setupUME();
     //robot.init();
 
-    //Load object geometry
+    //Get the object radius, pose and the trajectory radius
     std::vector<double> poseObject;
     double radiusObject;
     double radiusTrajectory;
 
-    ROS_INFO("Getting acquisition parameters");
-
     ros::NodeHandle n;
-    n.getParam("poseReference",poseObject);
-    n.getParam("radiusObject",radiusObject);
-    n.getParam("radiusTrajectory",radiusTrajectory);
+    if(!n.getParam("poseReference",poseObject))
+    {
+        ROS_ERROR("Unable to retrieve measurements reference pose !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    if(!n.getParam("radiusObject",radiusObject))
+    {
+        ROS_ERROR("Unable to retrieve measured object radius !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    if(!n.getParam("radiusTrajectory",radiusTrajectory))
+    {
+        ROS_ERROR("Unable to retrieve trajectory radius !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
 
     geometry_msgs::Pose centerPose;
     centerPose.position.x = poseObject[0];
     centerPose.position.y = poseObject[1];
     centerPose.position.z = poseObject[2] + 0.035;
 
-    std::cout << centerPose << std::endl;
-
-    std::cout<<radiusObject<<std::endl;
-
+    //Define and add collisions objects
     geometry_msgs::Pose boxPose = centerPose;
     boxPose.position.z += radiusObject + 0.3;
     
@@ -67,7 +69,7 @@ int main(int argc, char **argv)
         visualTools.addBox("collisionBox", boxPose, 0.05, 0.05, 0.6, false);
     }
 
-    //Compute spherical scanning trajectory points
+    //Create spherical scanning waypoints poses
     tf2::Quaternion leftQuaternion, rightQuaternion;
     leftQuaternion.setRPY(M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
     rightQuaternion.setRPY(-M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
@@ -103,7 +105,23 @@ int main(int argc, char **argv)
     //Far field measurement
     //sphericAzimuthTrajectory(centerPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, N, waypoints);
 
-    robot.runMeasurementRountine(waypoints,argv[2],"/tmp/SoundMeasurements/Positions.csv");
+    //Get the measurement server name
+    std::string measurementServerName, storageFolderName;
+    if(!n.getParam("measurementServerName",measurementServerName))
+    {
+        ROS_ERROR("Unable to retrieve measurement server name !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    //Get the storage folder name
+    if(!n.getParam("storageFolderName",storageFolderName))
+    {
+        ROS_ERROR("Unable to retrieve positions file name !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+    
+    //Main loop
+    robot.runMeasurementRountine(waypoints,measurementServerName,false,storageFolderName+"Positions.csv");
 
     //Shut down ROS node
     robot.init();   
