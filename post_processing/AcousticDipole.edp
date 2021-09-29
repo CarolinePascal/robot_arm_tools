@@ -1,0 +1,166 @@
+load "msh3"
+load "medit"
+
+include "Sphere.edp"
+
+//Sound parameters
+real rho = 1.225;
+real c = 340;
+real f = 1000;
+real k = 2*pi*f/c;
+real omega = c*k;
+
+//Acoustic dipole parameters
+real d = 0.05;
+real Q = 1;
+
+//Thick sphere parameters
+real Rmax = 0.21;
+real Rmin = 0.19;
+real Rmean = (Rmax+Rmin)/2;
+
+//Thin sphere parameters
+real R = 0.4;
+
+//Spherical coordinates functions
+func r = sqrt(x*x + y*y + z*z);
+func theta = atan2(sqrt(x*x + y*y),z);
+func phi = atan2(y,x); 
+
+//Acoustic field functions
+func G = exp(-1i*k*r)/(4*pi*r);
+func Pfar = (-2*omega*rho*Q) * G * sin((k*d/2)*cos(pi/2 - theta));
+
+func rplus = sqrt((x-d)*(x-d) + y*y + z*z);
+func rminus = sqrt((x+d)*(x+d) + y*y + z*z);
+func Gplus = exp(-1i*k*r)/(4*pi*rplus);
+func Gminus = exp(-1i*k*r)/(4*pi*rminus);
+
+func Pclose = (1i*omega*rho*Q) * (Gplus - Gminus);
+
+//Mesh parameters
+int minVertices = 100;
+int N = 10;
+
+//Output data storage
+real[int] Vertices(N);
+real[int] Errors(N); 
+
+for (int j = 0; j < N; j++)
+{
+    //Mesh parameters
+    int angularNodesNumber = sqrt(minVertices)*(j+1);
+
+    //Building a 2D cylindrical revolution primitive of the thick sphere
+    border exteriorCircleO(t = -pi,pi){x = Rmax*cos(t/2); y = Rmax*sin(t/2); label = 1;}
+    border upperVerticalBorderO(t = Rmax,Rmean){x = 0; y = t; label = 2;}
+    border interiorCircleO(t = pi,-pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 3;}
+    border lowerVerticalBorderO(t = -Rmean,-Rmax){x = 0; y = t;label = 4;}
+    mesh Th2dO = emptymesh(buildmesh(exteriorCircleO(angularNodesNumber-2)+upperVerticalBorderO(1)+interiorCircleO(angularNodesNumber-2)+lowerVerticalBorderO(1), fixedborder=true));
+
+    border exteriorCircleI(t = -pi,pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 5;}
+    border upperVerticalBorderI(t = Rmean,Rmin){x = 0; y = t; label = 6;}
+    border interiorCircleI(t = pi,-pi){x = Rmin*cos(t/2); y = Rmin*sin(t/2); label = 7;}
+    border lowerVerticalBorderI(t = -Rmin,-Rmean){x = 0; y = t;label = 8;}
+    mesh Th2dI = emptymesh(buildmesh(exteriorCircleI(angularNodesNumber-2)+upperVerticalBorderI(1)+interiorCircleI(angularNodesNumber-2)+lowerVerticalBorderI(1), fixedborder=true));
+
+    mesh Th2d = Th2dO + Th2dI;
+
+    //plot(Th2d,wait=true);
+
+    /*
+    int radiusNodesNumber = (Rmax-Rmin)*angularNodesNumber/(pi*(Rmax + Rmin));
+
+    //Building a 2D cylindrical revolution primitive of the thick sphere
+    border exteriorCircle(t = -pi,pi){x = Rmax*cos(t/2); y = Rmax*sin(t/2); label = 1;}
+    border upperVerticalBorder(t = Rmax,Rmin){x = 0; y = t; label = 2;}
+    border interiorCircle(t = pi,-pi){x = Rmin*cos(t/2); y = Rmin*sin(t/2); label = 3;}
+    border lowerVerticalBorder(t = -Rmin,-Rmax){x = 0; y = t;label = 2;}
+    mesh Th2d = buildmesh(exteriorCircle(angularNodesNumber/2)+upperVerticalBorder(radiusNodesNumber)+interiorCircle(angularNodesNumber/2)+lowerVerticalBorder(radiusNodesNumber), fixedborder=true);
+    */
+
+    //Building the 3D thick sphere
+    func fx = x*cos(z);
+    func fy = x*sin(z);
+    func fz = y;        
+
+    mesh3 Th3d = buildlayers(Th2d, angularNodesNumber, zbound=[0, 2*pi], transfo=[fx, fy, fz]);
+    Vertices[j] = Th3d.nv;
+
+    cout << Th3d.nv << endl;
+    //medit("3d thick sphere mesh", Th3d);
+
+
+    //Building normal vectors
+
+    fespace sphere(Th3d,P1);
+
+    sphere normalx = sin(theta)*cos(phi);
+    sphere normaly = sin(theta)*sin(phi);
+    sphere normalz = cos(theta);
+
+    ////medit("Normal vectors",Th3d,[normalx,normaly,normalz]);
+
+    //Creating the close pressure field
+    sphere<complex> pressure = Pclose;
+    medit("Close Pressure",Th3d,abs(pressure));
+
+    sphere<complex> dpressurex = dx(pressure);
+    sphere<complex> dpressurey = dy(pressure);
+    sphere<complex> dpressurez = dz(pressure);
+
+    sphere<complex> dpressuren = dpressurex*normalx + dpressurey*normaly + dpressurez*normalz;
+
+    meshS ThFar = meshSphere(R,R/4);
+
+    ////medit("Sphere",ThFar);
+
+    fespace sphereFar(ThFar,P1);
+
+    sphereFar<complex> pressureSomme;
+
+    ofstream file("output_"+Th3d.nv+".txt");
+
+    for (int i = 0; i < ThFar.nv; i++)
+    {
+        real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
+
+        func Gxyz = exp(-1i*k*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)))/(4*pi*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)));
+
+        sphere<complex> green = Gxyz;
+        sphere<complex> dgreenx = dx(green);
+        sphere<complex> dgreeny = dy(green);
+        sphere<complex> dgreenz = dz(green);
+
+        sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
+
+        int[int] lab = [1];
+        complex Psomme = int2d(Th3d,lab) (pressure*dgreenn-green*dpressuren);
+
+        pressureSomme[][i] = Psomme;
+
+        file << X << ";" << Y << ";" << Z << ";" << real(Psomme) << ";" << imag(Psomme) << endl;
+    }
+
+    sphereFar<complex> pressureAnalytic = Pfar;
+
+    medit("Pressure analytic",ThFar,abs(pressure));
+    medit("Pressure KH",ThFar,abs(pressure));
+
+    sphereFar<complex> delta = pressureSomme - pressureAnalytic;
+    real error = int2d(ThFar) (abs(delta));
+    
+    Errors[j] = error/(4*pi*R*R);
+
+    //cout << "Global error : " << error/(4*pi*R*R) << endl;
+    //medit("Error",ThFar,sqrt(real(delta)*real(delta) + imag(delta)*imag(delta)));
+}
+
+
+{
+ofstream file("output.txt");
+for (int i = 0; i < N; i++)
+{
+    file << Vertices[i] << ";" << Errors[i] << endl;
+}
+}
