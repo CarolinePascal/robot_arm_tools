@@ -3,6 +3,7 @@ load "tetgen"
 load "medit"
 load "mmg"
 include "MeshSurface.idp"
+load "lapack"
 
 func meshS meshSphere(real radius, real resolution)
 {
@@ -44,4 +45,48 @@ func meshS meshSphere(real radius, real resolution)
     }
 
     return(Th3);
+}
+
+func int planeCutPoints(real radius, real[int] planeNormal, int pointsNumber, real[int] X, real[int] Y, real[int] Z)
+{
+    real[int] planeTangent1(3);
+
+    for(int i = 0; i < 3; i++)
+    {
+        if(planeNormal[i] != 0)
+        {
+            planeTangent1[(i+1)%3] = planeNormal[i];
+            planeTangent1[i] = -planeNormal[(i+1)%3];
+            break;
+        }
+    }
+
+    planeTangent1 = planeTangent1/sqrt(planeTangent1[0]*planeTangent1[0] + planeTangent1[1]*planeTangent1[1] + planeTangent1[2]*planeTangent1[2]);
+    real[int] planeTangent2 = [planeNormal[1]*planeTangent1[2] - planeNormal[2]*planeTangent1[1],
+                               planeNormal[2]*planeTangent1[0] - planeNormal[0]*planeTangent1[2],
+                               planeNormal[0]*planeTangent1[1] - planeNormal[1]*planeTangent1[0]];
+
+    real[int, int] B = [[planeTangent1[0],planeTangent2[0],planeNormal[0]],
+                        [planeTangent1[1],planeTangent2[1],planeNormal[1]],
+                        [planeTangent1[2],planeTangent2[2],planeNormal[2]]];
+
+    real[int, int] Binv = B^-1;
+
+    for(int i = 0; i < pointsNumber; i++)
+    {
+        real[int, int] Rz = [[cos(i*2*pi/pointsNumber),-sin(i*2*pi/pointsNumber),0],
+                             [sin(i*2*pi/pointsNumber),cos(i*2*pi/pointsNumber),0],
+                             [0,0,1]];
+
+        real[int, int] RzB = Rz*Binv;
+        real[int, int] BRzB = B*RzB;
+
+        real[int] XYZ = BRzB*planeTangent1;
+
+        X[i] = radius*XYZ[0];
+        Y[i] = radius*XYZ[1];
+        Z[i] = radius*XYZ[2];    
+    }
+
+    return(0);
 }

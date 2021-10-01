@@ -12,6 +12,7 @@ real omega = c*k;
 
 //Acoustic dipole parameters
 real d = 0.05;
+real demid = d/2;
 real Q = 1;
 
 //Thick sphere parameters
@@ -29,10 +30,10 @@ func phi = atan2(y,x);
 
 //Acoustic field functions
 func G = exp(-1i*k*r)/(4*pi*r);
-func Pfar = (-2*omega*rho*Q) * G * sin((k*d/2)*cos(pi/2 - theta));
+func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
-func rplus = sqrt((x-d)*(x-d) + y*y + z*z);
-func rminus = sqrt((x+d)*(x+d) + y*y + z*z);
+func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
+func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
 func Gplus = exp(-1i*k*r)/(4*pi*rplus);
 func Gminus = exp(-1i*k*r)/(4*pi*rminus);
 
@@ -53,15 +54,15 @@ for (int j = 0; j < N; j++)
 
     //Building a 2D cylindrical revolution primitive of the thick sphere
     border exteriorCircleO(t = -pi,pi){x = Rmax*cos(t/2); y = Rmax*sin(t/2); label = 1;}
-    border upperVerticalBorderO(t = Rmax,Rmean){x = 0; y = t; label = 2;}
-    border interiorCircleO(t = pi,-pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 3;}
+    border upperVerticalBorderO(t = Rmax,Rmean){x = 0; y = t; label = 4;}
+    border interiorCircleO(t = pi,-pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 2;}
     border lowerVerticalBorderO(t = -Rmean,-Rmax){x = 0; y = t;label = 4;}
     mesh Th2dO = emptymesh(buildmesh(exteriorCircleO(angularNodesNumber-2)+upperVerticalBorderO(1)+interiorCircleO(angularNodesNumber-2)+lowerVerticalBorderO(1), fixedborder=true));
 
-    border exteriorCircleI(t = -pi,pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 5;}
-    border upperVerticalBorderI(t = Rmean,Rmin){x = 0; y = t; label = 6;}
-    border interiorCircleI(t = pi,-pi){x = Rmin*cos(t/2); y = Rmin*sin(t/2); label = 7;}
-    border lowerVerticalBorderI(t = -Rmin,-Rmean){x = 0; y = t;label = 8;}
+    border exteriorCircleI(t = -pi,pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 2;}
+    border upperVerticalBorderI(t = Rmean,Rmin){x = 0; y = t; label = 4;}
+    border interiorCircleI(t = pi,-pi){x = Rmin*cos(t/2); y = Rmin*sin(t/2); label = 3;}
+    border lowerVerticalBorderI(t = -Rmin,-Rmean){x = 0; y = t;label = 4;}
     mesh Th2dI = emptymesh(buildmesh(exteriorCircleI(angularNodesNumber-2)+upperVerticalBorderI(1)+interiorCircleI(angularNodesNumber-2)+lowerVerticalBorderI(1), fixedborder=true));
 
     mesh Th2d = Th2dO + Th2dI;
@@ -87,23 +88,24 @@ for (int j = 0; j < N; j++)
     mesh3 Th3d = buildlayers(Th2d, angularNodesNumber, zbound=[0, 2*pi], transfo=[fx, fy, fz]);
     Vertices[j] = Th3d.nv;
 
-    cout << Th3d.nv << endl;
     //medit("3d thick sphere mesh", Th3d);
-
 
     //Building normal vectors
 
     fespace sphere(Th3d,P1);
 
+    //sphere labels = label;
+    //medit("Labels",Th3d,labels);
+
     sphere normalx = sin(theta)*cos(phi);
     sphere normaly = sin(theta)*sin(phi);
     sphere normalz = cos(theta);
 
-    ////medit("Normal vectors",Th3d,[normalx,normaly,normalz]);
+    //medit("Normal vectors",Th3d,[normalx,normaly,normalz]);
 
     //Creating the close pressure field
     sphere<complex> pressure = Pclose;
-    medit("Close Pressure",Th3d,abs(pressure));
+    //medit("Close Pressure",Th3d,abs(pressure));
 
     sphere<complex> dpressurex = dx(pressure);
     sphere<complex> dpressurey = dy(pressure);
@@ -113,13 +115,11 @@ for (int j = 0; j < N; j++)
 
     meshS ThFar = meshSphere(R,R/4);
 
-    ////medit("Sphere",ThFar);
+    //medit("Sphere",ThFar);
 
     fespace sphereFar(ThFar,P1);
 
     sphereFar<complex> pressureSomme;
-
-    ofstream file("output_"+Th3d.nv+".txt");
 
     for (int i = 0; i < ThFar.nv; i++)
     {
@@ -134,18 +134,31 @@ for (int j = 0; j < N; j++)
 
         sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
 
-        int[int] lab = [1];
+        int[int] lab = [3];
         complex Psomme = int2d(Th3d,lab) (pressure*dgreenn-green*dpressuren);
 
         pressureSomme[][i] = Psomme;
-
-        file << X << ";" << Y << ";" << Z << ";" << real(Psomme) << ";" << imag(Psomme) << endl;
     }
 
-    sphereFar<complex> pressureAnalytic = Pfar;
+    sphereFar<complex> pressureAnalytic = Pclose;
 
-    medit("Pressure analytic",ThFar,abs(pressure));
-    medit("Pressure KH",ThFar,abs(pressure));
+    int cutSize = 500;
+    real[int] X(cutSize);
+    real[int] Y(cutSize);
+    real[int] Z(cutSize);
+
+    real[int] n = [0,0,1];
+
+    planeCutPoints(R,n,cutSize,X,Y,Z);
+
+    ofstream file("Output_"+Th3d.nv+".txt");
+    for(int i = 0; i < cutSize; i++)
+    {
+        file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureSomme(X[i],Y[i],Z[i])) << ";" << imag(pressureSomme(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
+    }
+
+    //medit("Pressure analytic",ThFar,abs(pressure));
+    //medit("Pressure KH",ThFar,abs(pressure));
 
     sphereFar<complex> delta = pressureSomme - pressureAnalytic;
     real error = int2d(ThFar) (abs(delta));
