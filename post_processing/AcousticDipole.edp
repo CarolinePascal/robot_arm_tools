@@ -125,7 +125,9 @@ for (int j = 0; j < N; j++)
     {
         real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
 
-        func Gxyz = exp(-1i*k*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)))/(4*pi*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)));
+        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+
+        func Gxyz = exp(-1i*k*D)/(4*pi*D);
 
         sphere<complex> green = Gxyz;
         sphere<complex> dgreenx = dx(green);
