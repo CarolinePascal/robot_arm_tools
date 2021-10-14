@@ -1,181 +1,216 @@
 load "msh3"
 load "medit"
+load "shell"
 
 include "Sphere.edp"
 
 //Sound parameters
+real Pref = 20e-6;
 real rho = 1.225;
 real c = 340;
-real f = 1000;
-real k = 2*pi*f/c;
-real omega = c*k;
 
-//Acoustic dipole parameters
-real d = 0.05;
-real demid = d/2;
+//Sound source
 real Q = 1;
+real d = 0.05;
 
-//Thick sphere parameters
-real Rmax = 0.21;
+//Integration spheres parameters 
 real Rmin = 0.19;
-real Rmean = (Rmax+Rmin)/2;
-
-//Thin sphere parameters
+real Rmax = 0.21;
 real R = 0.4;
+int minVerticesNumber = 100;
 
 //Spherical coordinates functions
 func r = sqrt(x*x + y*y + z*z);
 func theta = atan2(sqrt(x*x + y*y),z);
 func phi = atan2(y,x); 
 
-//Acoustic field functions
-func G = exp(-1i*k*r)/(4*pi*r);
-func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
-func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
-func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
-func Gplus = exp(-1i*k*r)/(4*pi*rplus);
-func Gminus = exp(-1i*k*r)/(4*pi*rminus);
-
-func Pclose = (1i*omega*rho*Q) * (Gplus - Gminus);
-
-//Mesh parameters
-int minVertices = 100;
-int N = 10;
-
-//Output data storage
-real[int] Vertices(N);
-real[int] Errors(N); 
-
-for (int j = 0; j < N; j++)
+func mesh halfThinSphere(real Rint, real Rext, int angularVerticesNumber, int interiorLabel, int exteriorLabel)
 {
-    //Mesh parameters
-    int angularNodesNumber = sqrt(minVertices)*(j+1);
-
-    //Building a 2D cylindrical revolution primitive of the thick sphere
-    border exteriorCircleO(t = -pi,pi){x = Rmax*cos(t/2); y = Rmax*sin(t/2); label = 1;}
-    border upperVerticalBorderO(t = Rmax,Rmean){x = 0; y = t; label = 4;}
-    border interiorCircleO(t = pi,-pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 2;}
-    border lowerVerticalBorderO(t = -Rmean,-Rmax){x = 0; y = t;label = 4;}
-    mesh Th2dO = emptymesh(buildmesh(exteriorCircleO(angularNodesNumber-2)+upperVerticalBorderO(1)+interiorCircleO(angularNodesNumber-2)+lowerVerticalBorderO(1), fixedborder=true));
-
-    border exteriorCircleI(t = -pi,pi){x = Rmean*cos(t/2); y = Rmean*sin(t/2); label = 2;}
-    border upperVerticalBorderI(t = Rmean,Rmin){x = 0; y = t; label = 4;}
-    border interiorCircleI(t = pi,-pi){x = Rmin*cos(t/2); y = Rmin*sin(t/2); label = 3;}
-    border lowerVerticalBorderI(t = -Rmin,-Rmean){x = 0; y = t;label = 4;}
-    mesh Th2dI = emptymesh(buildmesh(exteriorCircleI(angularNodesNumber-2)+upperVerticalBorderI(1)+interiorCircleI(angularNodesNumber-2)+lowerVerticalBorderI(1), fixedborder=true));
-
-    mesh Th2d = Th2dO + Th2dI;
-
+    border exteriorCircle(t = pi/2,pi/2 + 2*pi){x = Rext*cos(t); y = Rext*sin(t); label = exteriorLabel;}
+    border interiorCircle(t = pi/2,pi/2 + 2*pi){x = Rint*cos(t); y = Rint*sin(t); label = interiorLabel;}
+    
+    mesh Th2d = buildmesh(exteriorCircle(angularVerticesNumber) + interiorCircle(-angularVerticesNumber), fixedborder=true);
+    
+    //DEBUG
     //plot(Th2d,wait=true);
 
-    /*
-    int radiusNodesNumber = (Rmax-Rmin)*angularNodesNumber/(pi*(Rmax + Rmin));
+    Th2d = trunc(Th2d, x>0);
 
-    //Building a 2D cylindrical revolution primitive of the thick sphere
-    border exteriorCircle(t = -pi,pi){x = Rmax*cos(t/2); y = Rmax*sin(t/2); label = 1;}
-    border upperVerticalBorder(t = Rmax,Rmin){x = 0; y = t; label = 2;}
-    border interiorCircle(t = pi,-pi){x = Rmin*cos(t/2); y = Rmin*sin(t/2); label = 3;}
-    border lowerVerticalBorder(t = -Rmin,-Rmax){x = 0; y = t;label = 2;}
-    mesh Th2d = buildmesh(exteriorCircle(angularNodesNumber/2)+upperVerticalBorder(radiusNodesNumber)+interiorCircle(angularNodesNumber/2)+lowerVerticalBorder(radiusNodesNumber), fixedborder=true);
-    */
+    //DEBUG
+    //plot(Th2d,wait=true);
 
-    //Building the 3D thick sphere
-    func fx = x*cos(z);
-    func fy = x*sin(z);
-    func fz = y;        
-
-    mesh3 Th3d = buildlayers(Th2d, angularNodesNumber, zbound=[0, 2*pi], transfo=[fx, fy, fz]);
-    Vertices[j] = Th3d.nv;
-
-    //medit("3d thick sphere mesh", Th3d);
-
-    //Building normal vectors
-
-    fespace sphere(Th3d,P1);
-
-    //sphere labels = label;
-    //medit("Labels",Th3d,labels);
-
-    sphere normalx = sin(theta)*cos(phi);
-    sphere normaly = sin(theta)*sin(phi);
-    sphere normalz = cos(theta);
-
-    //medit("Normal vectors",Th3d,[normalx,normaly,normalz]);
-
-    //Creating the close pressure field
-    sphere<complex> pressure = Pclose;
-    //medit("Close Pressure",Th3d,abs(pressure));
-
-    sphere<complex> dpressurex = dx(pressure);
-    sphere<complex> dpressurey = dy(pressure);
-    sphere<complex> dpressurez = dz(pressure);
-
-    sphere<complex> dpressuren = dpressurex*normalx + dpressurey*normaly + dpressurez*normalz;
-
-    meshS ThFar = meshSphere(R,R/4);
-
-    //medit("Sphere",ThFar);
-
-    fespace sphereFar(ThFar,P1);
-
-    sphereFar<complex> pressureSomme;
-
-    for (int i = 0; i < ThFar.nv; i++)
-    {
-        real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
-
-        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
-
-        func Gxyz = exp(-1i*k*D)/(4*pi*D);
-
-        sphere<complex> green = Gxyz;
-        sphere<complex> dgreenx = dx(green);
-        sphere<complex> dgreeny = dy(green);
-        sphere<complex> dgreenz = dz(green);
-
-        sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
-
-        int[int] lab = [3];
-        complex Psomme = int2d(Th3d,lab) (pressure*dgreenn-green*dpressuren);
-
-        pressureSomme[][i] = Psomme;
-    }
-
-    sphereFar<complex> pressureAnalytic = Pclose;
-
-    int cutSize = 500;
-    real[int] X(cutSize);
-    real[int] Y(cutSize);
-    real[int] Z(cutSize);
-
-    real[int] n = [0,0,1];
-
-    planeCutPoints(R,n,cutSize,X,Y,Z);
-
-    ofstream file("Output_"+Th3d.nv+".txt");
-    for(int i = 0; i < cutSize; i++)
-    {
-        file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureSomme(X[i],Y[i],Z[i])) << ";" << imag(pressureSomme(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
-    }
-
-    //medit("Pressure analytic",ThFar,abs(pressure));
-    //medit("Pressure KH",ThFar,abs(pressure));
-
-    sphereFar<complex> delta = pressureSomme - pressureAnalytic;
-    real error = int2d(ThFar) (abs(delta));
-    
-    Errors[j] = error/(4*pi*R*R);
-
-    //cout << "Global error : " << error/(4*pi*R*R) << endl;
-    //medit("Error",ThFar,sqrt(real(delta)*real(delta) + imag(delta)*imag(delta)));
+    return(Th2d);
 }
 
+func mesh3 thickSphere(real Rmin, real Rmax, int angularVerticesNumber, int radialVerticesNumber)
+{
+        real delta = (Rmax-Rmin)/(radialVerticesNumber-1);
+        int currentLabel = 1;
+        mesh Th2d;
 
-{
-ofstream file("output.txt");
-for (int i = 0; i < N; i++)
-{
-    file << Vertices[i] << ";" << Errors[i] << endl;
+        for(real radius = Rmin; radius < Rmax; radius += delta)
+        {
+            Th2d = Th2d + halfThinSphere(radius,radius+delta,angularVerticesNumber,currentLabel,currentLabel+1);
+            currentLabel += 1;
+        }
+
+        //DEBUG
+        //plot(Th2d,wait=true);
+
+        //Building the 3D thick sphere
+        func fx = x*cos(z);
+        func fy = x*sin(z);
+        func fz = y;        
+
+        mesh3 Th3d = buildlayers(Th2d, angularVerticesNumber, zbound=[0, 2*pi], transfo=[fx, fy, fz]);
+
+        //DEBUG
+        //medit("3d thick sphere mesh", Th3d);
+
+        //fespace debug(Th3d,P1);
+        //debug labels = label;
+
+        //medit("Labels",Th3d,labels);
+
+        return(Th3d);
 }
+
+func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int minVerticesNumber, int iterations)
+{ 
+    mkdir("outputs_"+frequency+"_"+dipoleDistance);
+
+    //Frequency parameters
+    real k = 2*pi*frequency/c;
+    real omega = c*k;
+
+    //Acoustic dipole parameters
+    real demid = dipoleDistance/2;
+
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
+    func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
+
+    func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
+    func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
+    func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
+    func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
+
+    func Pclose = (1i*omega*rho*Q) * (Gplus - Gminus);
+
+    //Output data storage
+    real[int] Vertices(iterations);
+    real[int] Errors(iterations); 
+
+    cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m)" << endl;
+
+    for (int j = 0; j < iterations; j++)
+    {
+        cout << "ITERATION " + (j+1) + "/" + iterations << endl;
+        //Mesh parameters
+        int angularVerticesNumber = sqrt(minVerticesNumber)*(j+1);
+
+        //Building close field thick sphere
+        mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 3);
+        Vertices[j] = Th3d.nv;
+
+        cout << "VERICES NUMBER : " + Th3d.nv << endl;
+
+        //Building normal vectors
+        fespace sphere(Th3d,P1);
+
+        sphere normalx = sin(theta)*cos(phi);
+        sphere normaly = sin(theta)*sin(phi);
+        sphere normalz = cos(theta);
+
+        //DEBUG
+        //medit("Normal vectors",Th3d,[normalx,normaly,normalz]);
+
+        //Creating the close acoustic pressure field
+        sphere<complex> pressure = Pclose;
+
+        //DEBUG
+        //medit("Close acoustic pressure field",Th3d,abs(pressure));
+
+        sphere<complex> dpressurex = dx(pressure);
+        sphere<complex> dpressurey = dy(pressure);
+        sphere<complex> dpressurez = dz(pressure);
+
+        sphere<complex> dpressuren = dpressurex*normalx + dpressurey*normaly + dpressurez*normalz;
+
+        //Building far field surfacic sphere
+        meshS ThFar = meshSphere(R,R/5);
+        fespace sphereFar(ThFar,P1);
+
+        //Compute the K-H integral 
+        sphereFar<complex> pressureSomme;
+
+        for (int i = 0; i < ThFar.nv; i++)
+        {
+            real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
+
+            func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+
+            func Gxyz = exp(-1i*k*D)/(4*pi*D);
+
+            sphere<complex> green = Gxyz;
+            sphere<complex> dgreenx = dx(green);
+            sphere<complex> dgreeny = dy(green);
+            sphere<complex> dgreenz = dz(green);
+
+            sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
+
+            int[int] lab = [2];
+            complex Psomme = int2d(Th3d,lab) (pressure*dgreenn-green*dpressuren);
+
+            pressureSomme[][i] = Psomme;
+        }
+
+        //Compute the far acoustic pressure field
+        sphereFar<complex> pressureAnalytic = Pfar;
+
+        int cutSize = 500;
+        real[int] X(cutSize);
+        real[int] Y(cutSize);
+        real[int] Z(cutSize);
+
+        real[int] n = [0,0,1];
+
+        planeCutPoints(R,n,cutSize,X,Y,Z);
+
+        ofstream file("outputs_"+frequency+"_"+dipoleDistance+"/data_output_"+Th3d.nv+".txt");
+        for(int i = 0; i < cutSize; i++)
+        {
+            file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureSomme(X[i],Y[i],Z[i])) << ";" << imag(pressureSomme(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
+        }
+
+        //DEBUG
+        //medit("Acousitc pressure field - Analytic solution",ThFar,20*log10(max(Pref,abs(pressureAnalytic))/Pref));
+        //medit("Acoustic pressure field - KH solution",ThFar,20*log10(max(Pref,abs(pressureSomme))/Pref));
+
+        sphereFar<complex> delta = 20*log10(max(Pref,abs(pressureSomme))/Pref) - 20*log10(max(Pref,abs(pressureAnalytic))/Pref);
+        real error = int2d(ThFar) (abs(delta));
+        
+        Errors[j] = error/(4*pi*R*R);
+
+        //DEBUG
+        //cout << "Global error : " << error/(4*pi*R*R) << endl;
+        //medit("Error",ThFar,abs(delta));
+    }
+
+    {
+        ofstream file("outputs_"+frequency+"_"+dipoleDistance+"/error_output.txt");
+        for (int i = 0; i < iterations; i++)
+        {
+            file << Vertices[i] << ";" << Errors[i] << endl;
+        }
+    }
+
+    return(0);
+}
+
+//MAIN
+for(real f = 10; f <= 100; f*=10)
+{
+    acousticDipole(f,d,Rmin,Rmax,R,1000,10);
 }

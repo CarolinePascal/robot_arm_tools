@@ -4,17 +4,22 @@ import csv
 
 import glob
 
-fileList = np.array(glob.glob("Output*.txt"))
-verticesNumber = []
+fileList = np.array(glob.glob("outputs_10_0.05/data_output*.txt"))
+V = []
+E = []
 
 for file in fileList:
-    verticesNumber.append(int(file.split('.')[0].split('_')[1]))
+    L = file.split('.')[:-1]
+    file = ""
+    for item in L:
+        file = file+item
+    V.append(int(file.split('.')[0].split('_')[-1]))
 
-I = np.argsort(verticesNumber)
+I = np.argsort(V)
+V = np.sort(V)
 
-for file in fileList[I]:
-    verticesNumber = file.split('.')[0].split('_')[1]
-    print("Number of vertices : " + str(verticesNumber))
+for i,file in enumerate(fileList[I]):
+    print("Number of vertices : " + str(V[i]))
 
     X = []
     Y = []
@@ -30,32 +35,30 @@ for file in fileList[I]:
             Y.append(float(row[1]))
             Z.append(float(row[2]))
     
-            #AmpSomme.append(20*np.log10(np.abs(np.complex(float(row[3]),float(row[4])))/20e-6))
-            #AmpAnalytique.append(20*np.log10(np.abs(np.complex(float(row[5]),float(row[6])))/20e-6))
-            AmpSomme.append(np.log(np.abs(np.complex(float(row[3]),float(row[4])))))
-            AmpAnalytique.append(np.log(np.abs(np.complex(float(row[5]),float(row[6])))))
-
+            AmpSomme.append(20*np.log10(np.abs(np.complex(float(row[3]),float(row[4])))/20e-6))
+            AmpAnalytique.append(20*np.log10(np.abs(np.complex(float(row[5]),float(row[6])))/20e-6))
 
     #X0 = np.argmax(np.abs(np.array(X)))
 
     AmpSomme = np.array(AmpSomme)
     AmpAnalytique = np.array(AmpAnalytique)
 
-    print(np.exp(AmpAnalytique[0] - AmpSomme[0]))
-
     #AmpAnalytique = np.roll(AmpAnalytique,X0)
     AmpAnalytique = np.append(AmpAnalytique,AmpAnalytique[0])
     #AmpSomme = np.roll(AmpSomme,X0)
     AmpSomme = np.append(AmpSomme,AmpSomme[0])
 
+    E.append(np.average(np.abs(AmpSomme-AmpAnalytique)))
+    print("Erreur : " + str(E[-1]))
+
     TH = np.arange(0,2*np.pi,2*np.pi/len(X))
     TH = np.append(TH,2*np.pi)
-    
+   
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
     ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
     ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
 
-    ax.set_title("Acoustic pressure field computed for " + str(verticesNumber) + " vertices")
+    ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices")
 
     maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
 
@@ -64,3 +67,11 @@ for file in fileList[I]:
 
     plt.legend()
     plt.show()
+    
+
+plt.plot(V,np.log10(E))
+plt.xlabel("Number of vertices")
+plt.ylabel("log(Average error)")
+plt.xscale('log')
+plt.title("Average error depending on the number of vertices")
+plt.show()
