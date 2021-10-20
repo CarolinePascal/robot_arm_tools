@@ -5,19 +5,19 @@ load "shell"
 include "Sphere.edp"
 
 //Sound parameters
-real Pref = 20e-6;
-real rho = 1.225;
-real c = 340;
+real Pref = 20e-6; //Pa
+real rho = 1.204;   //kg/m³ at 20°C
+real c = 343.4;   //m/s at 20°C
 
 //Sound source
-real Q = 1;
-real d = 0.05;
+real Q = 1; //m³/s
+real d = 0.05;  //m
 
 //Integration spheres parameters 
-real Rmin = 0.19;
-real Rmax = 0.21;
-real R = 0.4;
-int minVerticesNumber = 100;
+real Rmin = 0.19;   //m
+real Rmax = 0.21;   //m
+real R = 0.4;   //m
+int minVerticesNumber = 200;
 
 //Spherical coordinates functions
 func r = sqrt(x*x + y*y + z*z);
@@ -92,7 +92,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
     func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
-    func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
+func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
     func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
     func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
 
@@ -210,7 +210,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 }
 
 //MAIN
-for(real f = 10; f <= 100; f*=10)
+for(real f = 100; f <= 12800; f*=2)
 {
-    acousticDipole(f,d,Rmin,Rmax,R,1000,10);
+    acousticDipole(f,d,Rmin,Rmax,R,minVerticesNumber,20);
 }
