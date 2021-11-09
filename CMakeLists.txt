@@ -134,6 +134,7 @@ include_directories(
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(${PROJECT_NAME}_calibration_node src/robot_arm_acoustic_calibration_node.cpp)
 add_executable(${PROJECT_NAME}_spheric_measurement_node src/robot_arm_acoustic_spheric_measurement_node.cpp)
+add_executable(${PROJECT_NAME}_straight_measurement_node src/robot_arm_acoustic_straight_measurement_node.cpp)
 add_executable(${PROJECT_NAME}_directivity_node src/robot_arm_acoustic_directivity_node.cpp)
 
 ## Rename C++ executable without prefix
@@ -152,6 +153,9 @@ target_link_libraries(${PROJECT_NAME}_calibration_node
   yaml-cpp
 )
 target_link_libraries(${PROJECT_NAME}_spheric_measurement_node
+  ${catkin_LIBRARIES}
+)
+target_link_libraries(${PROJECT_NAME}_straight_measurement_node
   ${catkin_LIBRARIES}
 )
 target_link_libraries(${PROJECT_NAME}_directivity_node

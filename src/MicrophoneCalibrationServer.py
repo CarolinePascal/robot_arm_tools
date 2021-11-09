@@ -59,8 +59,8 @@ class MicrophoneCalibrationServer :
         print("Running micro gain setting test...")
 
         #Creating figure and axes for calibration measurements display
-        fig = plt.figure()
-        ax = fig.add_subplot(111)
+        #fig = plt.figure()
+        #ax = fig.add_subplot(111)
 
         #Measurement loop
         while(not isGainOK):
@@ -68,8 +68,8 @@ class MicrophoneCalibrationServer :
             audio_run_measurement(self.M0)
 
             #Dispay measurements
-            _thread.start_new_thread(self.plotting_thread,(fig,ax))
-            plt.show()
+            #_thread.start_new_thread(self.plotting_thread,(fig,ax))
+            #plt.show()
 
             #Repeat while microphone calibration is not acceptable
             a = ""
@@ -81,7 +81,7 @@ class MicrophoneCalibrationServer :
             if a == 'n':
                 isGainOK = True
 
-            plt.close("all")
+            #plt.close("all")
 
         return EmptyResponse()
 

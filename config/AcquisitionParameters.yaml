@@ -1,7 +1,13 @@
-poseObject: [0.3,0.1,0.1,0.0,0.0,0.0]
-
+poseReference:
+  - 0.7
+  - 0.0
+  - 0.5
+  - 0
+  - 1.57
+  - 0
 radiusObject: 0.1
+trajectoryStepsSize: 0.05
+trajectoryStepsNumber: 10
+trajectoryAxis: [1,0,0]
 
-poseReference: [0.10,0.10,0.15,3.1416,0.0,0.0]
-
-radiusTrajectory: 0.2
+distanceToObject: 0.05

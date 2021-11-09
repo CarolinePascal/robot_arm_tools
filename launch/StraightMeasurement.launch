@@ -14,13 +14,13 @@
 		<arg name="safety_distance" value="$(arg safety_distance)"/>
 	</include>
 
-	<!-- MEASUREMENT SERVER -->
+    <!-- MEASUREMENT (CALIBRATION) SERVER -->
 	<node pkg="robot_arm_acoustic" type="SoundMeasurementServer.py" name="sound_measurement_server" output="screen"/>
 
 	<!-- MAIN NODE -->
-	<param name="measurementServerName" value="/sound_measurement_server"/>
-	<param name="storageFolderName" value="/tmp/DirectivityMeasurements/"/>
-	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_directivity_node" name="robot_arm_acoustic_directivity_node" output="screen"/>
+    <param name="measurementServerName" value="/sound_measurement_server"/>
+    <param name="storageFolderName" value="/tmp/SoundMeasurements/"/>
+    <rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_straight_measurement_node" name="robot_arm_acoustic_straight_measurement_node" output="screen"/>
 
 </launch>

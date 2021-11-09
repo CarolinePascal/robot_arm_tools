@@ -20,13 +20,8 @@ class SoundMeasurementServer :
     ## Constructor
     def __init__(self):
 
-<<<<<<< HEAD
         self.M1 = mp.Measurement(out_sig='logsweep',
                     out_amp=0.4,
-=======
-        ## First sound measurement
-        self.M1 = mp.Measurement(out_sig='noise',
->>>>>>> 5bb42d74a28bdec257027f2adbd29f9e31341976
                     out_map=[4],
                     out_desc=['Out4'],
                     out_dbfs=[1.0/1.53],
@@ -83,7 +78,7 @@ class SoundMeasurementServer :
         #[Debug] Plot measurement
         #self.M1.plot()
         #plt.show()
-        self.M1.to_csvwav(self.storageFolder+"sweep_measurement_0_"+str(self.measureCounter))
+        self.M1.to_csvwav(self.storageFolderName+"sweep_measurement_0_"+str(self.measurementCounter))
 
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
@@ -94,7 +89,7 @@ class SoundMeasurementServer :
         #[Debug] Plot measurement
         #self.M2.plot()
         #plt.show()
-        self.M2.to_csvwav(self.storageFolder+"sweep_measurement_1_"+str(self.measureCounter))
+        self.M2.to_csvwav(self.storageFolderName+"sweep_measurement_1_"+str(self.measurementCounter))
 
         return EmptyResponse()
 

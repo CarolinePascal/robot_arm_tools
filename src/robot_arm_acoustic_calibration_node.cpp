@@ -90,6 +90,7 @@ int main(int argc, char **argv)
     std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/AcquisitionParameters.yaml";
 
     YAML::Node config = YAML::LoadFile(yamlFile);
+    std::ofstream fout(yamlFile);
 
     if (config["poseReference"]) 
     {
@@ -101,6 +102,8 @@ int main(int argc, char **argv)
         config["poseReference"].push_back(pitch);
         config["poseReference"].push_back(yaw);
     }
+
+    fout << config;
 
     ros::waitForShutdown();
     return 0;
