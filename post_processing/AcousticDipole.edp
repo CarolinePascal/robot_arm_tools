@@ -14,16 +14,28 @@ real Q = 1; //m³/s
 real d = 0.05;  //m
 
 //Integration spheres parameters 
-real Rmin = 0.19;   //m
-real Rmax = 0.21;   //m
-real R = 0.4;   //m
-int minVerticesNumber = 200;
+real Rmin = 0.10;   //m
+real Rmax = 1.00;   //m
+real R = 2.0;   //m
+int minVerticesNumber = 100;    //Per sphere !
 
 //Spherical coordinates functions
 func r = sqrt(x*x + y*y + z*z);
 func theta = atan2(sqrt(x*x + y*y),z);
 func phi = atan2(y,x); 
 
+func real[int] logspace(real minPow, real maxPow, int itemNumber)
+{
+    real delta = (maxPow - minPow)/(itemNumber-1);
+    real[int] output(itemNumber);
+
+    for (int i = 0; i < itemNumber; i++)
+    {
+        output[i] = pow(10,minPow+i*delta);
+    }
+
+    return(output);
+}
 
 func mesh halfThinSphere(real Rint, real Rext, int angularVerticesNumber, int interiorLabel, int exteriorLabel)
 {
@@ -76,9 +88,24 @@ func mesh3 thickSphere(real Rmin, real Rmax, int angularVerticesNumber, int radi
         return(Th3d);
 }
 
+func int getAngularVerticesNumber(int sphereVerticesNumber, int radialVerticesNumber)
+{
+    real result = 1 + sqrt(1 + sphereVerticesNumber*radialVerticesNumber - 2*radialVerticesNumber);
+    int output = floor(result);
+
+    if(output%2 == 0)
+    {
+        return(output);
+    }
+    else
+    {
+        return(output+1);
+    }
+}
+
 func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int minVerticesNumber, int iterations)
 { 
-    mkdir("outputs_"+frequency+"_"+dipoleDistance);
+    mkdir("+outputs_"+frequency+"_"+dipoleDistance);
 
     //Frequency parameters
     real k = 2*pi*frequency/c;
@@ -92,29 +119,33 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
     func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
-func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
+    func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
     func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
     func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
 
     func Pclose = (1i*omega*rho*Q) * (Gplus - Gminus);
 
     //Output data storage
-    real[int] Vertices(iterations);
+    int[int] Vertices(iterations);
     real[int] Errors(iterations); 
 
-    cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m)" << endl;
+    real[int] VerticesTargets = logspace(log10(minVerticesNumber),3+log10(minVerticesNumber),iterations);
 
     for (int j = 0; j < iterations; j++)
     {
+        cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m)" << endl;
         cout << "ITERATION " + (j+1) + "/" + iterations << endl;
         //Mesh parameters
-        int angularVerticesNumber = sqrt(minVerticesNumber)*(j+1);
+        int angularVerticesNumber = getAngularVerticesNumber(round(VerticesTargets[j]),2);
 
         //Building close field thick sphere
-        mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 3);
+        mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 2);
         Vertices[j] = Th3d.nv;
 
-        cout << "VERICES NUMBER : " + Th3d.nv << endl;
+        cout << "VERTICES TARGET : " + 2*round(VerticesTargets[j]) << endl;
+        cout << "RADIAL VERTICES : " + 2 << endl;
+        cout << "ANGULAR VERTICES TARGET : " + angularVerticesNumber << endl;
+        cout << "VERTICES NUMBER : " + Th3d.nv << endl;
 
         //Building normal vectors
         fespace sphere(Th3d,P1);
@@ -160,7 +191,7 @@ func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
 
             sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
 
-            int[int] lab = [2];
+            int[int] lab = [1];
             complex Psomme = int2d(Th3d,lab) (pressure*dgreenn-green*dpressuren);
 
             pressureSomme[][i] = Psomme;
@@ -178,7 +209,7 @@ func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
 
         planeCutPoints(R,n,cutSize,X,Y,Z);
 
-        ofstream file("outputs_"+frequency+"_"+dipoleDistance+"/data_output_"+Th3d.nv+".txt");
+        ofstream file("+outputs_"+frequency+"_"+dipoleDistance+"/data_output_"+Th3d.nv+".txt");
         for(int i = 0; i < cutSize; i++)
         {
             file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureSomme(X[i],Y[i],Z[i])) << ";" << imag(pressureSomme(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
@@ -199,7 +230,7 @@ func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
     }
 
     {
-        ofstream file("outputs_"+frequency+"_"+dipoleDistance+"/error_output.txt");
+        ofstream file("+outputs_"+frequency+"_"+dipoleDistance+"/error_output.txt");
         for (int i = 0; i < iterations; i++)
         {
             file << Vertices[i] << ";" << Errors[i] << endl;
@@ -210,7 +241,17 @@ func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
 }
 
 //MAIN
-for(real f = 100; f <= 12800; f*=2)
+
+//int frequenciesNumber = 10;
+int frequenciesNumber = 1;
+//int iterationsNumber = 50;
+int iterationsNumber = 10;
+
+//real[int] F = logspace(log10(20),log10(20000),frequenciesNumber);
+real[int] F = [20];
+
+for (int i = 0; i < frequenciesNumber; i++)
 {
-    acousticDipole(f,d,Rmin,Rmax,R,minVerticesNumber,20);
+    acousticDipole(F[i],d,Rmin,Rmax,R,minVerticesNumber,iterationsNumber);
 }
+

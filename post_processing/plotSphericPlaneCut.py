@@ -6,7 +6,8 @@ import glob
 
 c = 343.4
 
-directoryList = np.array(glob.glob("outputs*"))
+directoryList = np.array(glob.glob("+outputs*"))
+print(directoryList)
 
 F = []
 D = []
@@ -18,6 +19,9 @@ for directory in directoryList:
     
 If = np.argsort(F)
 F = np.sort(F)
+
+figLog, axLog = plt.subplots()
+figLin, axLin = plt.subplots()
 
 for j,directory in enumerate(directoryList[If]):
     kd = D[j]*2*np.pi*F[j]/c
@@ -71,8 +75,8 @@ for j,directory in enumerate(directoryList[If]):
 
         TH = np.arange(0,2*np.pi,2*np.pi/len(X))
         TH = np.append(TH,2*np.pi)
-    
-        """
+
+        
         fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
         ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
         ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
@@ -86,12 +90,22 @@ for j,directory in enumerate(directoryList[If]):
 
         plt.legend()
         plt.show()
-        """
-    plt.plot(V,np.log10(E),label="kd = "+str(np.round(kd,2)))
+        
+        
+    if(F[j] < 2000):
+        axLog.plot(V,np.log10(E),label="kd = "+str(np.round(kd,2)))
+        axLin.plot(V,E,label="kd = "+str(np.round(kd,2)))
 
-plt.xlabel("Number of vertices")
-plt.ylabel("log(Average error)")
-plt.xscale('log')  
-plt.title("Average error depending on the number of vertices")    
-plt.legend()
+axLog.set_xlabel("Number of vertices")
+axLog.set_ylabel("log(Average error)")
+axLog.set_xscale('log')  
+axLog.set_title("Average error depending on the number of vertices")    
+
+axLog.legend()
+
+axLin.set_xlabel("Number of vertices")
+axLin.set_ylabel("Average error")
+axLin.set_title("Average error depending on the number of vertices")   
+
+axLin.legend()
 plt.show()
