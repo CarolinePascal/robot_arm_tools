@@ -28,12 +28,10 @@ int main(int argc, char **argv)
 
     //Move the robot to its initial configuration
     visualTools.setupUME();
-    //robot.init();
 
     //Get the object radius, pose and the trajectory radius
-    std::vector<double> poseObject;
-    double radiusObject;
-    double radiusTrajectory;
+    std::vector<double> poseReference, poseObject;
+    double radiusObject, radiusTrajectory, distanceToObject;
 
     ros::NodeHandle n;
     if(!n.getParam("poseReference",poseObject))
@@ -54,25 +52,26 @@ int main(int argc, char **argv)
         throw std::runtime_error("MISSING PARAMETER");
     }
 
-    geometry_msgs::Pose centerPose;
-    centerPose.position.x = poseObject[0];
-    centerPose.position.y = poseObject[1];
-    centerPose.position.z = poseObject[2] + 0.035;
+    if(!n.getParam("distanceToObject",distanceToObject))
+    {
+        ROS_ERROR("Unable to retrieve distance to object !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
 
-    //Define and add collisions objects
-    geometry_msgs::Pose boxPose = centerPose;
-    boxPose.position.z += radiusObject + 0.3;
+    geometry_msgs::Pose objectPose;
+    objectPose.position.x = poseObject[0];
+    objectPose.position.y = poseObject[1];
+    objectPose.position.z = poseObject[2] + distanceToObject;
     
     if(radiusObject != 0)
     {
-        visualTools.addSphere("collisionSphere", centerPose, radiusObject + 0.025, false);
-        visualTools.addBox("collisionBox", boxPose, 0.05, 0.05, 0.6, false);
+        visualTools.addSphere("collisionSphere", objectPose, radiusObject + 0.025, false);
     }
 
     //Create spherical scanning waypoints poses
     tf2::Quaternion leftQuaternion, rightQuaternion;
-    leftQuaternion.setRPY(M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
-    rightQuaternion.setRPY(-M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
+    leftQuaternion.setRPY(M_PI/2,0,atan2(objectPose.position.y,objectPose.position.x));
+    rightQuaternion.setRPY(-M_PI/2,0,atan2(objectPose.position.y,objectPose.position.x));
 
     int N=10;   //Waypoints number
     std::vector<geometry_msgs::Pose> waypoints;
@@ -83,15 +82,15 @@ int main(int argc, char **argv)
 
     for(int i = 0; i < N; i++)
     {
-        sphericInclinationTrajectory(centerPose, radiusTrajectory, i*dinclination, 0, 2*M_PI, N*(i > 0 ? 1 : 0), waypoints); //1+round((N-1)*sin(i*dinclination))   
+        sphericInclinationTrajectory(objectPose, radiusTrajectory, i*dinclination, 0, 2*M_PI, N*(i > 0 ? 1 : 0), waypoints); //1+round((N-1)*sin(i*dinclination))   
     }
 
     //Post-processing
-    rotateTrajectory(waypoints,centerPose.position,-M_PI/2,0,atan2(centerPose.position.y,centerPose.position.x));
+    rotateTrajectory(waypoints,objectPose.position,-M_PI/2,0,atan2(objectPose.position.y,objectPose.position.x));
 
     for(int i = 0; i < waypoints.size(); i++)
     {      
-        if(waypoints[i].position.x*centerPose.position.y/centerPose.position.x > waypoints[i].position.y)
+        if(waypoints[i].position.x*objectPose.position.y/objectPose.position.x > waypoints[i].position.y)
         {
             waypoints[i].orientation = tf2::toMsg(rightQuaternion); 
         }
@@ -103,7 +102,7 @@ int main(int argc, char **argv)
     */
 
     //Far field measurement
-    //sphericAzimuthTrajectory(centerPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, N, waypoints);
+    sphericAzimuthTrajectory(objectPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, N, waypoints);
 
     //Get the measurement server name
     std::string measurementServerName, storageFolderName;
