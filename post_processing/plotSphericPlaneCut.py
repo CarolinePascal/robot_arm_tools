@@ -4,27 +4,40 @@ import csv
 
 import glob
 
+from copy import deepcopy
+
 c = 343.4
 
-directoryList = np.array(glob.glob("+outputs*"))
+directoryList = np.array(glob.glob("outputs*"))
 print(directoryList)
 
-F = []
-D = []
+P = np.zeros((len(directoryList),len(directoryList[0].split("_")) - 1))
 
-for directory in directoryList:
-    L = directory.split("_")
-    F.append(float(L[1]))
-    D.append(float(L[2]))
-    
-If = np.argsort(F)
-F = np.sort(F)
+for i,directory in enumerate(directoryList):
+    P[i] = np.array([float(l) for l in directory.split("_")[1:]])
+
+P = P[P[:,0].argsort()]
+subPList = [P]
+
+for j in range(len(P[0])-1):
+    newSubPList = []
+    for subP in subPList:
+        newSubPList+=[subP[l] for l in (np.where(subP[:,j] == k)[0] for k in np.unique(subP[:,j]))]
+
+    for m,newSubP in enumerate(newSubPList):
+        tmp = newSubP[newSubP[:,j+1].argsort()]
+        newSubPList[m] = tmp
+
+    subPList = deepcopy(newSubPList)
+
+newP = np.concatenate(subPList)
+I = np.where((P == newP[:,None]).all(-1))[1]
 
 figLog, axLog = plt.subplots()
 figLin, axLin = plt.subplots()
 
-for j,directory in enumerate(directoryList[If]):
-    kd = D[j]*2*np.pi*F[j]/c
+for j,directory in enumerate(directoryList[I]):
+    kd = P[j,1]*2*np.pi*P[j,0]/c
 
     fileList = np.array(glob.glob(directory + "/data_output*.txt"))
     V = []
@@ -37,10 +50,10 @@ for j,directory in enumerate(directoryList[If]):
             file = file+item
         V.append(int(file.split('.')[0].split('_')[-1]))
 
-    I = np.argsort(V)
+    Iv = np.argsort(V)
     V = np.sort(V)
 
-    for i,file in enumerate(fileList[I]):
+    for i,file in enumerate(fileList[Iv]):
         print("Number of vertices : " + str(V[i]))
 
         X = []
@@ -90,11 +103,6 @@ for j,directory in enumerate(directoryList[If]):
 
         plt.legend()
         plt.show()
-        
-        
-    if(F[j] < 2000):
-        axLog.plot(V,np.log10(E),label="kd = "+str(np.round(kd,2)))
-        axLin.plot(V,E,label="kd = "+str(np.round(kd,2)))
 
 axLog.set_xlabel("Number of vertices")
 axLog.set_ylabel("log(Average error)")
