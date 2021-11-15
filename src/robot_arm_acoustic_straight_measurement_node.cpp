@@ -15,7 +15,7 @@
 int main(int argc, char **argv)
 {
     //ROS node initialisation
-    ros::init(argc, argv, "robot_arm_acoustic_spheric_measurement_node");  
+    ros::init(argc, argv, "robot_arm_acoustic_straight_measurement_node");  
     ros::AsyncSpinner spinner(0);
     spinner.start();
     ros::WallDuration(1.0).sleep();
