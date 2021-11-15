@@ -9,7 +9,6 @@ from copy import deepcopy
 c = 343.4
 
 directoryList = np.array(glob.glob("outputs*"))
-print(directoryList)
 
 P = np.zeros((len(directoryList),len(directoryList[0].split("_")) - 1))
 
@@ -32,11 +31,15 @@ for j in range(len(P[0])-1):
 
 newP = np.concatenate(subPList)
 I = np.where((P == newP[:,None]).all(-1))[1]
+P = P[I]
 
 figLog, axLog = plt.subplots()
 figLin, axLin = plt.subplots()
 
+print(directoryList[I])
+
 for j,directory in enumerate(directoryList[I]):
+    print(directory)
     kd = P[j,1]*2*np.pi*P[j,0]/c
 
     fileList = np.array(glob.glob(directory + "/data_output*.txt"))
@@ -94,7 +97,7 @@ for j,directory in enumerate(directoryList[I]):
         ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
         ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
 
-        ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices")
+        ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices\n" + "Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]))
 
         maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
 

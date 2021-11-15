@@ -51,12 +51,36 @@ func mesh halfThinSphere(real Rint, real Rext, int angularVerticesNumber, int in
     border exteriorCircle(t = pi/2,pi/2 + 2*pi){x = Rext*cos(t); y = Rext*sin(t); label = exteriorLabel;}
     border interiorCircle(t = pi/2,pi/2 + 2*pi){x = Rint*cos(t); y = Rint*sin(t); label = interiorLabel;}
     
-    mesh Th2d = buildmesh(exteriorCircle(angularVerticesNumber) + interiorCircle(-angularVerticesNumber), fixedborder=true);
+    mesh Th2d = buildmesh(exteriorCircle(angularVerticesNumber) + interiorCircle(angularVerticesNumber), fixedborder=true);
     
+    Th2d = emptymesh(Th2d);
     //DEBUG
     //plot(Th2d,wait=true);
 
-    Th2d = trunc(Th2d, x>0);
+    fespace wholeSphere(Th2d, P0);
+    wholeSphere triangles; 
+
+    for (int i = 0; i < Th2d.nt; i++)
+    {
+        real[int] centroid = [0,0];
+
+        for (int j = 0; j < 3; j++)
+        {
+            centroid[0] += Th2d[i][j].x/3;
+            centroid[1] += Th2d[i][j].y/3;
+        }
+
+        if(centroid[0]*centroid[0] + centroid[1]*centroid[1] < Rint*Rint)
+        {
+            triangles[][i] = 0;
+        }
+        else
+        {
+            triangles[][i] = 1;
+        }
+    }
+
+    Th2d = trunc(Th2d, triangles!=0 && x>0);
 
     //DEBUG
     //plot(Th2d,wait=true);
@@ -138,7 +162,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     int[int] Vertices(iterations);
     real[int] Errors(iterations); 
 
-    real[int] VerticesTargets = logspace(log10(minVerticesNumber),3+log10(minVerticesNumber),iterations);
+    real[int] VerticesTargets = logspace(log10(minVerticesNumber),2+log10(minVerticesNumber),iterations);
 
     for (int j = 0; j < iterations; j++)
     {
@@ -258,12 +282,13 @@ int minVerticesNumber = 100;    //Per sphere !
 //int frequenciesNumber = 10;
 int frequenciesNumber = 1;
 //int iterationsNumber = 50;
-int iterationsNumber = 5;
+int iterationsNumber = 3;
 int deltaRadiusNumber = 5;
 
 real[int] DR = logspace(-2,0,deltaRadiusNumber);
 
 real R = (Rmin + DR[deltaRadiusNumber-1])*2;
+cout << "Far field radius : " << R << " (m)" << endl;
 
 //real[int] F = logspace(log10(20),log10(20000),frequenciesNumber);
 real[int] F = [20];
@@ -275,4 +300,3 @@ for (int i = 0; i < frequenciesNumber; i++)
         acousticDipole(F[i],d,Rmin,Rmin+DR[j],R,minVerticesNumber,iterationsNumber);
     } 
 }
-
