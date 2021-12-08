@@ -13,10 +13,10 @@ directoryList = np.array(glob.glob("outputs*"))
 P = np.zeros((len(directoryList),len(directoryList[0].split("_")) - 1))
 
 for i,directory in enumerate(directoryList):
+    print(directory)
     P[i] = np.array([float(l) for l in directory.split("_")[1:]])
 
-P = P[P[:,0].argsort()]
-subPList = [P]
+subPList = [P[P[:,0].argsort()]]
 
 for j in range(len(P[0])-1):
     newSubPList = []
@@ -33,13 +33,12 @@ newP = np.concatenate(subPList)
 I = np.where((P == newP[:,None]).all(-1))[1]
 P = P[I]
 
+print(P)
+
 figLog, axLog = plt.subplots()
 figLin, axLin = plt.subplots()
 
-print(directoryList[I])
-
 for j,directory in enumerate(directoryList[I]):
-    print(directory)
     kd = P[j,1]*2*np.pi*P[j,0]/c
 
     fileList = np.array(glob.glob(directory + "/data_output*.txt"))
@@ -89,23 +88,27 @@ for j,directory in enumerate(directoryList[I]):
         E.append(np.average(np.abs(AmpSomme-AmpAnalytique)))
         print("Erreur : " + str(E[-1]))
 
-        TH = np.arange(0,2*np.pi,2*np.pi/len(X))
-        TH = np.append(TH,2*np.pi)
+        #if(i!=len(fileList)-1):
+        #    continue
 
-        
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-        ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
-        ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
+        #TH = np.arange(0,2*np.pi,2*np.pi/len(X))
+        #TH = np.append(TH,2*np.pi)
 
-        ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices\n" + "Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]))
+        #fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        #ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
+        #ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
 
-        maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
+        #ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices\n" + "Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]) + "\n" + "Far field radius : " + str(P[j,3]))
 
-        ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
-        ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+        #maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
 
-        plt.legend()
-        plt.show()
+        #ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+        #ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+
+        #plt.legend()
+        #plt.show()
+
+    axLin.plot(V,E,label="Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]) + "\n" + "F.F. radius : " + str(P[j,3]))
 
 axLog.set_xlabel("Number of vertices")
 axLog.set_ylabel("log(Average error)")
