@@ -91,24 +91,25 @@ for j,directory in enumerate(directoryList[I]):
         #if(i!=len(fileList)-1):
         #    continue
 
-        #TH = np.arange(0,2*np.pi,2*np.pi/len(X))
-        #TH = np.append(TH,2*np.pi)
+        """TH = np.arange(0,2*np.pi,2*np.pi/len(X))
+        TH = np.append(TH,2*np.pi)
 
-        #fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-        #ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
-        #ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
+        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+        ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
+        ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
 
-        #ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices\n" + "Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]) + "\n" + "Far field radius : " + str(P[j,3]))
+        ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices\n" + "Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]) + "\n" + "Far field radius : " + str(P[j,3]))
 
-        #maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
+        maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
 
-        #ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
-        #ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+        ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+        ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
 
-        #plt.legend()
-        #plt.show()
+        plt.legend()
+        plt.show()"""
 
     axLin.plot(V,E,label="Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]) + "\n" + "F.F. radius : " + str(P[j,3]))
+    axLog.plot(V,np.log(E),label="Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]) + "\n" + "F.F. radius : " + str(P[j,3]))
 
 axLog.set_xlabel("Number of vertices")
 axLog.set_ylabel("log(Average error)")

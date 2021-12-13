@@ -1,6 +1,7 @@
 load "msh3"
 load "medit"
 load "shell"
+load "tetgen"
 
 include "Sphere.edp"
 
@@ -70,7 +71,7 @@ func mesh halfThinSphere(real Rint, real Rext, int angularVerticesNumber, int in
             centroid[1] += Th2d[i][j].y/3;
         }
 
-        if(centroid[0]*centroid[0] + centroid[1]*centroid[1] < Rint*Rint*0.95)
+        if(centroid[0]*centroid[0] + centroid[1]*centroid[1] < Rint*Rint)
         {
             triangles[][i] = 0;
         }
@@ -101,7 +102,7 @@ func mesh3 thickSphere(real Rmin, real Rmax, int angularVerticesNumber, int radi
         }
 
         //DEBUG
-        //plot(Th2d,wait=true);
+        plot(Th2d,wait=true);
 
         //Building the 3D thick sphere
         func fx = x*cos(z);
@@ -113,10 +114,10 @@ func mesh3 thickSphere(real Rmin, real Rmax, int angularVerticesNumber, int radi
         //DEBUG
         //medit("3d thick sphere mesh", Th3d);
 
-        //fespace debug(Th3d,P1);
-        //debug labels = label;
+        fespace debug(Th3d,P1);
+        debug labels = label;
 
-        //medit("Labels",Th3d,labels);
+        medit("Labels",Th3d,labels);
 
         return(Th3d);
 }
@@ -273,28 +274,185 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     return(0);
 }
 
+func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int verticesNumber)
+{
+    //Frequency parameters
+    real k = 2*pi*frequency/c;
+    real omega = c*k;
+
+    //Acoustic dipole parameters
+    real demid = dipoleDistance/2;
+
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
+
+    func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
+    func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
+    func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
+    func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
+
+    func P = (1i*omega*rho*Q) * (Gplus - Gminus);
+
+    func Hplus = -exp(-1i*k*rplus)*(1i*k*rplus + 1)/(4*pi*rplus*rplus*rplus);
+    func Hminus = -exp(-1i*k*rminus)*(1i*k*rminus + 1)/(4*pi*rminus*rminus*rminus);
+
+    func dPx = 1i*omega*rho*Q*(Hplus*(x-demid) - Hminus*(x+demid));
+    func dPy = 1i*omega*rho*Q*(Hplus*z - Hminus*y);
+    func dPz = 1i*omega*rho*Q*(Hplus*z - Hminus*z);
+
+    cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m) - DELTA RADIUS : " + (Rmax-Rmin) + " (m) - FAR FIELD RADIUS : " + R + " (m)" << endl;
+
+    //Mesh parameters
+    int angularVerticesNumber = getAngularVerticesNumber(verticesNumber,2);
+
+    //Building close field thick sphere
+    mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 2);
+
+    cout << "VERTICES TARGET : " + 2*verticesNumber << endl;
+    cout << "RADIAL VERTICES : " + 2 << endl;
+    cout << "ANGULAR VERTICES TARGET : " + angularVerticesNumber << endl;
+    cout << "VERTICES NUMBER : " + Th3d.nv << endl;
+
+    //Building normal vectors
+    fespace sphere(Th3d,P1);
+
+    sphere normalx = sin(theta)*cos(phi);
+    sphere normaly = sin(theta)*sin(phi);
+    sphere normalz = cos(theta);
+
+    //Creating the acoustic pressure field
+    sphere<complex> pressure = P;
+
+    sphere<complex> dpressurexC = dx(pressure);
+    sphere<complex> dpressureyC = dy(pressure);
+    sphere<complex> dpressurezC = dz(pressure);
+
+    sphere<complex> dpressurenC = dpressurexC*normalx + dpressureyC*normaly + dpressurezC*normalz;
+
+    sphere<complex> dpressurexA = dPx;
+    sphere<complex> dpressureyA = dPy;
+    sphere<complex> dpressurezA = dPz;
+
+    sphere<complex> dpressurenA = dpressurexA*normalx + dpressureyA*normaly + dpressurezA*normalz;
+
+    //medit("Computed pressure dervative",Th3d,abs(dpressuren));
+    //medit("Analytical pressure derivative",Th3d,abs(dpressurenA));
+
+    sphere<complex> delta = dpressurenA - dpressurenC;
+
+    int[int] lab = [2];
+    meshS ThS = extract(Th3d,label=lab);
+
+    medit("Error",ThS,abs(delta));
+}
+
 //MAIN
 
 //Integration spheres parameters 
 real Rmin = 0.20;   //m
 real Rmax = 0.21;   //m
+real R = 1.0;
 int minVerticesNumber = 100;    //Per sphere !
 
-int frequenciesNumber = 1;
-
-//int iterationsNumber = 50;
+int frequenciesNumber = 5;
 int iterationsNumber = 10;
+int deltaRadiusNumber = 4;
 
-//real[int] F = logspace(log10(20),log10(20000),frequenciesNumber);
-real[int] F = [20];
+real[int] deltaR = [0.005,0.01,0.1,0.5];
+real[int] F = logspace(log10(20),log10(20000),frequenciesNumber);
 
-int radiusNumber = 9;
-real[int] R = linspace(2*Rmax,10*Rmax,radiusNumber);
-
-for (int j = 0; j < radiusNumber; j++)
+/*for (int j = 0; j < deltaRadiusNumber; j++)
 {
     for (int i = 0; i < frequenciesNumber; i++)
     {
-        acousticDipole(F[i],d,Rmin,Rmax,R[j],minVerticesNumber,iterationsNumber);
+        acousticDipole(F[i],d,Rmin,Rmin+deltaR[j],R,minVerticesNumber,iterationsNumber);
+    }
+}*/
+
+//derivativeComparaison(200,d,Rmin,Rmax,R,1000);
+
+int halfVerticesNumber = 10;
+int borderLabel = 0;
+
+border exteriorCircle(t = 0,2*pi){x = 15*cos(t); y = 15*sin(t); label = borderLabel + 1;} 
+border interiorCircle(t = 0,2*pi){x = 10*cos(t); y = 10*sin(t); label = borderLabel;}
+
+mesh Th2d = buildmesh(exteriorCircle(2*halfVerticesNumber) + interiorCircle(-2*halfVerticesNumber), fixedborder=true, nbvx = halfVerticesNumber*2*2 + 2);
+
+real radius;
+int index = -1;
+
+for (int k = 0; k < Th2d.nv; k++)
+{
+    radius = sqrt(Th2d(k).x*Th2d(k).x + Th2d(k).y*Th2d(k).y);
+    if(radius > 10.1 && radius < 14.9)
+    {
+        if(Th2d(x).x > 0)
+        {
+            index = 1;
+        }
+        else
+        {
+            index = -1;
+        }
+        break;
     }
 }
+/*
+int[int] toDelete(6);
+int toDeleteLen = 0;
+
+toDelete[toDeleteLen] = index;
+toDeleteLen+=1;
+
+for(int l = 0; l < toDeleteLen; l++)
+{
+    for(int i = 0, ii; i < 3; i++)
+    {
+        int adjTriangle = Th2d[toDelete[l]].adj((ii=i));
+        bool flag = false;
+
+        for(int k = 0; k < toDeleteLen; k++)
+        {
+            if(toDelete[k] == adjTriangle)
+            {
+                flag = true;
+                break;
+            }
+        }
+
+        if(flag)
+        {
+            break;
+        }
+
+        for(int j = 0; j < 3; j++)
+        {
+            radius = sqrt(Th2d[adjTriangle][j].x*Th2d[adjTriangle][j].x + Th2d[adjTriangle][j].y*Th2d[adjTriangle][j].y);
+            if(radius > 10.1 && radius < 14.9)
+            {
+                toDelete[toDeleteLen] = adjTriangle;
+                toDeleteLen+=1;
+                break;
+            }
+        }
+    }
+}
+*/
+
+fespace femp0(Th2d, P0);
+femp0 TNumbers; 
+for (int i = 0; i < Th2d.nt; i++)
+    TNumbers[][i] = i;
+
+mesh Th2dTrunc = trunc(Th2d,x*index>0);
+medit("Truncated",Th2dTrunc);
+
+
+func fx = x*cos(z);
+func fy = x*sin(z);
+func fz = y;  
+
+mesh3 Th3d = buildlayers(Th2d, halfVerticesNumber*2, zbound=[0, pi/2], transfo=[fx, fy, fz]);
+medit("l",Th3d);
+
