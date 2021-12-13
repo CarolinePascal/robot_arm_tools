@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env python3.8
 
 ## Definition file of the SoundMeasurementServer class
 #
@@ -20,6 +20,27 @@ class SoundMeasurementServer :
     ## Constructor
     def __init__(self):
 
+        self.M1 = mp.Measurement(out_sig='logsweep',
+                    fs=96000,
+                    out_sig_freqs=[20,20000],
+                    out_map=[1],
+                    out_desc=['Sent signal'],
+                    out_dbfs=[1.0],
+                    in_map=[1,3],
+                    out_amp=1.0/1.53,
+                    in_desc=['Input voltage','Pressure'],
+                    in_cal=[0.01,1.0],
+                    in_unit=['V','Pa'],
+                    in_dbfs=[1.0/0.593,1.0/0.593],
+                    extrat=[0,0],
+                    out_sig_fades=[0,0],
+                    dur=10,
+                    io_sync=0,
+                    in_device=6,
+                    out_device=6)
+
+        """
+        ## First sound measurement
         self.M1 = mp.Measurement(out_sig='logsweep',
                     out_amp=0.4,
                     out_map=[4],
@@ -48,6 +69,7 @@ class SoundMeasurementServer :
                     extrat=[0.0,0.0],
                     out_sig_fades=[0.0,0.0],
                     dur=5)
+        """
 
         ## Storage folder name
         self.storageFolderName = rospy.get_param("storageFolderName")
@@ -72,7 +94,7 @@ class SoundMeasurementServer :
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
 
-        #Run measurement #2
+        #Run measurement #1
         audio_run_measurement(self.M1)
 
         #[Debug] Plot measurement
@@ -83,6 +105,7 @@ class SoundMeasurementServer :
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
 
+        """
         #Run measurement #2
         audio_run_measurement(self.M2)
 
@@ -90,6 +113,7 @@ class SoundMeasurementServer :
         #self.M2.plot()
         #plt.show()
         self.M2.to_csvwav(self.storageFolderName+"sweep_measurement_1_"+str(self.measurementCounter))
+        """
 
         return EmptyResponse()
 
