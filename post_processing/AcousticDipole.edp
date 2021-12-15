@@ -5,6 +5,8 @@ load "tetgen"
 
 include "Sphere.edp"
 
+include "getARGV.idp"
+
 verbosity = 0;
 
 //Sound parameters
@@ -274,7 +276,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     return(0);
 }
 
-func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int verticesNumber)
+func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, real Rmax, int verticesNumber)
 {
     //Frequency parameters
     real k = 2*pi*frequency/c;
@@ -291,27 +293,26 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
     func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
 
-    func P = (1i*omega*rho*Q) * (Gplus - Gminus);
+    func Pressure = (1i*omega*rho*Q) * (Gplus - Gminus);
 
-    func Hplus = -exp(-1i*k*rplus)*(1i*k*rplus + 1)/(4*pi*rplus*rplus*rplus);
-    func Hminus = -exp(-1i*k*rminus)*(1i*k*rminus + 1)/(4*pi*rminus*rminus*rminus);
+    func dGplusr = -Gplus*(1i*k*rplus + 1)/rplus;
+    func dGminusr = -Gminus*(1i*k*rminus + 1)/rminus;
 
-    func dPx = 1i*omega*rho*Q*(Hplus*(x-demid) - Hminus*(x+demid));
-    func dPy = 1i*omega*rho*Q*(Hplus*z - Hminus*y);
-    func dPz = 1i*omega*rho*Q*(Hplus*z - Hminus*z);
-
-    cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m) - DELTA RADIUS : " + (Rmax-Rmin) + " (m) - FAR FIELD RADIUS : " + R + " (m)" << endl;
+    func dPx = (1i*omega*rho*Q) * (dGplusr*(x-demid)/rminus - dGminusr*(x+demid)/rplus);
+    func dPy = (1i*omega*rho*Q) * (dGplusr*y/rminus - dGminusr*y/rplus);
+    func dPz = (1i*omega*rho*Q) * (dGplusr*z/rminus - dGminusr*z/rplus);
 
     //Mesh parameters
-    int angularVerticesNumber = getAngularVerticesNumber(verticesNumber,2);
+    //int angularVerticesNumber = getAngularVerticesNumber(verticesNumber,2);
 
     //Building close field thick sphere
-    mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 2);
+    //mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 2);
+    int angularVerticesNumber = getARGV("-angularVerticesNumber",100); 
 
-    cout << "VERTICES TARGET : " + 2*verticesNumber << endl;
-    cout << "RADIAL VERTICES : " + 2 << endl;
-    cout << "ANGULAR VERTICES TARGET : " + angularVerticesNumber << endl;
-    cout << "VERTICES NUMBER : " + Th3d.nv << endl;
+    string meshName = "Mesh_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
+    mesh3 Th3d(meshName);
+
+    //medit("Mesh",Th3d);
 
     //Building normal vectors
     fespace sphere(Th3d,P1);
@@ -321,7 +322,9 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     sphere normalz = cos(theta);
 
     //Creating the acoustic pressure field
-    sphere<complex> pressure = P;
+    sphere<complex> pressure = Pressure;
+
+    //medit("Analytical pressure",Th3d,abs(pressure));
 
     sphere<complex> dpressurexC = dx(pressure);
     sphere<complex> dpressureyC = dy(pressure);
@@ -335,22 +338,24 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
 
     sphere<complex> dpressurenA = dpressurexA*normalx + dpressureyA*normaly + dpressurezA*normalz;
 
-    //medit("Computed pressure dervative",Th3d,abs(dpressuren));
+    //medit("Computed pressure dervative",Th3d,abs(dpressurenC));
     //medit("Analytical pressure derivative",Th3d,abs(dpressurenA));
 
     sphere<complex> delta = dpressurenA - dpressurenC;
 
-    int[int] lab = [2];
+    int[int] lab = [1];
     meshS ThS = extract(Th3d,label=lab);
 
-    medit("Error",ThS,abs(delta));
+    //medit("Error",ThS,abs(delta));
+
+    cout << int2d(ThS) ( abs(delta)/(4*pi*Rmin*Rmin) ) << endl;
 }
 
 //MAIN
 
 //Integration spheres parameters 
-real Rmin = 0.20;   //m
-real Rmax = 0.21;   //m
+//real Rmin = 0.20;   //m
+//real Rmax = 0.21;   //m
 real R = 1.0;
 int minVerticesNumber = 100;    //Per sphere !
 
@@ -369,90 +374,9 @@ real[int] F = logspace(log10(20),log10(20000),frequenciesNumber);
     }
 }*/
 
-//derivativeComparaison(200,d,Rmin,Rmax,R,1000);
+real Rmin = getARGV("-Rmin",0.2); 
+real Rmax = getARGV("-Rmax",0.21); 
 
-int halfVerticesNumber = 10;
-int borderLabel = 0;
+derivativeComparaison(200,d,Rmin,Rmax,1000);
 
-border exteriorCircle(t = 0,2*pi){x = 15*cos(t); y = 15*sin(t); label = borderLabel + 1;} 
-border interiorCircle(t = 0,2*pi){x = 10*cos(t); y = 10*sin(t); label = borderLabel;}
-
-mesh Th2d = buildmesh(exteriorCircle(2*halfVerticesNumber) + interiorCircle(-2*halfVerticesNumber), fixedborder=true, nbvx = halfVerticesNumber*2*2 + 2);
-
-real radius;
-int index = -1;
-
-for (int k = 0; k < Th2d.nv; k++)
-{
-    radius = sqrt(Th2d(k).x*Th2d(k).x + Th2d(k).y*Th2d(k).y);
-    if(radius > 10.1 && radius < 14.9)
-    {
-        if(Th2d(x).x > 0)
-        {
-            index = 1;
-        }
-        else
-        {
-            index = -1;
-        }
-        break;
-    }
-}
-/*
-int[int] toDelete(6);
-int toDeleteLen = 0;
-
-toDelete[toDeleteLen] = index;
-toDeleteLen+=1;
-
-for(int l = 0; l < toDeleteLen; l++)
-{
-    for(int i = 0, ii; i < 3; i++)
-    {
-        int adjTriangle = Th2d[toDelete[l]].adj((ii=i));
-        bool flag = false;
-
-        for(int k = 0; k < toDeleteLen; k++)
-        {
-            if(toDelete[k] == adjTriangle)
-            {
-                flag = true;
-                break;
-            }
-        }
-
-        if(flag)
-        {
-            break;
-        }
-
-        for(int j = 0; j < 3; j++)
-        {
-            radius = sqrt(Th2d[adjTriangle][j].x*Th2d[adjTriangle][j].x + Th2d[adjTriangle][j].y*Th2d[adjTriangle][j].y);
-            if(radius > 10.1 && radius < 14.9)
-            {
-                toDelete[toDeleteLen] = adjTriangle;
-                toDeleteLen+=1;
-                break;
-            }
-        }
-    }
-}
-*/
-
-fespace femp0(Th2d, P0);
-femp0 TNumbers; 
-for (int i = 0; i < Th2d.nt; i++)
-    TNumbers[][i] = i;
-
-mesh Th2dTrunc = trunc(Th2d,x*index>0);
-medit("Truncated",Th2dTrunc);
-
-
-func fx = x*cos(z);
-func fy = x*sin(z);
-func fz = y;  
-
-mesh3 Th3d = buildlayers(Th2d, halfVerticesNumber*2, zbound=[0, pi/2], transfo=[fx, fy, fz]);
-medit("l",Th3d);
 
