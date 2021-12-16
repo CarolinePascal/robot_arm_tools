@@ -1,148 +1,15 @@
 load "msh3"
 load "medit"
 load "shell"
-load "tetgen"
 
-include "Sphere.edp"
-
+include "ComputationTools.edp"
+include "SphericMeshTools.edp"
 include "getARGV.idp"
 
 verbosity = 0;
 
-//Sound parameters
-real Pref = 20e-6; //Pa
-real rho = 1.204;   //kg/m³ at 20°C
-real c = 343.4;   //m/s at 20°C
-
-//Sound source
-real Q = 1; //m³/s
-real d = 0.05;  //m
-
-//Spherical coordinates functions
-func r = sqrt(x*x + y*y + z*z);
-func theta = atan2(sqrt(x*x + y*y),z);
-func phi = atan2(y,x); 
-
-func real[int] logspace(real minPow, real maxPow, int itemNumber)
-{
-    real delta = (maxPow - minPow)/(itemNumber-1);
-    real[int] output(itemNumber);
-
-    for (int i = 0; i < itemNumber; i++)
-    {
-        output[i] = pow(10,minPow+i*delta);
-    }
-
-    return(output);
-}
-
-func real[int] linspace(real min, real max, int itemNumber)
-{
-    real delta = (max - min)/(itemNumber-1);
-    real[int] output(itemNumber);
-
-    for (int i = 0; i < itemNumber; i++)
-    {
-        output[i] = min+i*delta;
-    }
-
-    return(output);
-}
-
-func mesh halfThinSphere(real Rint, real Rext, int angularVerticesNumber, int interiorLabel, int exteriorLabel)
-{
-    border exteriorCircle(t = pi/2,pi/2 + 2*pi){x = Rext*cos(t); y = Rext*sin(t); label = exteriorLabel;}
-    border interiorCircle(t = pi/2,pi/2 + 2*pi){x = Rint*cos(t); y = Rint*sin(t); label = interiorLabel;}
-    
-    mesh Th2d = buildmesh(exteriorCircle(angularVerticesNumber) + interiorCircle(angularVerticesNumber), fixedborder=true);
-    
-    Th2d = emptymesh(Th2d);
-    //DEBUG
-    //plot(Th2d,wait=true);
-
-    fespace wholeSphere(Th2d, P0);
-    wholeSphere triangles; 
-
-    for (int i = 0; i < Th2d.nt; i++)
-    {
-        real[int] centroid = [0,0];
-
-        for (int j = 0; j < 3; j++)
-        {
-            centroid[0] += Th2d[i][j].x/3;
-            centroid[1] += Th2d[i][j].y/3;
-        }
-
-        if(centroid[0]*centroid[0] + centroid[1]*centroid[1] < Rint*Rint)
-        {
-            triangles[][i] = 0;
-        }
-        else
-        {
-            triangles[][i] = 1;
-        }
-    }
-
-    Th2d = trunc(Th2d, triangles!=0 && x>0);
-
-    //DEBUG
-    //plot(Th2d,wait=true);
-
-    return(Th2d);
-}
-
-func mesh3 thickSphere(real Rmin, real Rmax, int angularVerticesNumber, int radialVerticesNumber)
-{
-        real delta = (Rmax-Rmin)/(radialVerticesNumber-1);
-        int currentLabel = 1;
-        mesh Th2d;
-
-        for(real radius = Rmin; radius < Rmax; radius += delta)
-        {
-            Th2d = Th2d + halfThinSphere(radius,radius+delta,angularVerticesNumber,currentLabel,currentLabel+1);
-            currentLabel += 1;
-        }
-
-        //DEBUG
-        plot(Th2d,wait=true);
-
-        //Building the 3D thick sphere
-        func fx = x*cos(z);
-        func fy = x*sin(z);
-        func fz = y;        
-
-        mesh3 Th3d = buildlayers(Th2d, angularVerticesNumber, zbound=[0, 2*pi], transfo=[fx, fy, fz]);
-
-        //DEBUG
-        //medit("3d thick sphere mesh", Th3d);
-
-        fespace debug(Th3d,P1);
-        debug labels = label;
-
-        medit("Labels",Th3d,labels);
-
-        return(Th3d);
-}
-
-func int getAngularVerticesNumber(int sphereVerticesNumber, int radialVerticesNumber)
-{
-    real result = 1 + sqrt(1 + sphereVerticesNumber*radialVerticesNumber - 2*radialVerticesNumber);
-    int output = floor(result);
-
-    if(output%2 == 0)
-    {
-        return(output);
-    }
-    else
-    {
-        return(output+1);
-    }
-}
-
-func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int minVerticesNumber, int iterations)
+func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int angularVerticesNumber)
 { 
-    mkdir("outputs_"+frequency+"_"+dipoleDistance+"_"+(Rmax-Rmin)+"_"+R);
-
     //Frequency parameters
     real k = 2*pi*frequency/c;
     real omega = c*k;
@@ -152,141 +19,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
     //Acoustic field functions
     func G = exp(-1i*k*r)/(4*pi*r);
-    func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
-
-    func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
-    func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
-    func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
-    func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
-
-    func Pclose = (1i*omega*rho*Q) * (Gplus - Gminus);
-
-    //Output data storage
-    int[int] Vertices(iterations);
-    real[int] Errors(iterations); 
-
-    real[int] VerticesTargets = logspace(log10(minVerticesNumber),2+log10(minVerticesNumber),iterations);
-
-    for (int j = 0; j < iterations; j++)
-    {
-        cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m) - DELTA RADIUS : " + (Rmax-Rmin) + " (m) - FAR FIELD RADIUS : " + R + " (m)" << endl;
-        cout << "ITERATION " + (j+1) + "/" + iterations << endl;
-        //Mesh parameters
-        int angularVerticesNumber = getAngularVerticesNumber(round(VerticesTargets[j]),2);
-
-        //Building close field thick sphere
-        mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 2);
-        Vertices[j] = Th3d.nv;
-
-        cout << "VERTICES TARGET : " + 2*round(VerticesTargets[j]) << endl;
-        cout << "RADIAL VERTICES : " + 2 << endl;
-        cout << "ANGULAR VERTICES TARGET : " + angularVerticesNumber << endl;
-        cout << "VERTICES NUMBER : " + Th3d.nv << endl;
-
-        //Building normal vectors
-        fespace sphere(Th3d,P1);
-
-        sphere normalx = sin(theta)*cos(phi);
-        sphere normaly = sin(theta)*sin(phi);
-        sphere normalz = cos(theta);
-
-        //DEBUG
-        //medit("Normal vectors",Th3d,[normalx,normaly,normalz]);
-
-        //Creating the close acoustic pressure field
-        sphere<complex> pressure = Pclose;
-
-        //DEBUG
-        //medit("Close acoustic pressure field",Th3d,abs(pressure));
-
-        sphere<complex> dpressurex = dx(pressure);
-        sphere<complex> dpressurey = dy(pressure);
-        sphere<complex> dpressurez = dz(pressure);
-
-        sphere<complex> dpressuren = dpressurex*normalx + dpressurey*normaly + dpressurez*normalz;
-
-        //Building far field surfacic sphere
-        meshS ThFar = meshSphere(R,R/5);
-        fespace sphereFar(ThFar,P1);
-
-        //Compute the K-H integral 
-        sphereFar<complex> pressureSomme;
-
-        for (int i = 0; i < ThFar.nv; i++)
-        {
-            real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
-
-            func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
-
-            func Gxyz = exp(-1i*k*D)/(4*pi*D);
-
-            sphere<complex> green = Gxyz;
-            sphere<complex> dgreenx = dx(green);
-            sphere<complex> dgreeny = dy(green);
-            sphere<complex> dgreenz = dz(green);
-
-            sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
-
-            int[int] lab = [1];
-            complex Psomme = int2d(Th3d,lab) (pressure*dgreenn-green*dpressuren);
-
-            pressureSomme[][i] = Psomme;
-        }
-
-        //Compute the far acoustic pressure field
-        sphereFar<complex> pressureAnalytic = Pclose;
-
-        int cutSize = 500;
-        real[int] X(cutSize);
-        real[int] Y(cutSize);
-        real[int] Z(cutSize);
-
-        real[int] n = [0,0,1];
-
-        planeCutPoints(R,n,cutSize,X,Y,Z);
-
-        ofstream file("outputs_"+frequency+"_"+dipoleDistance+"_"+(Rmax-Rmin)+"_"+R+"/data_output_"+Th3d.nv+".txt");
-        for(int i = 0; i < cutSize; i++)
-        {
-            file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureSomme(X[i],Y[i],Z[i])) << ";" << imag(pressureSomme(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
-        }
-
-        //DEBUG
-        //medit("Acousitc pressure field - Analytic solution",ThFar,20*log10(max(Pref,abs(pressureAnalytic))/Pref));
-        //medit("Acoustic pressure field - KH solution",ThFar,20*log10(max(Pref,abs(pressureSomme))/Pref));
-
-        sphereFar<complex> delta = 20*log10(max(Pref,abs(pressureSomme))/Pref) - 20*log10(max(Pref,abs(pressureAnalytic))/Pref);
-        real error = int2d(ThFar) (abs(delta));
-        
-        Errors[j] = error/(4*pi*R*R);
-
-        //DEBUG
-        //cout << "Global error : " << error/(4*pi*R*R) << endl;
-        //medit("Error",ThFar,abs(delta));
-    }
-
-    {
-        ofstream file("outputs_"+frequency+"_"+dipoleDistance+"_"+(Rmax-Rmin)+"_"+R+"/error_output.txt");
-        for (int i = 0; i < iterations; i++)
-        {
-            file << Vertices[i] << ";" << Errors[i] << endl;
-        }
-    }
-
-    return(0);
-}
-
-func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, real Rmax, int verticesNumber)
-{
-    //Frequency parameters
-    real k = 2*pi*frequency/c;
-    real omega = c*k;
-
-    //Acoustic dipole parameters
-    real demid = dipoleDistance/2;
-
-    //Acoustic field functions
-    func G = exp(-1i*k*r)/(4*pi*r);
+    //func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
     func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
     func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
@@ -295,88 +28,112 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
 
     func Pressure = (1i*omega*rho*Q) * (Gplus - Gminus);
 
-    func dGplusr = -Gplus*(1i*k*rplus + 1)/rplus;
-    func dGminusr = -Gminus*(1i*k*rminus + 1)/rminus;
+    //DEBUG
+    //cout << "TOTAL VERTICES NUMBER : " + 2*angularVerticesNumber*(angularVerticesNumber-1) << endl;
+    //cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m)" << endl;
+    //cout << "INSIDE RADIUS : " + Rmin + " (m) - OUTSIDE RADIUS : " + Rmax +" (m) - FAR FIELD RADIUS : " + R + " (m)" << endl;
 
-    func dPx = (1i*omega*rho*Q) * (dGplusr*(x-demid)/rminus - dGminusr*(x+demid)/rplus);
-    func dPy = (1i*omega*rho*Q) * (dGplusr*y/rminus - dGminusr*y/rplus);
-    func dPz = (1i*omega*rho*Q) * (dGplusr*z/rminus - dGminusr*z/rplus);
-
-    //Mesh parameters
-    //int angularVerticesNumber = getAngularVerticesNumber(verticesNumber,2);
-
-    //Building close field thick sphere
-    //mesh3 Th3d = thickSphere(Rmin, Rmax, angularVerticesNumber, 2);
-    int angularVerticesNumber = getARGV("-angularVerticesNumber",100); 
-
-    string meshName = "Mesh_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
-    mesh3 Th3d(meshName);
-
-    //medit("Mesh",Th3d);
+    //Loading close thick sphere mesh
+    string meshName = "meshes/thick_sphere/ST_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
+    mesh3 ThClose(meshName);
+    fespace closeSphere(ThClose,P1);
 
     //Building normal vectors
-    fespace sphere(Th3d,P1);
+    closeSphere nx = normalx;
+    closeSphere ny = normaly;
+    closeSphere nz = normalz;
 
-    sphere normalx = sin(theta)*cos(phi);
-    sphere normaly = sin(theta)*sin(phi);
-    sphere normalz = cos(theta);
+    //DEBUG
+    //medit("Normal vectors on the close thick sphere",THClose,[nx,ny,nz]);
 
     //Creating the acoustic pressure field
-    sphere<complex> pressure = Pressure;
+    closeSphere<complex> pressure = Pressure;
 
-    //medit("Analytical pressure",Th3d,abs(pressure));
+    //DEBUG
+    //medit("Acoustic pressure field on the close thick sphere",THClose,abs(pressure));
 
-    sphere<complex> dpressurexC = dx(pressure);
-    sphere<complex> dpressureyC = dy(pressure);
-    sphere<complex> dpressurezC = dz(pressure);
+    closeSphere<complex> dpressurex = dx(pressure);
+    closeSphere<complex> dpressurey = dy(pressure);
+    closeSphere<complex> dpressurez = dz(pressure);
 
-    sphere<complex> dpressurenC = dpressurexC*normalx + dpressureyC*normaly + dpressurezC*normalz;
+    closeSphere<complex> dpressuren = dpressurex*nx + dpressurey*ny + dpressurez*nz;
 
-    sphere<complex> dpressurexA = dPx;
-    sphere<complex> dpressureyA = dPy;
-    sphere<complex> dpressurezA = dPz;
+    //Building far surfacic sphere mesh
+    meshS ThFar = meshSphere(R,R/5);
+    fespace farSphere(ThFar,P1);
 
-    sphere<complex> dpressurenA = dpressurexA*normalx + dpressureyA*normaly + dpressurezA*normalz;
+    //Compute the K-H integral 
+    farSphere<complex> pressureIntegral;
 
-    //medit("Computed pressure dervative",Th3d,abs(dpressurenC));
-    //medit("Analytical pressure derivative",Th3d,abs(dpressurenA));
+    for (int i = 0; i < ThFar.nv; i++)
+    {
+        real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
 
-    sphere<complex> delta = dpressurenA - dpressurenC;
+        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
 
-    int[int] lab = [1];
-    meshS ThS = extract(Th3d,label=lab);
+        func Gxyz = exp(-1i*k*D)/(4*pi*D);
 
-    //medit("Error",ThS,abs(delta));
+        closeSphere<complex> green = Gxyz;
+        closeSphere<complex> dgreenx = dx(green);
+        closeSphere<complex> dgreeny = dy(green);
+        closeSphere<complex> dgreenz = dz(green);
 
-    cout << int2d(ThS) ( abs(delta)/(4*pi*Rmin*Rmin) ) << endl;
+        closeSphere<complex> dgreenn = dgreenx*nx + dgreeny*ny + dgreenz*nz;
+
+        int[int] lab = [1];
+        pressureIntegral[][i] = int2d(ThClose,lab) (pressure*dgreenn-green*dpressuren);
+    }
+    
+    //Creating the acoustic pressure field
+    farSphere<complex> pressureAnalytic = Pressure;
+
+    int cutSize = 500;
+    real[int] X(cutSize);
+    real[int] Y(cutSize);
+    real[int] Z(cutSize);
+
+    real[int] n = [0,0,1];
+
+    planeCutPoints(R,n,cutSize,X,Y,Z);
+
+    string folderName = getARGV("-folderName","Baseline");
+
+    ofstream parameters(folderName+"/parameters.txt");
+    parameters << "vertices\n";
+    parameters << "frequency\n";
+    parameters << "dipoleDistance\n";
+    parameters << "Rmin\n";
+    parameters << "Rmax\n";
+    parameters << "R\n";
+
+    ofstream file(folderName+"/output_"+angularVerticesNumber+"_"+frequency+"_"+dipoleDistance+"_"+Rmin+"_"+Rmax+"_"+R+".txt");
+    for(int i = 0; i < cutSize; i++)
+    {
+        file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureIntegral(X[i],Y[i],Z[i])) << ";" << imag(pressureIntegral(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
+    }
+
+    //DEBUG
+    //medit("Acousitc pressure field - Analytic solution",ThFar,20*log10(max(Pref,abs(pressureAnalytic))/Pref));
+    //medit("Acoustic pressure field - KH solution",ThFar,20*log10(max(Pref,abs(pressureIntegral))/Pref));
+
+    farSphere<complex> delta = 20*log10(max(Pref,abs(pressureIntegral))/Pref) - 20*log10(max(Pref,abs(pressureAnalytic))/Pref);
+    real error = int2d(ThFar) (abs(delta));
+    cout << error/(4*pi*R*R) << endl;
+
+    //DEBUG
+    //medit("Error",ThFar,abs(delta));
+
+    return(0);
 }
 
 //MAIN
-
-//Integration spheres parameters 
-//real Rmin = 0.20;   //m
-//real Rmax = 0.21;   //m
-real R = 1.0;
-int minVerticesNumber = 100;    //Per sphere !
-
-int frequenciesNumber = 5;
-int iterationsNumber = 10;
-int deltaRadiusNumber = 4;
-
-real[int] deltaR = [0.005,0.01,0.1,0.5];
-real[int] F = logspace(log10(20),log10(20000),frequenciesNumber);
-
-/*for (int j = 0; j < deltaRadiusNumber; j++)
-{
-    for (int i = 0; i < frequenciesNumber; i++)
-    {
-        acousticDipole(F[i],d,Rmin,Rmin+deltaR[j],R,minVerticesNumber,iterationsNumber);
-    }
-}*/
-
+real frequency = getARGV("-frequency",2000); 
+real dipoleDistance = getARGV("-dipoleDistance",0.05); 
 real Rmin = getARGV("-Rmin",0.2); 
 real Rmax = getARGV("-Rmax",0.21); 
+real R = getARGV("-R",0.4); 
+int angularVerticesNumber = getARGV("-angularVerticesNumber",10); 
 
-derivativeComparaison(200,d,Rmin,Rmax,1000);
+acousticDipole(frequency,dipoleDistance,Rmin,Rmax,R,angularVerticesNumber);
 
 

@@ -1,0 +1,113 @@
+load "msh3"
+load "medit"
+load "shell"
+
+include "ComputationTools.edp"
+include "SphericMeshTools.edp"
+include "getARGV.idp"
+
+verbosity = 0;
+
+func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, real Rmax, int angularVerticesNumber)
+{
+    //Frequency parameters
+    real k = 2*pi*frequency/c;
+    real omega = c*k;
+
+    //Acoustic dipole parameters
+    real demid = dipoleDistance/2;
+
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
+
+    func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
+    func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
+    func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
+    func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
+
+    func Pressure = (1i*omega*rho*Q) * (Gplus - Gminus);
+
+    func dGplusr = -Gplus*(1i*k*rplus + 1)/rplus;
+    func dGminusr = -Gminus*(1i*k*rminus + 1)/rminus;
+
+    func dPx = (1i*omega*rho*Q) * (dGplusr*(x-demid)/rplus - dGminusr*(x+demid)/rminus);
+    func dPy = (1i*omega*rho*Q) * (dGplusr*y/rplus - dGminusr*y/rminus);
+    func dPz = (1i*omega*rho*Q) * (dGplusr*z/rplus - dGminusr*z/rminus);
+
+    string meshName = "meshes/thick_sphere/ST_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
+    mesh3 ThClose(meshName);
+    fespace closeSphere(ThClose,P1);
+
+    //Building normal vectors
+    closeSphere nx = normalx;
+    closeSphere ny = normaly;
+    closeSphere nz = normalz;
+
+    //Creating the acoustic pressure field
+    closeSphere<complex> pressure = Pressure;
+
+    //DEBUG
+    //medit("Analytical pressure field on the close thick sphere",THClose,abs(pressure));
+
+    closeSphere<complex> dpressurexC = dx(pressure);
+    closeSphere<complex> dpressureyC = dy(pressure);
+    closeSphere<complex> dpressurezC = dz(pressure);
+
+    closeSphere<complex> dpressurenC = dpressurexC*nx + dpressureyC*ny + dpressurezC*nz;
+
+    closeSphere<complex> dpressurexA = dPx;
+    closeSphere<complex> dpressureyA = dPy;
+    closeSphere<complex> dpressurezA = dPz;
+
+    closeSphere<complex> dpressurenA = dpressurexA*nx + dpressureyA*ny + dpressurezA*nz;
+
+    //medit("Computed pressure dervative",ThClose,abs(dpressurenC));
+    //medit("Analytical pressure derivative",ThClose,abs(dpressurenA));
+
+    int cutSize = 500;
+    real[int] X(cutSize);
+    real[int] Y(cutSize);
+    real[int] Z(cutSize);
+
+    real[int] n = [0,0,1];
+
+    planeCutPoints(Rmin,n,cutSize,X,Y,Z);
+
+    mkdir("Derivative");
+
+    ofstream parameters("Derivative/parameters.txt");
+    parameters << "vertices\n";
+    parameters << "frequency\n";
+    parameters << "dipoleDistance\n";
+    parameters << "Rmin\n";
+    parameters << "Rmax\n";
+
+    ofstream file("Derivative/output_"+angularVerticesNumber+"_"+frequency+"_"+dipoleDistance+"_"+Rmin+"_"+Rmax+".txt");
+    for(int i = 0; i < cutSize; i++)
+    {
+        file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(dpressurenC(X[i],Y[i],Z[i])) << ";" << imag(dpressurenC(X[i],Y[i],Z[i])) << ";" << real(dpressurenA(X[i],Y[i],Z[i])) << ";" << imag(dpressurenA(X[i],Y[i],Z[i])) << endl;
+    }
+
+    closeSphere<complex> delta = dpressurenA - dpressurenC;
+
+    int[int] lab = [1];
+    real error = int2d(ThClose,lab) (abs(delta));
+    cout <<  error/(4*pi*Rmin*Rmin) << endl;
+
+    //DEBUG
+    //meshS ThS = extract(THClose,label=lab);
+    //medit("Pressure derivative computation error on the inside sphere",ThS,abs(delta));
+
+    return(0);
+}
+
+//MAIN
+real frequency = getARGV("-frequency",200.0); 
+real dipoleDistance = getARGV("-dipoleDistance",0.05); 
+real Rmin = getARGV("-Rmin",0.2); 
+real Rmax = getARGV("-Rmax",0.21); 
+int angularVerticesNumber = getARGV("-angularVerticesNumber",10); 
+
+derivativeComparaison(frequency,dipoleDistance,Rmin,Rmax,angularVerticesNumber);
+
+
