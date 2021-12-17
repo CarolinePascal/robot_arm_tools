@@ -34,7 +34,7 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     func dPy = (1i*omega*rho*Q) * (dGplusr*y/rplus - dGminusr*y/rminus);
     func dPz = (1i*omega*rho*Q) * (dGplusr*z/rplus - dGminusr*z/rminus);
 
-    string meshName = "meshes/thick_sphere/ST_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
+    string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
     mesh3 ThClose(meshName);
     fespace closeSphere(ThClose,P1);
 
@@ -72,8 +72,6 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     real[int] n = [0,0,1];
 
     planeCutPoints(Rmin,n,cutSize,X,Y,Z);
-
-    mkdir("Derivative");
 
     ofstream parameters("Derivative/parameters.txt");
     parameters << "vertices\n";

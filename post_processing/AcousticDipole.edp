@@ -34,7 +34,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     //cout << "INSIDE RADIUS : " + Rmin + " (m) - OUTSIDE RADIUS : " + Rmax +" (m) - FAR FIELD RADIUS : " + R + " (m)" << endl;
 
     //Loading close thick sphere mesh
-    string meshName = "meshes/thick_sphere/ST_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
+    string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
     mesh3 ThClose(meshName);
     fespace closeSphere(ThClose,P1);
 
