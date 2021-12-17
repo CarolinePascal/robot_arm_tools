@@ -12,6 +12,7 @@ Rmin = 0.2
 Ntheta = 10
 Nphi = 10
 
+#TODO Name folder according to tested parameters ?
 if(not os.path.isdir("Derivative/")):
     os.mkdir("Derivative/")
 

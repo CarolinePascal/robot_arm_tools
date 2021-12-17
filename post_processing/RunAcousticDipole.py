@@ -9,6 +9,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import glob
 
+#TODO Name folder according to tested parameters ?
 folderList = np.array(glob.glob("Baseline*"))
 
 maxFolder = 0
