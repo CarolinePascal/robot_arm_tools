@@ -164,10 +164,11 @@ def createMesh(Ntheta,Nphi,Rmin,Rmax):
         tetrahedra[2*Nphi*2*3 + 5*k+3] = np.array([rightInnerFace[0],leftOuterFace[2],rightInnerFace[1],rightInnerFace[2]])
         tetrahedra[2*Nphi*2*3 + 5*k+4] = np.array([leftInnerFace[1],leftOuterFace[2],leftInnerFace[2],leftOuterFace[0]])
 
-    if(not os.path.isdir("meshes/thick_sphere")):
-        os.mkdir("meshes/thick_sphere")
+    if(not os.path.isdir("meshes/thick_sphere/")):
+        os.mkdir("meshes/")
+        os.mkdir("meshes/thick_sphere/")
 
-    with open("meshes/thick_sphere/ST_"+str(Ntheta)+"_"+str(Rmin)+"_"+str(Rmax)+".mesh",'w') as writer:
+    with open("meshes/thick_sphere/TS_"+str(Ntheta)+"_"+str(Rmin)+"_"+str(Rmax)+".mesh",'w') as writer:
         writer.write("MeshVersionFormatted 2\n")
         writer.write("Dimension 3\n")
 
