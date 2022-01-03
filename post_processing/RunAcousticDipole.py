@@ -28,8 +28,10 @@ Frequencies = np.round(np.logspace(np.log10(20),np.log10(20000),10),0).astype(in
 Vertices = np.round(np.logspace(1,2,10),0).astype(int)
 
 for vertex in Vertices:
+    print("Vertices : " + str(vertex))
     Error = []
     for frequency in Frequencies:
+        print("Frequency : " + str(frequency))
         Ntheta = vertex
         Nphi = vertex
 
