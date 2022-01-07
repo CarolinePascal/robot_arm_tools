@@ -8,8 +8,8 @@ include "getARGV.idp"
 
 verbosity = 0;
 
-func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, real Rmax, int angularVerticesNumber)
-{
+func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int angularVerticesNumber)
+{ 
     //Frequency parameters
     real k = 2*pi*frequency/c;
     real omega = c*k;
@@ -19,6 +19,7 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
 
     //Acoustic field functions
     func G = exp(-1i*k*r)/(4*pi*r);
+    //func PressureFar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
     func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
     func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
@@ -35,8 +36,9 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     func dPy = (1i*omega*rho*Q) * (dGplusr*y/rplus - dGminusr*y/rminus);
     func dPz = (1i*omega*rho*Q) * (dGplusr*z/rplus - dGminusr*z/rminus);
 
-    func dpressurenA = dPx*normalx + dPy*normaly + dPz*normalz;
+    func dpressuren = dPx*normalx + dPy*normaly + dPz*normalz;
 
+    //Loading close thick sphere mesh
     string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
     mesh3 ThClose(meshName);
     fespace closeSphere(ThClose,P1);
@@ -45,10 +47,11 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     closeSphere<complex> pressure = Pressure;
 
     //DEBUG
-    //medit("Analytical pressure field on the close thick sphere",THClose,abs(pressure));
+    //medit("Acoustic pressure field on the close thick sphere",THClose,abs(pressure));
 
     //Computing the normal derivative of the acoustic pressure field
-    closeSphere<complex> dpressurenN = dx(pressure)*normalx + dy(pressure)*normaly + dz(pressure)*normalz;    
+    closeSphere<complex> dpressurenN = dx(pressure)*normalx + dy(pressure)*normaly + dz(pressure)*normalz;
+    closeSphere<complex> dpressurenA = dpressuren;
 
     //Create cut points
     int cutSize = 500;
@@ -58,10 +61,10 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
 
     real[int] n = [0,0,1];
 
-    planeCutPoints(Rmin,n,cutSize,X,Y,Z);
+    planeCutPoints(R,n,cutSize,X,Y,Z);
 
     //Get output folder and fill parameters
-    string folderName = getARGV("-folderName","Derivative");
+    string folderName = getARGV("-folderName","Integration");
 
     ofstream parameters(folderName+"/parameters.txt");
     parameters << "vertices\n";
@@ -69,26 +72,42 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     parameters << "dipoleDistance m\n";
     parameters << "Rmin m\n";
     parameters << "Rmax m\n";
+    parameters << "R m\n";
 
-    //Fill output file
-    ofstream file(folderName+"/output_"+angularVerticesNumber+"_"+frequency+"_"+dipoleDistance+"_"+Rmin+"_"+Rmax+".txt");
+     //Fill output file
+    ofstream file(folderName+"/output_"+angularVerticesNumber+"_"+frequency+"_"+dipoleDistance+"_"+Rmin+"_"+Rmax+"_"+R+".txt");
 
     for(int i = 0; i < cutSize; i++)
     {
+        //Compute the K-H integral 
         real X = X[i], Y = Y[i], Z = Z[i];
-        file << X << ";" << Y << ";" << Z << ";" << real(dpressurenN(X,Y,Z)) << ";" << imag(dpressurenN(X,Y,Z)) << ";" << real(dpressurenA(X,Y,Z)) << ";" << imag(dpressurenA(X,Y,Z)) << endl;
+
+        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+        func Gxyz = exp(-1i*k*D)/(4*pi*D);
+        func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
+        func dGxyzx = dGxyzD*(x-X)/D;
+        func dGxyzy = dGxyzD*(y-Y)/D;
+        func dGxyzz = dGxyzD*(z-Z)/D;
+        func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+
+        int[int] lab = [1];
+        complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressure*dGxyzn);
+        complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressure*dGxyzn);
+
+        file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
     }
 
     return(0);
 }
 
 //MAIN
-real frequency = getARGV("-frequency",200.0); 
+real frequency = getARGV("-frequency",2000.0); 
 real dipoleDistance = getARGV("-dipoleDistance",0.05); 
 real Rmin = getARGV("-Rmin",0.2); 
 real Rmax = getARGV("-Rmax",0.21); 
+real R = getARGV("-R",0.4); 
 int angularVerticesNumber = getARGV("-angularVerticesNumber",10); 
 
-derivativeComparaison(frequency,dipoleDistance,Rmin,Rmax,angularVerticesNumber);
+acousticDipole(frequency,dipoleDistance,Rmin,Rmax,R,angularVerticesNumber);
 
 

@@ -19,7 +19,7 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
     //Acoustic field functions
     func G = exp(-1i*k*r)/(4*pi*r);
-    //func Pfar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
+    //func PressureFar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
     func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
     func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
@@ -28,23 +28,10 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
     func Pressure = (1i*omega*rho*Q) * (Gplus - Gminus);
 
-    //DEBUG
-    //cout << "TOTAL VERTICES NUMBER : " + 2*angularVerticesNumber*(angularVerticesNumber-1) << endl;
-    //cout << "FREQUENCY : " + frequency + " (Hz) - DIPOLE DISTANCE : " + dipoleDistance + " (m)" << endl;
-    //cout << "INSIDE RADIUS : " + Rmin + " (m) - OUTSIDE RADIUS : " + Rmax +" (m) - FAR FIELD RADIUS : " + R + " (m)" << endl;
-
     //Loading close thick sphere mesh
     string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
     mesh3 ThClose(meshName);
     fespace closeSphere(ThClose,P1);
-
-    //Building normal vectors
-    closeSphere nx = normalx;
-    closeSphere ny = normaly;
-    closeSphere nz = normalz;
-
-    //DEBUG
-    //medit("Normal vectors on the close thick sphere",THClose,[nx,ny,nz]);
 
     //Creating the acoustic pressure field
     closeSphere<complex> pressure = Pressure;
@@ -52,12 +39,10 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     //DEBUG
     //medit("Acoustic pressure field on the close thick sphere",THClose,abs(pressure));
 
-    closeSphere<complex> dpressurex = dx(pressure);
-    closeSphere<complex> dpressurey = dy(pressure);
-    closeSphere<complex> dpressurez = dz(pressure);
+    //Computing the normal derivative of the acoustic pressure field
+    closeSphere<complex> dpressuren = dx(pressure)*normalx + dy(pressure)*normaly + dz(pressure)*normalz;
 
-    closeSphere<complex> dpressuren = dpressurex*nx + dpressurey*ny + dpressurez*nz;
-
+    /*
     //Building far surfacic sphere mesh
     meshS ThFar = meshSphere(R,R/5);
     fespace farSphere(ThFar,P1);
@@ -73,20 +58,17 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
         func Gxyz = exp(-1i*k*D)/(4*pi*D);
 
-        closeSphere<complex> green = Gxyz;
-        closeSphere<complex> dgreenx = dx(green);
-        closeSphere<complex> dgreeny = dy(green);
-        closeSphere<complex> dgreenz = dz(green);
-
-        closeSphere<complex> dgreenn = dgreenx*nx + dgreeny*ny + dgreenz*nz;
+        closeSphere<complex> dgreenn = dx(Gxyz)*normalx + dy(Gxyz)*normaly + dz(Gxyz)*normalz;
 
         int[int] lab = [1];
-        pressureIntegral[][i] = int2d(ThClose,lab) (pressure*dgreenn-green*dpressuren);
+        pressureIntegral[][i] = int2d(ThClose,lab) (green*dpressuren - pressure*dgreenn);
     }
     
     //Creating the acoustic pressure field
     farSphere<complex> pressureAnalytic = Pressure;
+    */
 
+    //Create cut points
     int cutSize = 500;
     real[int] X(cutSize);
     real[int] Y(cutSize);
@@ -96,38 +78,46 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
     planeCutPoints(R,n,cutSize,X,Y,Z);
 
+    //Get output folder and fill parameters
     string folderName = getARGV("-folderName","Baseline");
 
     ofstream parameters(folderName+"/parameters.txt");
     parameters << "vertices\n";
-    parameters << "frequency\n";
-    parameters << "dipoleDistance\n";
-    parameters << "Rmin\n";
-    parameters << "Rmax\n";
-    parameters << "R\n";
+    parameters << "frequency Hz\n";
+    parameters << "dipoleDistance m\n";
+    parameters << "Rmin m\n";
+    parameters << "Rmax m\n";
+    parameters << "R m\n";
 
+     //Fill output file
     ofstream file(folderName+"/output_"+angularVerticesNumber+"_"+frequency+"_"+dipoleDistance+"_"+Rmin+"_"+Rmax+"_"+R+".txt");
+
     for(int i = 0; i < cutSize; i++)
     {
-        file << X[i] << ";" << Y[i] << ";" << Z[i] << ";" << real(pressureIntegral(X[i],Y[i],Z[i])) << ";" << imag(pressureIntegral(X[i],Y[i],Z[i])) << ";" << real(pressureAnalytic(X[i],Y[i],Z[i])) << ";" << imag(pressureAnalytic(X[i],Y[i],Z[i])) << endl;
+        //Compute the K-H integral 
+        real X = X[i], Y = Y[i], Z = Z[i];
+
+        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+        func Gxyz = exp(-1i*k*D)/(4*pi*D);
+        func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
+        func dGxyzx = dGxyzD*(x-X)/D;
+        func dGxyzy = dGxyzD*(y-Y)/D;
+        func dGxyzz = dGxyzD*(z-Z)/D;
+        func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+
+        int[int] lab = [1];
+        complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressuren - pressure*dGxyzn);
+
+        complex pressureAnalyticValue = Pressure(X,Y,Z);
+
+        file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
     }
-
-    //DEBUG
-    //medit("Acousitc pressure field - Analytic solution",ThFar,20*log10(max(Pref,abs(pressureAnalytic))/Pref));
-    //medit("Acoustic pressure field - KH solution",ThFar,20*log10(max(Pref,abs(pressureIntegral))/Pref));
-
-    farSphere<complex> delta = 20*log10(max(Pref,abs(pressureIntegral))/Pref) - 20*log10(max(Pref,abs(pressureAnalytic))/Pref);
-    real error = int2d(ThFar) (abs(delta));
-    cout << error/(4*pi*R*R) << endl;
-
-    //DEBUG
-    //medit("Error",ThFar,abs(delta));
 
     return(0);
 }
 
 //MAIN
-real frequency = getARGV("-frequency",2000); 
+real frequency = getARGV("-frequency",2000.0); 
 real dipoleDistance = getARGV("-dipoleDistance",0.05); 
 real Rmin = getARGV("-Rmin",0.2); 
 real Rmax = getARGV("-Rmax",0.21); 
