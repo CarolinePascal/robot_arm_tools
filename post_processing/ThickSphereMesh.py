@@ -36,7 +36,7 @@ def plotMesh(vertices,faces,tetrahedra):
         getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
     plt.show()
 
-def createMesh(Ntheta,Nphi,Rmin,Rmax):
+def createMesh(Ntheta,Nphi,Rmin,Rmax,type="gmsh"):
 
     vertices = np.empty((2*(2*Nphi*(Ntheta-1)+2),3))
 
@@ -168,28 +168,52 @@ def createMesh(Ntheta,Nphi,Rmin,Rmax):
         os.mkdir("meshes/")
         os.mkdir("meshes/thick_sphere/")
 
-    with open("meshes/thick_sphere/TS_"+str(Ntheta)+"_"+str(Rmin)+"_"+str(Rmax)+".mesh",'w') as writer:
-        writer.write("MeshVersionFormatted 2\n")
-        writer.write("Dimension 3\n")
+    if(type=="gmsh"):
 
-        writer.write("\nVertices\n")
-        writer.write(str(len(vertices))+"\n")
+        with open("meshes/thick_sphere/TS_"+str(Ntheta)+"_"+str(Rmin)+"_"+str(Rmax)+".mesh",'w') as writer:
+            writer.write("MeshVersionFormatted 2\n")
+            writer.write("Dimension 3\n")
 
-        for vertex in vertices:
-            writer.write(str(vertex[0]) + " " + str(vertex[1]) + " " + str(vertex[2]) + " 1\n")
+            writer.write("\nVertices\n")
+            writer.write(str(len(vertices))+"\n")
 
-        writer.write("\nTriangles\n")
-        writer.write(str(len(triangles))+"\n")
+            for vertex in vertices:
+                writer.write(str(vertex[0]) + " " + str(vertex[1]) + " " + str(vertex[2]) + " 1\n")
 
-        for triangle in innerBoundary:
-            writer.write(str(triangle[0]) + " " + str(triangle[1]) + " " + str(triangle[2]) + " 1\n")
-        for triangle in outerBoundary:
-            writer.write(str(triangle[0]) + " " + str(triangle[1]) + " " + str(triangle[2]) + " 2\n")
+            writer.write("\nTriangles\n")
+            writer.write(str(len(triangles))+"\n")
 
-        writer.write("\nTetrahedra\n")
-        writer.write(str(len(tetrahedra))+"\n")
+            for triangle in innerBoundary:
+                writer.write(str(triangle[0]) + " " + str(triangle[1]) + " " + str(triangle[2]) + " 1\n")
+            for triangle in outerBoundary:
+                writer.write(str(triangle[0]) + " " + str(triangle[1]) + " " + str(triangle[2]) + " 2\n")
 
-        for tetrahedron in tetrahedra:
-            writer.write(str(tetrahedron[0]) + " " + str(tetrahedron[1]) + " " + str(tetrahedron[2]) + " " + str(tetrahedron[3]) + " 1\n")
+            writer.write("\nTetrahedra\n")
+            writer.write(str(len(tetrahedra))+"\n")
 
-createMesh(10,10,0.2,0.3)
+            for tetrahedron in tetrahedra:
+                writer.write(str(tetrahedron[0]) + " " + str(tetrahedron[1]) + " " + str(tetrahedron[2]) + " " + str(tetrahedron[3]) + " 1\n")
+
+    elif(type=="xml"):
+
+        with open("meshes/thick_sphere/TS_"+str(Ntheta)+"_"+str(Rmin)+"_"+str(Rmax)+".xml",'w') as writer:
+            writer.write('<?xml version="1.0" encoding="UTF-8"?>\n\n')
+
+            writer.write('<dolfin xmlns:dolfin="http://www.fenicsproject.org">\n')
+            writer.write('\t<mesh celltype="tetrahedron" dim="3">\n')
+
+            writer.write('\t\t<vertices size="' + str(len(vertices)) + '">\n')
+
+            for i,vertex in enumerate(vertices):
+                writer.write('\t\t\t<vertex index="' + str(i) + '" x="' + str(vertex[0]) + '" y="' + str(vertex[1]) + '" z="' + str(vertex[2]) + '"/>\n')
+
+            writer.write('\t\t</vertices>\n')
+
+            writer.write('\t\t<cells size="' + str(len(tetrahedra)) + '">\n')
+
+            for i,tetrahedron in enumerate(tetrahedra):
+                writer.write('\t\t\t<tetrahedron index="' + str(i) + '" v0="' + str(tetrahedron[0]-1) + '" v1="' + str(tetrahedron[1]-1) + '" v2="' + str(tetrahedron[2]-1) + '" v3="' + str(tetrahedron[3]-1) +'"/>\n')
+
+            writer.write('\t\t</cells>\n')
+            writer.write('\t</mesh>\n')
+            writer.write('</dolfin>\n')
