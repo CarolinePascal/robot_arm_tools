@@ -12,21 +12,34 @@ postProcessingFunctions["db"] = lambda Re,Im : 20*np.log10(np.abs(np.complex(Re,
 postProcessingFunctions["abs"] = lambda Re,Im : np.abs(np.complex(Re,Im))
 postProcessingFunctions["id"] = lambda Re,Im : np.complex(Re,Im)
 
-def plotSphericCut(postProcessingFunction = "dB"):
+def plotSphericCut(postProcessingFunction):
 
     #Get all output files
     fileList = np.array(glob.glob("output*"))
     parametersList = []
 
     #Get all parameters names, or define them
+    parametersList = []
+    parametersUnits = []
+
     try:
         with open("parameters.txt") as parametersFile:
-            parametersList = parametersFile.read().splitlines()
+            lines = parametersFile.read().splitlines()
+            for line in lines:
+                try:
+                    name,unit = line.split(' ')
+                except:
+                    name = line
+                    unit=""
+                parametersList.append(name)
+                parametersUnits.append(unit)
     except:
         for i in range(len(fileList[0].split("_")) - 1):
             parametersList.append("parameter"+str(i+1))
+            parametersUnits.append("")
 
     parametersList = np.array(parametersList)
+    parametersUnits = np.array(parametersUnits)
 
     #Create files/parameters matrix
     P = np.empty((len(fileList),len(parametersList)))
@@ -41,9 +54,9 @@ def plotSphericCut(postProcessingFunction = "dB"):
     for i,parameter in enumerate(parametersList):
         if(len(np.unique(subP[:,0])) == 1):
             value = str(subP[0,0]) if subP[0,0] != int(subP[0,0]) else str(int(subP[0,0]))
-            print("Only possible for " + parameter +" is " + value)
+            print("Only possible for " + parameter +" is " + value +  " (" + parametersUnits[i] + ")")
         else:
-            value = input("What value for " + parameter + " ? " + str(np.unique(subP[:,0])))
+            value = input("What value for " + parameter + " ? " + str(np.unique(subP[:,0])) + " (" + parametersUnits[i] + ")")
             value = value if float(value) != int(float(value)) else str(int(float(value)))
 
         configuration.append(value)
@@ -79,6 +92,11 @@ def plotSphericCut(postProcessingFunction = "dB"):
     #AmpSomme = np.roll(AmpSomme,X0)
     AmpSomme = np.append(AmpSomme,AmpSomme[0])
 
+    #Removing infinite values
+    IndexInf = np.argwhere(np.isinf(AmpAnalytique))
+    AmpAnalytique = np.delete(AmpAnalytique,IndexInf)
+    AmpSomme = np.delete(AmpSomme,IndexInf)
+
     TH = [0]
     counterTh = 0
 
@@ -91,16 +109,20 @@ def plotSphericCut(postProcessingFunction = "dB"):
         counterTh += np.arccos(np.dot(u,v)/(np.linalg.norm(u)*np.linalg.norm(v)))
         TH.append(counterTh)
 
+    TH = np.delete(TH,IndexInf)
+
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
     ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
     ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
 
-    label = "Acoustic pressure field computed for \n"
+    print("Error = " + str(np.sqrt(np.average((AmpSomme - AmpAnalytique)**2))))
+
+    label = "Acoustic pressure field computed for : \n"
     for j,name in enumerate(parametersList):
-        label += name + " = " + configuration[j] + "\n"
+        label += name + " = " + configuration[j] + " (" + parametersUnits[j] + ") "
     label = label[:-1]
 
-    ax.set_title(label, x=-0.25, y=0.25)
+    ax.set_title(label)
 
     maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
 
