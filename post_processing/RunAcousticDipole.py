@@ -10,11 +10,11 @@ import matplotlib.pyplot as plt
 import glob
 
 #TODO Name folder according to tested parameters ?
-folderList = np.array(glob.glob("Baseline*/"))
+folderList = np.array(glob.glob("Baseline_*/"))
 
 maxFolder = 0
 for folder in folderList:
-    folderIndex = int(folder[-2])
+    folderIndex = int(folder.split("_")[1][:-1])
     if(folderIndex > maxFolder):
         maxFolder = folderIndex
 
@@ -27,9 +27,9 @@ R = 1.0
 #Frequencies = np.round(np.logspace(np.log10(20),np.log10(20000),10),0)
 #Vertices = np.round(np.logspace(1,2,10),0).astype(int)
 
-Vertices = [10]
-Frequencies = [20,200,2000,20000]
-DeltaR = np.round(np.logspace(-3,0,50),5)
+Vertices = [20]
+Frequencies = [2000]
+DeltaR = np.round(np.logspace(-3,-0.3,100),5)
 
 for vertex in Vertices:
     print("Vertices : " + str(vertex))

@@ -11,11 +11,11 @@ import matplotlib.pyplot as plt
 import glob
 
 #TODO Name folder according to tested parameters ?
-folderList = np.array(glob.glob("Derivative*/"))
+folderList = np.array(glob.glob("Derivative_*/"))
 
 maxFolder = 0
 for folder in folderList:
-    folderIndex = int(folder[-2])
+    folderIndex = int(folder.split("_")[1][:-1])
     if(folderIndex > maxFolder):
         maxFolder = folderIndex
 
@@ -23,9 +23,13 @@ os.mkdir("Derivative_"+str(maxFolder+1))
 
 Rmin = 0.2
 
-DeltaR = np.round(np.logspace(-3,0,10),3)
-Frequencies = np.round(np.logspace(np.log10(20),np.log10(20000),10),0)
-Vertices = np.round(np.logspace(1,2,10),0).astype(int)
+#DeltaR = np.round(np.logspace(-3,0,10),3)
+#Frequencies = np.round(np.logspace(np.log10(20),np.log10(20000),10),0)
+#Vertices = np.round(np.logspace(1,2,10),0).astype(int)
+
+Vertices = [10,15,20,25,30]
+Frequencies = [50,500,5000]
+DeltaR = np.round(np.logspace(-3,-0.3,20),5)
 
 for vertex in Vertices:
     print("Vertices : " + str(vertex))
