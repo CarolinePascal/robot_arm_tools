@@ -25,7 +25,7 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
     func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
     func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
 
-    func Pressure = (1i*omega*rho*Q) * (Gplus - Gminus);
+    func pressureA = (1i*omega*rho*Q) * (Gplus - Gminus);
 
     //Acoustic field normal derivative functions
     func dGplusr = -Gplus*(1i*k*rplus + 1)/rplus;
@@ -39,16 +39,16 @@ func int derivativeComparaison(real frequency, real dipoleDistance, real Rmin, r
 
     string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
     mesh3 ThClose(meshName);
-    fespace closeSphere(ThClose,P1);
+    fespace closeSphere(ThClose,P2);
 
     //Creating the acoustic pressure field
-    closeSphere<complex> pressure = Pressure;
+    closeSphere<complex> pressureN = pressureA;
 
     //DEBUG
     //medit("Analytical pressure field on the close thick sphere",THClose,abs(pressure));
 
     //Computing the normal derivative of the acoustic pressure field
-    closeSphere<complex> dpressurenN = dx(pressure)*normalx + dy(pressure)*normaly + dz(pressure)*normalz;    
+    closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;    
 
     //Create cut points
     int cutSize = 500;

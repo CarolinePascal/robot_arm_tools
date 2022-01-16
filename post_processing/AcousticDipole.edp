@@ -26,26 +26,39 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
     func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
     func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
 
-    func Pressure = (1i*omega*rho*Q) * (Gplus - Gminus);
+    func pressureA = (1i*omega*rho*Q) * (Gplus - Gminus);
+
+    //Acoustic field normal derivative functions
+    func dGplusr = -Gplus*(1i*k*rplus + 1)/rplus;
+    func dGminusr = -Gminus*(1i*k*rminus + 1)/rminus;
+
+    func dPx = (1i*omega*rho*Q) * (dGplusr*(x-demid)/rplus - dGminusr*(x+demid)/rminus);
+    func dPy = (1i*omega*rho*Q) * (dGplusr*y/rplus - dGminusr*y/rminus);
+    func dPz = (1i*omega*rho*Q) * (dGplusr*z/rplus - dGminusr*z/rminus);
+
+    func dpressurenA = dPx*normalx + dPy*normaly + dPz*normalz;
 
     //Loading close thick sphere mesh
     string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
     mesh3 ThClose(meshName);
-    fespace closeSphere(ThClose,P1);
+
+    //medit("close thick sphere mesh",ThClose);
+
+    fespace closeSphere(ThClose,P2);
 
     //Creating the acoustic pressure field
-    closeSphere<complex> pressure = Pressure;
+    closeSphere<complex> pressureN = pressureA;
 
     //DEBUG
     //medit("Acoustic pressure field on the close thick sphere",THClose,abs(pressure));
 
     //Computing the normal derivative of the acoustic pressure field
-    closeSphere<complex> dpressuren = dx(pressure)*normalx + dy(pressure)*normaly + dz(pressure)*normalz;
+    closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;
 
     /*
     //Building far surfacic sphere mesh
     meshS ThFar = meshSphere(R,R/5);
-    fespace farSphere(ThFar,P1);
+    fespace farSphere(ThFar,P2);
 
     //Compute the K-H integral 
     farSphere<complex> pressureIntegral;
@@ -106,9 +119,11 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
         func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
 
         int[int] lab = [1];
-        complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressuren - pressure*dGxyzn);
+        complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressureN*dGxyzn);
 
-        complex pressureAnalyticValue = Pressure(X,Y,Z);
+        //complex pressureAnalyticValue = Pressure(X,Y,Z);
+        complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressureA*dGxyzn);
+        
 
         file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
     }
