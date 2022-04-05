@@ -2,8 +2,9 @@ load "msh3"
 load "tetgen"
 load "medit"
 load "mmg"
-include "MeshSurface.idp"
 load "lapack"
+
+include "MeshSurface.idp"
 
 func meshS meshSphere(real radius, real resolution)
 {
@@ -45,6 +46,35 @@ func meshS meshSphere(real radius, real resolution)
     }
 
     return(Th3);
+}
+
+func meshS meshSphereOrdered(real radius, int angularVerticesNumber, int borderLabel)
+{
+    int halfVerticesNumber = 0;
+    
+    if(angularVerticesNumber%2 != 0)
+    {
+        halfVerticesNumber = (angularVerticesNumber + 1)/2;   
+    }
+    else
+    {
+        halfVerticesNumber = angularVerticesNumber/2;
+    }
+
+    border exteriorCircle(t = -pi/2,pi/2){x = 1.5*radius*cos(t); y = 1.5*radius*sin(t); label = borderLabel + 1;}
+    border radialLink1(t = 1.5*radius,radius){x = 0; y = t; label = borderLabel + 1;} 
+    border interiorCircle(t = pi/2,-pi/2){x = radius*cos(t); y = radius*sin(t); label = borderLabel;}
+    border radialLink2(t = radius,1.5*radius){x = 0; y = -t; label = borderLabel + 1;} 
+    
+    mesh Th2d = buildmesh(exteriorCircle(halfVerticesNumber) + radialLink1(1) + interiorCircle(halfVerticesNumber) + radialLink2(1), fixedborder=true);
+
+    func fx = x*cos(z);
+    func fy = x*sin(z);
+    func fz = y;  
+    mesh3 Th3d = buildlayers(Th2d, angularVerticesNumber, zbound=[0, 2*pi], transfo=[fx, fy, fz]);
+    
+    int[int] lab = [borderLabel];
+    return(extract(Th3d,label=lab));
 }
 
 func int planeCutPoints(real radius, real[int] planeNormal, int pointsNumber, real[int] X, real[int] Y, real[int] Z)

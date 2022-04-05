@@ -1,122 +1,128 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import csv
 
-import glob
+import sys
 
-from copy import deepcopy
+from AcousticDipoleTools import *
+from plotTools import *
 
-c = 343.4
 
-directoryList = np.array(glob.glob("outputs*"))
+def plotSphericCut(postProcessingID,analyticalFunctionID):
 
-P = np.zeros((len(directoryList),len(directoryList[0].split("_")) - 1))
+    #Get post-processing and analytical functions
+    postProcessingFunction = postProcessingFunctions[postProcessingID]
+    analyticalFunction = analyticalFunctions[analyticalFunctionID]
 
-for i,directory in enumerate(directoryList):
-    P[i] = np.array([float(l) for l in directory.split("_")[1:]])
+    M,parametersList,parametersUnits,fileList = getParametersConfigurations()
 
-P = P[P[:,0].argsort()]
-subPList = [P]
+    #Registering the desired parameters configurations
+    configuration = []
+    for i,parameter in enumerate(parametersList):
+        if(len(np.unique(M[:,i])) == 1):
+            configuration.append(M[0,i])
+            print("Only possible value for " + parameter +" is " + str(M[0,i]) +  " (" + parametersUnits[i] + ")")
+        else:
+            value = input("What value for " + parameter + " ? " + str(np.unique(M[:,i])) + " (" + parametersUnits[i] + ")")
+            configuration.append(float(value))
 
-for j in range(len(P[0])-1):
-    newSubPList = []
-    for subP in subPList:
-        newSubPList+=[subP[l] for l in (np.where(subP[:,j] == k)[0] for k in np.unique(subP[:,j]))]
+    #Find the corresponding file name
+    file = fileList[np.where((M==configuration).all(axis=1))[0][0]]
 
-    for m,newSubP in enumerate(newSubPList):
-        tmp = newSubP[newSubP[:,j+1].argsort()]
-        newSubPList[m] = tmp
+    numericValuesA = []
+    numericValuesB = []
+    analyticalValues = []
 
-    subPList = deepcopy(newSubPList)
+    R = []
+    Theta = []
+    Phi = []
 
-newP = np.concatenate(subPList)
-I = np.where((P == newP[:,None]).all(-1))[1]
-P = P[I]
+    frequencyIndex = np.where(parametersList=="frequency")[0][0]
+    dipoleDistanceIndex = np.where(parametersList=="dipoleDistance")[0][0]
+    verticesIndex = np.where(parametersList=="vertices")[0][0]
 
-figLog, axLog = plt.subplots()
-figLin, axLin = plt.subplots()
+    with open(file, newline='') as csvfile:
+        reader = csv.reader(csvfile, delimiter=';', quotechar='|')
 
-print(directoryList[I])
+        f = configuration[frequencyIndex]
+        demid = configuration[dipoleDistanceIndex]/2        
 
-for j,directory in enumerate(directoryList[I]):
-    print(directory)
-    kd = P[j,1]*2*np.pi*P[j,0]/c
+        for row in reader:
+            x = float(row[0])
+            y = float(row[1])
+            z = float(row[2])
 
-    fileList = np.array(glob.glob(directory + "/data_output*.txt"))
-    V = []
-    E = []
+            R.append(np.sqrt(x*x + y*y + z*z))
+            Theta.append(np.arctan2(np.sqrt(x*x + y*y),z)+np.pi)
+            Phi.append(np.arctan2(y,x)+np.pi)
+    
+            analyticalValues.append(postProcessingFunction(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
+            numericValuesA.append(postProcessingFunction(np.complex(float(row[3]),float(row[4]))))
+            numericValuesB.append(postProcessingFunction(np.complex(float(row[5]),float(row[6]))))
 
-    for file in fileList:
-        L = file.split('.')[:-1]
-        file = ""
-        for item in L:
-            file = file+item
-        V.append(int(file.split('.')[0].split('_')[-1]))
+    #NEW TEST
+    PhiI = []
+    testInterpolation = []
+    for i in range(int(configuration[verticesIndex])*2):
+        PhiI.append(0 + i*np.pi/configuration[verticesIndex])
 
-    Iv = np.argsort(V)
-    V = np.sort(V)
+    deltar = configuration[np.where(parametersList=="Rmax")[0][0]] - configuration[np.where(parametersList=="Rmin")[0][0]]
 
-    for i,file in enumerate(fileList[Iv]):
-        print("Number of vertices : " + str(V[i]))
+    for i,phi in enumerate(Phi):
+        testInterpolation.append(postProcessingFunction(interpolationPhi(phi,PhiI,R[i],Theta[i],f,demid,deltar)))
 
-        X = []
-        Y = []
-        Z = []
-        AmpSomme = []
-        AmpAnalytique = []
+    Phi = np.array(Phi)
+    analyticalValues = np.array(analyticalValues)
+    numericValuesA = np.array(numericValuesA)
+    numericValuesB = np.array(numericValuesB)
+    testInterpolation = np.array(testInterpolation)
+    
+    #Removing infinite values
+    IndexInf = np.argwhere(np.isinf(np.abs(analyticalValues)))
+    Phi = np.delete(Phi,IndexInf)
+    analyticalValues = np.delete(analyticalValues,IndexInf)
+    numericValuesA = np.delete(numericValuesA,IndexInf)
+    numericValuesB = np.delete(numericValuesB,IndexInf)
+    testInterpolation = np.delete(testInterpolation,IndexInf)
 
-        with open(file, newline='') as csvfile:
-            reader = csv.reader(csvfile, delimiter=';', quotechar='|')
+    #Creating plot
+    fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
 
-            for row in reader:
-                X.append(float(row[0]))
-                Y.append(float(row[1]))
-                Z.append(float(row[2]))
-        
-                AmpSomme.append(20*np.log10(np.abs(np.complex(float(row[3]),float(row[4])))/20e-6))
-                AmpAnalytique.append(20*np.log10(np.abs(np.complex(float(row[5]),float(row[6])))/20e-6))
+    if(postProcessingID != "id"):
+        ax.plot(Phi,analyticalValues,label="Analytical solution (" + postProcessingID+")",color='r')
+        #ax.plot(Phi,numericValuesA,label="FreeFem Numerical solution A (" + postProcessingID+")",color='b')
+        ax.plot(Phi,numericValuesB,label="FreeFem Numerical solution (" + postProcessingID+")",color='g')
+        #ax.plot(Phi,testInterpolation,label="Finite differences (" + postProcessingID+")",color='k')
+    else:
+        ax.plot(Phi,np.real(analyticalValues),label="Analytical solution (Re)",color='r')
+        ax.plot(Phi,np.real(numericValuesA),label="FreeFem Numerical solution A (Re)",color='b')
+        ax.plot(Phi,np.real(numericValuesB),label="FreeFem Numerical solution B (Re)",color='g')
+        ax.plot(Phi,np.imag(analyticalValues),label="Analytical solution (Im)",color='r',linestyle='dashed')
+        ax.plot(Phi,np.imag(numericValuesA),label="FreeFem Numerical solution A (Im)",color='b',linestyle='dashed')
+        ax.plot(Phi,np.imag(numericValuesB),label="FreeFem Numerical solution B (Im)",color='g',linestyle='dashed')
 
-        #X0 = np.argmax(np.abs(np.array(X)))
+    print("ErrorA = " + str(np.sqrt(np.average(np.abs(numericValuesA - analyticalValues)**2))))
+    print("ErrorB = " + str(np.sqrt(np.average(np.abs(numericValuesB - analyticalValues)**2))))
 
-        AmpSomme = np.array(AmpSomme)
-        AmpAnalytique = np.array(AmpAnalytique)
+    print("ErrorTest = " + str(np.sqrt(np.average(np.abs(testInterpolation - analyticalValues)**2))))
 
-        #AmpAnalytique = np.roll(AmpAnalytique,X0)
-        AmpAnalytique = np.append(AmpAnalytique,AmpAnalytique[0])
-        #AmpSomme = np.roll(AmpSomme,X0)
-        AmpSomme = np.append(AmpSomme,AmpSomme[0])
+    label = "Acoustic pressure field computed for : \n"
+    for j,name in enumerate(parametersList):
+        label += name + " = " + str(configuration[j]) + " (" + parametersUnits[j] + ") "
+    label = label[:-1]
 
-        E.append(np.average(np.abs(AmpSomme-AmpAnalytique)))
-        print("Erreur : " + str(E[-1]))
+    ax.set_title(label)
 
-        TH = np.arange(0,2*np.pi,2*np.pi/len(X))
-        TH = np.append(TH,2*np.pi)
+    maxAmp = max(max(np.abs(analyticalValues)),max(np.abs(numericValuesA)),max(np.abs(numericValuesB)))*1.1
 
-        
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
-        ax.plot(TH,AmpAnalytique,label="Analytical solution (dB)")
-        ax.plot(TH,AmpSomme,label="Numerical solution (dB)")
+    ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+    ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
 
-        ax.set_title("Acoustic pressure field computed for " + str(V[i]) + " vertices\n" + "Frequency : " + str(P[j,0]) + "\n" + "Delta radius : " + str(P[j,2]))
+    plt.legend()
+    plt.show()
 
-        maxAmp = max(max(AmpSomme),max(AmpAnalytique))*1.1
+### MAIN ###
 
-        ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
-        ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+postProcessing = input("Post processing function ? " + str(list((postProcessingFunctions.keys()))))
+analytical = input("Analytical function ? " + str(list((analyticalFunctions.keys()))))
+plotSphericCut(postProcessing,analytical)
 
-        plt.legend()
-        plt.show()
-
-axLog.set_xlabel("Number of vertices")
-axLog.set_ylabel("log(Average error)")
-axLog.set_xscale('log')  
-axLog.set_title("Average error depending on the number of vertices")    
-
-axLog.legend()
-
-axLin.set_xlabel("Number of vertices")
-axLin.set_ylabel("Average error")
-axLin.set_title("Average error depending on the number of vertices")   
-
-axLin.legend()
-plt.show()

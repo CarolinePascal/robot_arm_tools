@@ -1,0 +1,42 @@
+//Sound parameters
+real Pref = 20e-6; //Pa
+real rho = 1.204;   //kg/m³ at 20°C
+real c = 343.4;   //m/s at 20°C
+
+//Sound source
+real Q = 1; //m³/s
+
+//Spherical coordinates functions
+func r = sqrt(x*x + y*y + z*z);
+func theta = atan2(sqrt(x*x + y*y),z);
+func phi = atan2(y,x); 
+
+func normalx = sin(theta)*cos(phi);
+func normaly = sin(theta)*sin(phi);
+func normalz = cos(theta);
+
+func real[int] logspace(real minPow, real maxPow, int itemNumber)
+{
+    real delta = (maxPow - minPow)/(itemNumber-1);
+    real[int] output(itemNumber);
+
+    for (int i = 0; i < itemNumber; i++)
+    {
+        output[i] = pow(10,minPow+i*delta);
+    }
+
+    return(output);
+}
+
+func real[int] linspace(real min, real max, int itemNumber)
+{
+    real delta = (max - min)/(itemNumber-1);
+    real[int] output(itemNumber);
+
+    for (int i = 0; i < itemNumber; i++)
+    {
+        output[i] = min+i*delta;
+    }
+
+    return(output);
+}
