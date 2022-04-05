@@ -20,7 +20,7 @@ int main(int argc, char **argv)
     spinner.start();
     ros::WallDuration(1.0).sleep();
 
-    //Robot initialisation TODO More generic approach
+    //Robot initialisation
     Robot robot;
 
     //Robot visual tools initialisation
@@ -31,7 +31,7 @@ int main(int argc, char **argv)
 
     //Get the object radius, pose and the trajectory radius
     std::vector<double> poseReference, trajectoryAxis;
-    double radiusObject, trajectoryStepsSize, distanceToObject;
+    double radiusObject, radiusTrajectory, trajectoryStepsSize, distanceToObject;
     int trajectoryStepsNumber;
 
     ros::NodeHandle n;
@@ -44,6 +44,12 @@ int main(int argc, char **argv)
     if(!n.getParam("radiusObject",radiusObject))
     {
         ROS_ERROR("Unable to retrieve measured object radius !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+    
+    if(!n.getParam("radiusTrajectory",radiusTrajectory))
+    {
+        ROS_ERROR("Unable to retrieve measured trajectory radius !");
         throw std::runtime_error("MISSING PARAMETER");
     }
 
@@ -69,25 +75,22 @@ int main(int argc, char **argv)
     quaternion.setRPY(poseReference[3],poseReference[4],poseReference[5]);
     tf2::Matrix3x3 matrix(quaternion);
 
-    geometry_msgs::Pose objectPose, centerPose;
+    geometry_msgs::Pose objectPose;
     objectPose.position.x = poseReference[0] + (distanceToObject+radiusObject)*matrix[0][2];
     objectPose.position.y = poseReference[1] + (distanceToObject+radiusObject)*matrix[1][2];
     objectPose.position.z = poseReference[2] + (distanceToObject+radiusObject)*matrix[2][2];
-
-    centerPose.position.x = poseReference[0];
-    centerPose.position.y = poseReference[1];
-    centerPose.position.z = poseReference[2];
     
     if(radiusObject != 0)
     {
         visualTools.addSphere("collisionSphere", objectPose, radiusObject, false);
+        visualTools.addCylinder("collisonCylinder", objectPose, 0.01, 1.0, false);
     }
 
     //Create measurement waypoints poses
-    int N=180/trajectoryStepsNumber;   //10° spaced measurements
+    int N=trajectoryStepsNumber;   //10° spaced measurements
     std::vector<geometry_msgs::Pose> waypoints;
 
-    sphericInclinationTrajectory(centerPose,0.05,M_PI/2,trajectoryAxis[0]*(M_PI/2),trajectoryAxis[0]*(-M_PI/2) - M_PI*trajectoryAxis[1],N,waypoints);
+    sphericInclinationTrajectory(objectPose,radiusTrajectory,M_PI/2,trajectoryAxis[0]*(M_PI/2) + M_PI*trajectoryAxis[1],trajectoryAxis[0]*(-M_PI/2),N,waypoints);
 
     //Get the measurement server name
     std::string measurementServerName, storageFolderName;

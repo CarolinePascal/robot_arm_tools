@@ -77,15 +77,14 @@ int main(int argc, char **argv)
 
     geometry_msgs::Pose objectPose;
     objectPose.position.x = poseReference[0] + (distanceToObject+radiusObject)*matrix[0][2];
-    objectPose.position.y = poseReference[1] + (distanceToObject+radiusObject)*radiusObject*matrix[1][2];
-    objectPose.position.z = poseReference[2] + (distanceToObject+radiusObject)*radiusObject*matrix[2][2];
+    objectPose.position.y = poseReference[1] + (distanceToObject+radiusObject)*matrix[1][2];
+    objectPose.position.z = poseReference[2] + (distanceToObject+radiusObject)*matrix[2][2];
     
     if(radiusObject != 0)
     {
         visualTools.addSphere("collisionSphere", objectPose, radiusObject, false);
+        visualTools.addCylinder("collisonCylinder", objectPose, 0.01, 1.0, false);
     }
-
-    quaternion.setRPY((M_PI/2)*trajectoryAxis[1] + (M_PI/2)*trajectoryAxis[2]*(trajectoryAxis[2]-1),(-M_PI/2)*trajectoryAxis[0],0);
 
     geometry_msgs::Pose startingPose,endingPose;
     startingPose.position.x = poseReference[0];
@@ -94,9 +93,9 @@ int main(int argc, char **argv)
     startingPose.orientation = tf2::toMsg(quaternion);
 
     endingPose = startingPose;
-    endingPose.position.x += trajectoryStepsSize*(trajectoryStepsNumber-1)*trajectoryAxis[0];
-    endingPose.position.y += trajectoryStepsSize*(trajectoryStepsNumber-1)*trajectoryAxis[1];
-    endingPose.position.z += trajectoryStepsSize*(trajectoryStepsNumber-1)*trajectoryAxis[2];
+    endingPose.position.x -= trajectoryStepsSize*(trajectoryStepsNumber-1)*matrix[0][2];
+    endingPose.position.y -= trajectoryStepsSize*(trajectoryStepsNumber-1)*matrix[1][2];
+    endingPose.position.z -= trajectoryStepsSize*(trajectoryStepsNumber-1)*matrix[2][2];
 
     std::vector<geometry_msgs::Pose> waypoints;
     straightTrajectory(startingPose, endingPose, trajectoryStepsNumber, waypoints);
