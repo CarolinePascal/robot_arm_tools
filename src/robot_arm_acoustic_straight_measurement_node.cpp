@@ -30,7 +30,7 @@ int main(int argc, char **argv)
     visualTools.setupUME();
 
     //Get the object radius, pose and the trajectory radius
-    std::vector<double> poseReference, trajectoryAxis;
+    std::vector<double> poseReference;
     double radiusObject, trajectoryStepsSize, distanceToObject;
     int trajectoryStepsNumber;
 
@@ -56,12 +56,6 @@ int main(int argc, char **argv)
     if(!n.getParam("trajectoryStepsSize",trajectoryStepsSize))
     {
         ROS_ERROR("Unable to retrieve trajectory steps number !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    if(!n.getParam("trajectoryAxis",trajectoryAxis))
-    {
-        ROS_ERROR("Unable to retrieve trajectory axis !");
         throw std::runtime_error("MISSING PARAMETER");
     }
 
