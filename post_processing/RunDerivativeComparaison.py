@@ -3,33 +3,41 @@ import os
 
 from numpy.lib.function_base import meshgrid
 
-from ThickSphereMesh import createMesh
+from ThickSphereMesh import *
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 import glob
 
-#TODO Name folder according to tested parameters ?
-folderList = np.array(glob.glob("Derivative_*/"))
+from AcousticDipoleTools import *
+
+###STUDY PARAMETERS
+R0 = 0.2
+dipoleDistance = 0
+
+layers = 1
+elementType = "P1"
+
+Vertices = [10,15,20,25,30]
+Frequencies = [20,50,200,500,2000,5000,20000]
+
+DeltaRFactors = np.linspace(0.5,5,50)
+
+###CREATE NEW FOLDER
+
+outputFolderList = np.array(glob.glob("Derivative_*_/"))
 
 maxFolder = 0
-for folder in folderList:
-    folderIndex = int(folder.split("_")[1][:-1])
+for folder in outputFolderList:
+    folderIndex = int(folder.split("_")[-2])
     if(folderIndex > maxFolder):
         maxFolder = folderIndex
 
-os.mkdir("Derivative_"+str(maxFolder+1))
+outputFolder = "Derivative_" + str(maxFolder+1) + "_"
+os.mkdir(outputFolder)
 
-Rmin = 0.2
-
-#DeltaR = np.round(np.logspace(-3,0,10),3)
-#Frequencies = np.round(np.logspace(np.log10(20),np.log10(20000),10),0)
-#Vertices = np.round(np.logspace(1,2,10),0).astype(int)
-
-Vertices = [10,15,20,25,30]
-Frequencies = [50,500,5000]
-DeltaR = np.round(np.logspace(-3,-0.3,20),5)
+###LAUNCH COMPUTATIONS
 
 for vertex in Vertices:
     print("Vertices : " + str(vertex))
@@ -39,14 +47,18 @@ for vertex in Vertices:
     for frequency in Frequencies:
         print("Frequency : " + str(frequency))
 
-        for delta in DeltaR:
-            print("DeltaR : " + str(delta))
-            Rmax = np.round(Rmin + delta,5)
+        for factor in DeltaRFactors:
+            l = c/frequency
+            deltaR = np.round(l*factor,5)
+            print("DeltaR : " + str(deltaR))
 
-            if(not os.path.isfile("meshes/thick_sphere/TS_"+str(Ntheta)+"_"+str(Rmin)+"_"+str(Rmax)+".mesh")):
-                createMesh(Ntheta,Nphi,Rmin,Rmax)
+            #Create mesh if it does not exist
+            mesh = ThickSphericMesh(Ntheta,Nphi,R0,np.round(R0+deltaR,5),layers)
+            mesh.write("gmsh")
 
-            bashCommand = "FreeFem++ DerivativeComparaison.edp -frequency " + str(frequency) + " -angularVerticesNumber " +str(Ntheta) + " -Rmin " + str(Rmin) + " -Rmax " + str(Rmax) + " -folderName Derivative_" + str(maxFolder+1) 
+            outputFilePath = outputFolder + "/output_" + elementType[1] + "_" + str(layers) + "_" + str(vertex) + "_" + str(frequency) + "_" + str(dipoleDistance) + "_" + str(R0) + "_" + str(deltaR) + ".txt"
+
+            bashCommand = "FreeFem++ DerivativeComparaison.edp -frequency " + str(frequency) + " -dipoleDistance " + str(dipoleDistance) + " -R0 " + str(R0) + " -element " + elementType + " -mesh " + mesh.path + " -output " + outputFilePath
             process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
             output, error = process.communicate()
 
