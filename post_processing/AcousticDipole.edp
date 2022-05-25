@@ -8,7 +8,7 @@ include "getARGV.idp"
 
 verbosity = 0;
 
-func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rmax, real R, int angularVerticesNumber)
+func int acousticDipole(real frequency, real dipoleDistance, real R0, real Rtest, string elementType, string meshPath, string outputFilePath)
 { 
     //Frequency parameters
     real k = 2*pi*frequency/c;
@@ -19,67 +19,25 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
     //Acoustic field functions
     func G = exp(-1i*k*r)/(4*pi*r);
-    //func PressureFar = (1i*omega*rho*Q) * G * 1i*2*sin(k*demid*sin(theta)*cos(phi));
 
+    //Exact formulation
     func rplus = sqrt((x-demid)*(x-demid) + y*y + z*z);
     func rminus = sqrt((x+demid)*(x+demid) + y*y + z*z);
     func Gplus = exp(-1i*k*rplus)/(4*pi*rplus);
     func Gminus = exp(-1i*k*rminus)/(4*pi*rminus);
-
     func pressureA = (1i*omega*rho*Q) * (Gplus - Gminus);
 
     //Acoustic field normal derivative functions
+    
+    //Exact formulation
     func dGplusr = -Gplus*(1i*k*rplus + 1)/rplus;
     func dGminusr = -Gminus*(1i*k*rminus + 1)/rminus;
-
-    func dPx = (1i*omega*rho*Q) * (dGplusr*(x-demid)/rplus - dGminusr*(x+demid)/rminus);
-    func dPy = (1i*omega*rho*Q) * (dGplusr*y/rplus - dGminusr*y/rminus);
-    func dPz = (1i*omega*rho*Q) * (dGplusr*z/rplus - dGminusr*z/rminus);
-
-    func dpressurenA = dPx*normalx + dPy*normaly + dPz*normalz;
+    func drplusr = (r - demid*sin(theta)*cos(phi))/rplus;
+    func drminusr = (r + demid*sin(theta)*cos(phi))/rminus;
+    func dpressurenA = (1i*omega*rho*Q) * (dGplusr*drplusr - dGminusr*drminusr);
 
     //Loading close thick sphere mesh
-    string meshName = "meshes/thick_sphere/TS_" + angularVerticesNumber + "_" + Rmin + "_" + Rmax + ".mesh";
-    mesh3 ThClose(meshName);
-
-    //medit("close thick sphere mesh",ThClose);
-
-    fespace closeSphere(ThClose,P2);
-
-    //Creating the acoustic pressure field
-    closeSphere<complex> pressureN = pressureA;
-
-    //DEBUG
-    //medit("Acoustic pressure field on the close thick sphere",THClose,abs(pressure));
-
-    //Computing the normal derivative of the acoustic pressure field
-    closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;
-
-    /*
-    //Building far surfacic sphere mesh
-    meshS ThFar = meshSphere(R,R/5);
-    fespace farSphere(ThFar,P2);
-
-    //Compute the K-H integral 
-    farSphere<complex> pressureIntegral;
-
-    for (int i = 0; i < ThFar.nv; i++)
-    {
-        real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
-
-        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
-
-        func Gxyz = exp(-1i*k*D)/(4*pi*D);
-
-        closeSphere<complex> dgreenn = dx(Gxyz)*normalx + dy(Gxyz)*normaly + dz(Gxyz)*normalz;
-
-        int[int] lab = [1];
-        pressureIntegral[][i] = int2d(ThClose,lab) (green*dpressuren - pressure*dgreenn);
-    }
-    
-    //Creating the acoustic pressure field
-    farSphere<complex> pressureAnalytic = Pressure;
-    */
+    mesh3 ThClose(meshPath);
 
     //Create cut points
     int cutSize = 500;
@@ -89,43 +47,199 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 
     real[int] n = [0,0,1];
 
-    planeCutPoints(R,n,cutSize,X,Y,Z);
+    planeCutPoints(Rtest,n,cutSize,X,Y,Z);
 
     //Get output folder and fill parameters
-    string folderName = getARGV("-folderName","Baseline");
+    string outputFolder = dirname(outputFilePath);
 
-    ofstream parameters(folderName+"/parameters.txt");
+    ofstream parameters(outputFolder + "_/parameters.txt");
+    parameters << "elementType\n";
+    parameters << "layers\n";
     parameters << "vertices\n";
     parameters << "frequency Hz\n";
     parameters << "dipoleDistance m\n";
-    parameters << "Rmin m\n";
-    parameters << "Rmax m\n";
-    parameters << "R m\n";
+    parameters << "R0 m\n";
+    parameters << "deltaR m\n";
+    parameters << "Rtest m\n";
 
      //Fill output file
-    ofstream file(folderName+"/output_"+angularVerticesNumber+"_"+frequency+"_"+dipoleDistance+"_"+Rmin+"_"+Rmax+"_"+R+".txt");
+    ofstream file(outputFilePath);
 
-    for(int i = 0; i < cutSize; i++)
+    if(elementType == "P1")
     {
-        //Compute the K-H integral 
-        real X = X[i], Y = Y[i], Z = Z[i];
+        fespace closeSphere(ThClose,P1);
 
-        func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
-        func Gxyz = exp(-1i*k*D)/(4*pi*D);
-        func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
-        func dGxyzx = dGxyzD*(x-X)/D;
-        func dGxyzy = dGxyzD*(y-Y)/D;
-        func dGxyzz = dGxyzD*(z-Z)/D;
-        func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+        //Creating the acoustic pressure field
+        closeSphere<complex> pressureN = pressureA;
 
-        int[int] lab = [1];
-        complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressureN*dGxyzn);
+        //Computing the normal derivative of the acoustic pressure field
+        closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;
 
-        //complex pressureAnalyticValue = Pressure(X,Y,Z);
-        complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressureA*dGxyzn);
-        
+        for(int i = 0; i < cutSize; i++)
+        {
+            //Compute the K-H integral 
+            real X = X[i], Y = Y[i], Z = Z[i];
 
-        file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
+            func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+            func Gxyz = exp(-1i*k*D)/(4*pi*D);
+            func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
+            func dGxyzx = dGxyzD*(x-X)/D;
+            func dGxyzy = dGxyzD*(y-Y)/D;
+            func dGxyzz = dGxyzD*(z-Z)/D;
+            func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+
+            int[int] lab = [1];
+            complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressureN*dGxyzn);
+
+            complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressureA*dGxyzn);
+            
+            file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
+        }
+    }
+
+    else if (elementType == "P2")
+    {
+        fespace closeSphere(ThClose,P2);
+
+        //Creating the acoustic pressure field
+        closeSphere<complex> pressureN = pressureA;
+
+        //Computing the normal derivative of the acoustic pressure field
+        closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;
+
+        for(int i = 0; i < cutSize; i++)
+        {
+            //Compute the K-H integral 
+            real X = X[i], Y = Y[i], Z = Z[i];
+
+            func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+            func Gxyz = exp(-1i*k*D)/(4*pi*D);
+            func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
+            func dGxyzx = dGxyzD*(x-X)/D;
+            func dGxyzy = dGxyzD*(y-Y)/D;
+            func dGxyzz = dGxyzD*(z-Z)/D;
+            func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+
+            int[int] lab = [1];
+            complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressureN*dGxyzn);
+
+            complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressureA*dGxyzn);
+            
+            file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
+        } 
+    }
+
+    return(0);
+}
+
+func int infinitesimalAcousticDipole(real frequency, real R0, real Rtest, string elementType, string meshPath, string outputFilePath)
+{
+    //Frequency parameters
+    real k = 2*pi*frequency/c;
+    real omega = c*k;
+
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
+
+    //Infinitesimal formulation
+    func pressureA = (-dipoleMomentum*rho*c*k*k)*sin(theta)*cos(phi)*G*(1 + 1/(1i*k*r));
+
+    //Acoustic field normal derivative functions
+
+    //Infinitesimal formulation
+    func dpressurenA = (1i*dipoleMomentum*rho*c*k)*sin(theta)*cos(phi)*(G/(r*r))*((k*r - 1i)*(k*r - 1i) - 1);
+
+    //Loading close thick sphere mesh
+    mesh3 ThClose(meshPath);
+
+    //Create cut points
+    int cutSize = 500;
+    real[int] X(cutSize);
+    real[int] Y(cutSize);
+    real[int] Z(cutSize);
+
+    real[int] n = [0,0,1];
+
+    planeCutPoints(Rtest,n,cutSize,X,Y,Z);
+
+    //Get output folder and fill parameters
+    string outputFolder = dirname(outputFilePath);
+
+    ofstream parameters(outputFolder + "_/parameters.txt");
+    parameters << "elementType\n";
+    parameters << "layers\n";
+    parameters << "vertices\n";
+    parameters << "frequency Hz\n";
+    parameters << "dipoleDistance m\n";
+    parameters << "R0 m\n";
+    parameters << "deltaR m\n";
+    parameters << "Rtest m\n";
+
+     //Fill output file
+    ofstream file(outputFilePath);
+
+    if(elementType == "P1")
+    {
+        fespace closeSphere(ThClose,P1);
+
+        //Creating the acoustic pressure field
+        closeSphere<complex> pressureN = pressureA;
+
+        //Computing the normal derivative of the acoustic pressure field
+        closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;
+
+        for(int i = 0; i < cutSize; i++)
+        {
+            //Compute the K-H integral 
+            real X = X[i], Y = Y[i], Z = Z[i];
+
+            func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+            func Gxyz = exp(-1i*k*D)/(4*pi*D);
+            func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
+            func dGxyzx = dGxyzD*(x-X)/D;
+            func dGxyzy = dGxyzD*(y-Y)/D;
+            func dGxyzz = dGxyzD*(z-Z)/D;
+            func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+
+            int[int] lab = [1];
+            complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressureN*dGxyzn);
+
+            complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressureA*dGxyzn);
+            
+            file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
+        }
+    }
+
+    else if (elementType == "P2")
+    {
+        fespace closeSphere(ThClose,P2);
+
+        //Creating the acoustic pressure field
+        closeSphere<complex> pressureN = pressureA;
+
+        //Computing the normal derivative of the acoustic pressure field
+        closeSphere<complex> dpressurenN = dx(pressureN)*normalx + dy(pressureN)*normaly + dz(pressureN)*normalz;
+
+        for(int i = 0; i < cutSize; i++)
+        {
+            //Compute the K-H integral 
+            real X = X[i], Y = Y[i], Z = Z[i];
+
+            func D = sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z));
+            func Gxyz = exp(-1i*k*D)/(4*pi*D);
+            func dGxyzD = -Gxyz*(1i*k*D + 1)/D;
+            func dGxyzx = dGxyzD*(x-X)/D;
+            func dGxyzy = dGxyzD*(y-Y)/D;
+            func dGxyzz = dGxyzD*(z-Z)/D;
+            func dGxyzn = dGxyzx*normalx + dGxyzy*normaly + dGxyzz*normalz;
+
+            int[int] lab = [1];
+            complex pressureNumericValue = int2d(ThClose,lab) (Gxyz*dpressurenN - pressureN*dGxyzn);
+
+            complex pressureAnalyticValue = int2d(ThClose,lab) (Gxyz*dpressurenA - pressureA*dGxyzn);
+            
+            file << X << ";" << Y << ";" << Z << ";" << real(pressureNumericValue) << ";" << imag(pressureNumericValue) << ";" << real(pressureAnalyticValue) << ";" << imag(pressureAnalyticValue) << endl;
+        } 
     }
 
     return(0);
@@ -134,11 +248,22 @@ func int acousticDipole(real frequency, real dipoleDistance, real Rmin, real Rma
 //MAIN
 real frequency = getARGV("-frequency",2000.0); 
 real dipoleDistance = getARGV("-dipoleDistance",0.05); 
-real Rmin = getARGV("-Rmin",0.2); 
-real Rmax = getARGV("-Rmax",0.21); 
-real R = getARGV("-R",0.4); 
-int angularVerticesNumber = getARGV("-angularVerticesNumber",10); 
+real R0 = getARGV("-R0",0.2); 
+real Rtest = getARGV("-Rtest",0.4); 
 
-acousticDipole(frequency,dipoleDistance,Rmin,Rmax,R,angularVerticesNumber);
+string elementType = getARGV("-element","P1");
+string meshPath = getARGV("-mesh","");
+string outputFilePath = getARGV("-output",""); 
+
+if(dipoleDistance == 0)
+{
+    infinitesimalAcousticDipole(frequency,R0,Rtest,elementType,meshPath,outputFilePath);
+}
+else
+{
+    acousticDipole(frequency,dipoleDistance,R0,Rtest,elementType,meshPath,outputFilePath);
+}
+
+
 
 

@@ -5,6 +5,7 @@ real c = 343.4;   //m/s at 20°C
 
 //Sound source
 real Q = 1; //m³/s
+real dipoleMomentum = 1; //m⁴/s
 
 //Spherical coordinates functions
 func r = sqrt(x*x + y*y + z*z);
