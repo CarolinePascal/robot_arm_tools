@@ -9,6 +9,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 #include <yaml-cpp/yaml.h>
+#include <fstream>
 
 int main(int argc, char **argv)
 {
@@ -88,21 +89,29 @@ int main(int argc, char **argv)
 
     //Save reference position
     std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/AcquisitionParameters.yaml";
-
-    YAML::Node config = YAML::LoadFile(yamlFile);
-    std::ofstream fout(yamlFile);
+    YAML::Node config;
+    try
+    {
+        config = YAML::LoadFile(yamlFile);
+    }
+    catch(const std::exception& e)
+    {
+        std::ofstream {yamlFile};
+        config = YAML::LoadFile(yamlFile);
+    }
 
     if (config["poseReference"]) 
     {
         config.remove("poseReference");
-        config["poseReference"].push_back(transform.translation.x);
-        config["poseReference"].push_back(transform.translation.y);
-        config["poseReference"].push_back(transform.translation.z);
-        config["poseReference"].push_back(roll);
-        config["poseReference"].push_back(pitch);
-        config["poseReference"].push_back(yaw);
     }
+    config["poseReference"].push_back(transform.translation.x);
+    config["poseReference"].push_back(transform.translation.y);
+    config["poseReference"].push_back(transform.translation.z);
+    config["poseReference"].push_back(roll);
+    config["poseReference"].push_back(pitch);
+    config["poseReference"].push_back(yaw);
 
+    std::ofstream fout(yamlFile);   
     fout << config;
 
     ros::waitForShutdown();
