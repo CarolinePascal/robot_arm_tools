@@ -3,7 +3,7 @@
 
 	<!-- GENERAL ARGUMENTS -->
 	<arg name="robot_name" default="panda"/>
-	<arg name="tool_name" default="microKB"/>
+	<arg name="tool_name" default="microBK"/>
 	<arg name="simulation" default="false"/>
 	<arg name="safety_distance" default="0.03"/>
 
