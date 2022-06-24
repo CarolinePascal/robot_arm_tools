@@ -21,16 +21,16 @@ class SoundMeasurementServer :
     def __init__(self):
 
         self.M1 = mp.Measurement(out_sig='logsweep',
-                    fs=96000,
+                    fs=48000,
                     out_sig_freqs=[20,20000],
                     out_map=[1],
                     out_desc=['Sent signal'],
                     out_dbfs=[1.0],
-                    in_map=[1,3],
+                    in_map=[1,2],
                     out_amp=1.0/1.53,
-                    in_desc=['Input voltage','Pressure'],
-                    in_cal=[0.01,1.0],
-                    in_unit=['V','Pa'],
+                    in_desc=['Pressure','Speed'],
+                    in_cal=[1.0,1.0],
+                    in_unit=['Pa','m/s'],
                     in_dbfs=[1.0/0.593,1.0/0.593],
                     extrat=[0,0],
                     out_sig_fades=[0,0],
@@ -90,7 +90,7 @@ class SoundMeasurementServer :
     #  @param req An empty ROS service request
     def measure(self, req):
         self.measurementCounter += 1
-
+        
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
 
@@ -104,7 +104,7 @@ class SoundMeasurementServer :
 
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
-
+        
         """
         #Run measurement #2
         audio_run_measurement(self.M2)
