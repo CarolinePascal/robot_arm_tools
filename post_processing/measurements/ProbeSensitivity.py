@@ -1,31 +1,42 @@
-from unittest import result
 import numpy as np
 from unyt import Unit
 
 ### PRESSURE MODEL
 
 def SP(frequency):
-    return((np.sqrt(1 + (40/frequency)**2)*np.sqrt(1 + (50/frequency)**2))/(0.001*44.4*np.sqrt(1 + (frequency/20000)**2)))
+    output = (np.sqrt(1 + (40/frequency)**2)*np.sqrt(1 + (50/frequency)**2))/(0.001*44.4*np.sqrt(1 + (frequency/20000)**2))
+    output[np.isinf(output)] = 0.0
+    return(output)
 
 def PhiP(frequency):
-    return(np.pi - np.arctan(28/frequency) - np.arctan(40/frequency) - np.arctan(frequency/20000))
+    output = np.pi - np.arctan(28/frequency) - np.arctan(40/frequency) - np.arctan(frequency/20000)
+    output[np.isinf(output)] = 0.0
+    return(output)
 
 ### VELOCITY MODEL
 
 def SV(frequency, corrected = True, high = True):
     if(corrected):
-        return((np.sqrt(1 + (1/frequency)**2)*np.sqrt(1 + (75/frequency)**2))/(42*(high + (1-high)*0.01)))
+        output = (np.sqrt(1 + (1/frequency)**2)*np.sqrt(1 + (75/frequency)**2))/(42*(high + (1-high)*0.01))
+        output[np.isinf(output)] = 0.0
+        return(output)
     else:
-        return((np.sqrt(1 + (1/frequency)**2)*np.sqrt(1 + (frequency/800)**2)*np.sqrt(1 + (frequency/5200)**2)*np.sqrt(1 + (75/frequency)**2))/(42*(high + (1-high)*0.01)))
+        output = (np.sqrt(1 + (1/frequency)**2)*np.sqrt(1 + (frequency/800)**2)*np.sqrt(1 + (frequency/5200)**2)*np.sqrt(1 + (75/frequency)**2))/(42*(high + (1-high)*0.01))
+        output[np.isinf(output)] = 0.0
+        return(output)
 
 def PhiV(frequency, corrected = True):
     if(corrected):
-        return(np.pi - np.arctan(5/frequency) - np.arctan(75/frequency))
+        output = np.pi - np.arctan(5/frequency) - np.arctan(75/frequency)
+        output[np.isinf(output)] = 0.0
+        return(output)
     else:
-        return(np.pi - np.arctan(5/frequency) + np.arctan(frequency/690) + np.arctan(frequency/18000) - np.arctan(75/frequency))
-        
-### PLOT
-import matplotlib.pyplot as plt
+        output = np.pi - np.arctan(5/frequency) + np.arctan(frequency/690) + np.arctan(frequency/18000) - np.arctan(75/frequency)
+        output[np.isinf(output)] = 0.0
+        return(output)
+
+### DEBUG
+#import matplotlib.pyplot as plt
 
 #F = np.logspace(1,4)
 #fig,ax = plt.subplots(2)
@@ -51,7 +62,9 @@ import matplotlib.pyplot as plt
 ### DATA PROCESSING
 
 import measpy as ms
-from scipy.fft import fft,fftfreq,ifft,rfft,irfft,rfftfreq
+
+fminProbe = 10
+fmaxProbe = 10000
 
 def dataProcessing(fileName, pressureLabel, velocityLabel, corrected = True, high = True):
     M = ms.Measurement.from_csvwav(fileName.split(".")[0])
@@ -59,25 +72,27 @@ def dataProcessing(fileName, pressureLabel, velocityLabel, corrected = True, hig
     sigP = M.data[pressureLabel] #Pressure
     sigV = M.data[velocityLabel] #Velocity
 
-    fftP = sigP.rfft()
-    IminP = np.argwhere(np.floor(fftP.freqs - 10) == 0)[0][0]
+    fftP = sigP.rfft().filterout([fminProbe,fmaxProbe])
 
-    filterP = np.concatenate((np.zeros(IminP),SP(fftP.freqs[IminP:])*np.exp(1j*PhiP(fftP.freqs[IminP:]))))
-    filterP = fftP.similar(values=filterP,unit=Unit('1'),desc="PU probe filter")
+    filterP = SP(fftP.freqs)*np.exp(1j*PhiP(fftP.freqs))
+    filterP = fftP.similar(values=filterP,unit=Unit('1'),desc="Pressure PU probe filter")
 
     outputP = (filterP*fftP).irfft()
     outputP.desc = "Pressure"
 
-    fftV = sigV.rfft()
-    IminV = np.argwhere(np.floor(fftV.freqs - 10) == 0)[0][0]
+    fftV = sigV.rfft().filterout([fminProbe,fmaxProbe])
 
-    filterV = np.concatenate((np.zeros(IminV),SP(fftV.freqs[IminV:])*np.exp(1j*PhiP(fftV.freqs[IminV:]))))
-    filterV = fftV.similar(values=filterV,unit=Unit('1'),desc="PU probe filter")
+    filterV = SV(fftV.freqs)*np.exp(1j*PhiV(fftV.freqs))
+    filterV = fftV.similar(values=filterV,unit=Unit('1'),desc="Velocity PU probe filter")
 
     outputV = (filterV*fftV).irfft()
     outputV.desc = "Velocity"
 
+    ### DEBUG
     #outputP.plot()
+    #plt.show()
+
+    #outputV.plot()
     #plt.show()
 
     return(outputP,outputV)

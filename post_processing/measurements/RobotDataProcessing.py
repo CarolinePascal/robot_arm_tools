@@ -1,39 +1,13 @@
 import measpy as ms
-import matplotlib.pyplot as plt
-
-import numpy as np
-import scipy as sp
+import ProbeSensitivity as ps
 
 import glob
 import os
 
-import ProbeSensitivity as ps
-
-def modulo(x):
-    try:
-        iter(x)
-        return(np.array([modulo(item) for item in x]))
-    except:
-        if(x >= 0 and x < 2*np.pi):
-            return(x)
-        elif(x < 0):
-            return(modulo(x + 2*np.pi))
-        else:
-            return(modulo(x - 2*np.pi))
-
-def averageSpectral(spectralList):
-    L = len(spectralList)
-    modulus = None
-    phase = None
-    for i,item in enumerate(spectralList):
-        fft = item.rfft().values
-        if(i==0):
-            modulus = np.abs(fft)/L
-            phase = np.unwrap(np.angle(fft))/L
-        else:
-            modulus += np.abs(fft)/L
-            phase += np.unwrap(np.angle(fft))/L
-    return(spectralList[0].rfft().similar(values=modulus*np.exp(1j*phase)))
+import numpy as np
+import scipy as sp
+import matplotlib.pyplot as plt
+cmap = plt.get_cmap("tab10")
 
 if(not os.path.isfile("Robot.npy")):
 
@@ -92,6 +66,11 @@ VWith = []
 PWithout = []
 VWithout = []
 
+fmin = 150  #Anechoic room cutting frquency
+fmax =  10000   #PU probe upper limit
+
+octBand = 12
+
 print("Loading files...")
 
 with open('Robot.npy','rb') as f:
@@ -100,22 +79,25 @@ with open('Robot.npy','rb') as f:
     PWithout = np.load(f,allow_pickle=True)
     VWithout = np.load(f,allow_pickle=True)
 
+"""
 figAllP,axAllP = plt.subplots(2)
 figAllP.canvas.manager.set_window_title("All pressures without robot")
 
 figAllV,axAllV = plt.subplots(2)
 figAllV.canvas.manager.set_window_title("All velocities without robot")
 
+from scipy.fftpack import fft
+
 for i,P in enumerate(PWithout):
-    P.rfft().plot(axAllP,label=str(i+1))
+    P.rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axAllP,label=str(i+1))
 
 for i,V in enumerate(VWithout):
-    V.rfft().plot(axAllV,label=str(i+1))
+    V.rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axAllV,label=str(i+1))
 
-axAllP[0].set_xlim([10,10000])
-axAllP[1].set_xlim([10,10000])
-axAllV[0].set_xlim([10,10000])
-axAllV[1].set_xlim([10,10000])
+axAllP[0].set_xlim([fmin,fmax])
+axAllP[1].set_xlim([fmin,fmax])
+axAllV[0].set_xlim([fmin,fmax])
+axAllV[1].set_xlim([fmin,fmax])
 axAllP[0].legend()
 axAllV[0].legend()
 
@@ -126,19 +108,20 @@ figAllVR,axAllVR = plt.subplots(2)
 figAllVR.canvas.manager.set_window_title("All velocities with robot")
 
 for i,P in enumerate(PWith):
-    P.rfft().plot(axAllPR,label=str(i+1))
+    P.rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axAllPR,label=str(i+1))
 
 for i,V in enumerate(VWith):
-    V.rfft().plot(axAllVR,label=str(i+1))
+    V.rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axAllVR,label=str(i+1))
 
-axAllPR[0].set_xlim([10,10000])
-axAllPR[1].set_xlim([10,10000])
-axAllVR[0].set_xlim([10,10000])
-axAllVR[1].set_xlim([10,10000])
+axAllPR[0].set_xlim([fmin,fmax])
+axAllPR[1].set_xlim([fmin,fmax])
+axAllVR[0].set_xlim([fmin,fmax])
+axAllVR[1].set_xlim([fmin,fmax])
 axAllPR[0].legend()
 axAllVR[0].legend()
 
 plt.show()
+"""
 
 index = 2
 
@@ -151,57 +134,49 @@ figV.canvas.manager.set_window_title("Velocity")
 figD,axD = plt.subplots(2)
 figD.canvas.manager.set_window_title("Delta")
 
-PWith[index].rfft().plot(axP,label="With robot")
-PWithout[index].rfft().plot(axP,label="Without robot")
-axP[0].set_xlim([10,10000])
-axP[1].set_xlim([10,10000])
-VWith[index].rfft().plot(axV,label="With robot")
-VWithout[index].rfft().plot(axV,label="Without robot")
-axV[0].set_xlim([10,10000])
-axV[1].set_xlim([10,10000])
+PWith[index].rfft(norm="forward").filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axP,label="With robot")
+PWithout[index].rfft(norm="forward").filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axP,label="Without robot")
+axP[0].set_xlim([fmin,fmax])
+axP[1].set_xlim([fmin,fmax])
+VWith[index].rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axV,label="With robot")
+VWithout[index].rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(axV,label="Without robot")
+axV[0].set_xlim([fmin,fmax])
+axV[1].set_xlim([fmin,fmax])
 
-(VWith[index].rfft()/VWithout[index].rfft()).plot(axD,label="Velocity")
-(PWith[index].rfft()/PWithout[index].rfft()).plot(axD,label="Pressure")
-axD[0].set_xlim([10,10000])
-axD[1].set_xlim([10,10000])
+DeltaV = (VWith[index].rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax)/VWithout[index].rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax))
+DeltaP = (PWith[index].rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax)/PWithout[index].rfft().filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax))
+DeltaV.plot(axD,label="Velocity",color=cmap(0))
+DeltaP.plot(axD,label="Pressure",color=cmap(1))
+
+maxDeltaV = max(20*np.log10(np.abs(DeltaV.values))[(DeltaV.freqs > fmin) & (DeltaV.freqs < fmax)])
+minDeltaV = min(20*np.log10(np.abs(DeltaV.values))[(DeltaV.freqs > fmin) & (DeltaV.freqs < fmax)])
+axD[0].plot(DeltaV.freqs,np.ones(len(DeltaV.freqs))*maxDeltaV,linestyle="--",color=cmap(0))
+axD[0].plot(DeltaV.freqs,np.ones(len(DeltaV.freqs))*minDeltaV,linestyle="--",color=cmap(0))
+
+maxDeltaP = max(20*np.log10(np.abs(DeltaP.values))[(DeltaP.freqs > fmin) & (DeltaP.freqs < fmax)])
+minDeltaP = min(20*np.log10(np.abs(DeltaP.values))[(DeltaP.freqs > fmin) & (DeltaP.freqs < fmax)])
+axD[0].plot(DeltaP.freqs,np.ones(len(DeltaP.freqs))*maxDeltaP,linestyle="--",color=cmap(1))
+axD[0].plot(DeltaP.freqs,np.ones(len(DeltaP.freqs))*minDeltaP,linestyle="--",color=cmap(1))
+
+axD[0].set_xlim([fmin,fmax])
+axD[0].set_ylim([min(minDeltaV*1.1,minDeltaP*1.1),max(maxDeltaV*1.1,maxDeltaP*1.1)])
+
+maxDeltaV = max(np.unwrap(np.angle(DeltaV.values))[(DeltaV.freqs > fmin) & (DeltaV.freqs < fmax)])
+minDeltaV = min(np.unwrap(np.angle(DeltaV.values))[(DeltaV.freqs > fmin) & (DeltaV.freqs < fmax)])
+axD[1].plot(DeltaV.freqs,np.ones(len(DeltaV.freqs))*maxDeltaV,linestyle="--",color=cmap(0))
+axD[1].plot(DeltaV.freqs,np.ones(len(DeltaV.freqs))*minDeltaV,linestyle="--",color=cmap(0))
+
+maxDeltaP = max(np.unwrap(np.angle(DeltaP.values))[(DeltaP.freqs > fmin) & (DeltaP.freqs < fmax)])
+minDeltaP = min(np.unwrap(np.angle(DeltaP.values))[(DeltaP.freqs > fmin) & (DeltaP.freqs < fmax)])
+axD[1].plot(DeltaP.freqs,np.ones(len(DeltaP.freqs))*maxDeltaP,linestyle="--",color=cmap(1))
+axD[1].plot(DeltaP.freqs,np.ones(len(DeltaP.freqs))*minDeltaP,linestyle="--",color=cmap(1))
+
+axD[1].set_xlim([fmin,fmax])
+axD[1].set_ylim([min(minDeltaV*1.1,minDeltaP*1.1),max(maxDeltaV*1.1,maxDeltaP*1.1)])
 
 axP[0].legend()
 axV[0].legend()
 axD[0].legend()
-
-plt.show()
-
-figPAvg,axPAvg = plt.subplots(2)
-figPAvg.canvas.manager.set_window_title("Pressure")
-
-figVAvg,axVAvg = plt.subplots(2)
-figVAvg.canvas.manager.set_window_title("Velocity")
-
-figDAvg,axDAvg = plt.subplots(2)
-figDAvg.canvas.manager.set_window_title("Delta")
-
-PWithAvg = averageSpectral(PWith[1:])
-VWithAvg = averageSpectral(VWith[1:])
-PWithoutAvg = averageSpectral(PWithout[1:])
-VWithoutAvg = averageSpectral(VWithout[1:])
-
-PWithAvg.plot(axPAvg,label="With robot")
-PWithoutAvg.plot(axPAvg,label="Without robot")
-axPAvg[0].set_xlim([10,10000])
-axPAvg[1].set_xlim([10,10000])
-VWithAvg.plot(axVAvg,label="With robot")
-VWithoutAvg.plot(axVAvg,label="Without robot")
-axVAvg[0].set_xlim([10,10000])
-axVAvg[1].set_xlim([10,10000])
-
-(VWithAvg/VWithoutAvg).plot(axDAvg,label="Velocity")
-(PWithAvg/PWithoutAvg).plot(axDAvg,label="Pressure")
-axDAvg[0].set_xlim([10,10000])
-axDAvg[1].set_xlim([10,10000])
-
-axPAvg[0].legend()
-axVAvg[0].legend()
-axDAvg[0].legend()
 
 plt.show()
 
@@ -238,17 +213,17 @@ figD.canvas.manager.set_window_title("Delta")
 
 PWith[index].rfft().plot(axP,label="With robot")
 PWithout[index].rfft().plot(axP,label="Without robot")
-axP[0].set_xlim([10,10000])
-axP[1].set_xlim([10,10000])
+axP[0].set_xlim([fmin,fmax])
+axP[1].set_xlim([fmin,fmax])
 VWith[index].rfft().plot(axV,label="With robot")
 VWithout[index].rfft().plot(axV,label="Without robot")
-axV[0].set_xlim([10,10000])
-axV[1].set_xlim([10,10000])
+axV[0].set_xlim([fmin,fmax])
+axV[1].set_xlim([fmin,fmax])
 
 (VWith[index].rfft()/VWithout[index].rfft()).plot(axD,label="Velocity")
 (PWith[index].rfft()/PWithout[index].rfft()).plot(axD,label="Pressure")
-axD[0].set_xlim([10,10000])
-axD[1].set_xlim([10,10000])
+axD[0].set_xlim([fmin,fmax])
+axD[1].set_xlim([fmin,fmax])
 
 axP[0].legend()
 axV[0].legend()
