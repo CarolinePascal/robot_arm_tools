@@ -23,7 +23,9 @@
     <rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_straight_measurement_node" name="robot_arm_acoustic_straight_measurement_node" output="screen"/>
 
-	<!--  Run Rviz  -->
-	<node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_tools)/config/AcousticSetup.rviz"/>
+	<!-- Run Rviz --> 
+    <param name="environmentFileName" value="$(find robot_arm_tools)/config/environments/AnechoicRoom.yaml"/>
+    <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen"/>
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_tools)/config/RViz/AcousticSetup.rviz"/>
 
 </launch>
