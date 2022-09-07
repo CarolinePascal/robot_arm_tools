@@ -1,9 +1,12 @@
 load "gmsh"
 load "msh3"
 load "medit"
-include "Sphere.edp"
 
-mesh3 M("measurements/measurementsMesh.mesh");
+include "SphericMeshTools.edp"
+
+real Pref = 20e-6;
+
+mesh3 M("measurementsMesh.mesh");
 int NbBoundaryElements = M.nbe;
 int NbElements = M.nt;
 
@@ -23,10 +26,10 @@ for (int i = 0; i < M.nv; i++)
 sphere Label =  label;
 medit("Label",M,Label);
 
-sphere<complex> pressure = 0.0;
+sphere<complex> pressure;
 
-ifstream file("measurements/17062021_S-/Positions.csv");
-ifstream fileP("measurements/17062021_S-/Pressure_1000_complex.csv");
+ifstream file("17062021_S-/Positions.csv");
+ifstream fileP("17062021_S-/Pressure_1000_complex.csv");
 for(int i = 0; i < pressure.n/3; i++)
 {
     string line, lineP;
@@ -52,8 +55,8 @@ for(int i = 0; i < pressure.n/3; i++)
     pressure[][i] += 1i*localPressure;
 }
 
-ifstream file1("measurements/17062021_S0/Positions.csv");
-ifstream fileP1("measurements/17062021_S0/Pressure_1000_complex.csv");
+ifstream file1("17062021_S0/Positions.csv");
+ifstream fileP1("17062021_S0/Pressure_1000_complex.csv");
 for(int i = pressure.n/3; i < 2*pressure.n/3; i++)
 {
     string line, lineP;
@@ -79,8 +82,8 @@ for(int i = pressure.n/3; i < 2*pressure.n/3; i++)
     pressure[][i] += 1i*localPressure;
 }
 
-ifstream file2("measurements/17062021_S+/Positions.csv");
-ifstream fileP2("measurements/17062021_S+/Pressure_1000_complex.csv");
+ifstream file2("17062021_S+/Positions.csv");
+ifstream fileP2("17062021_S+/Pressure_1000_complex.csv");
 for(int i = 2*pressure.n/3; i < pressure.n; i++)
 {
     string line, lineP;
@@ -105,8 +108,6 @@ for(int i = 2*pressure.n/3; i < pressure.n; i++)
 
     pressure[][i] += 1i*localPressure;
 }
-
-real Pref = 20e-6;
 
 medit("Pressure",M,20*log10(abs(pressure/Pref)));
 

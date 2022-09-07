@@ -1,4 +1,4 @@
-//ff-mpirun -np 4 Helmholtz_circle_Dirichlet.edp -wg
+//ff-mpirun -np 1 BEM.edp -wg
 
 // for the make check:
 // NBPROC 4
@@ -10,51 +10,81 @@ include "SphericMeshTools.edp"
 include "ComputationTools.edp"
 
 //Define boundary conditions - Infinitesimal acoustic dipole => dirichlet condition
-//Frequency parameters
-real frequency = 1000;
-real k = 2*pi*frequency/c;
-real omega = c*k;
 
-//Acoustic field functions
-func G = exp(-1i*k*r)/(4*pi*r);
+real frequency, k, omega;
+real resolution, radius = 1.0;
 
-//Infinitesimal formulation
-func dipolePressure = (-dipoleMomentum*rho*c*k*k)*sin(theta)*cos(phi)*G*(1 + 1/(1i*k*r));
+real[int] Frequencies = [5000,10000]; //UNCOMMENT
+real[int] Resolutions = [7.5,8,8.5,9,9.5,10];  //UNCOMMENT
 
-//Define mesh
-real radius = 1;
-real resolution = min(radius/2,c/(2*frequency));
+//real[int] Frequencies = [1000];
+//real[int] Resolutions = [radius*4*Frequencies[0]/c];
 
-meshS ThS = meshSphere(radius, resolution);
-ThS = meshSphereOrdered(radius,50,1);
-ThS = OrientNormal(ThS,unbounded=1);
+for(int i = 0; i < Frequencies.n; i++)
+{
+    //Frequency parameters
+    frequency = Frequencies[i];
+    k = 2*pi*frequency/c;
+    omega = c*k;
 
-//Define variational problem
-BemKernel ker("SL",k=k);
-varf vbem(u,v) = int2dx2d(ThS)(ThS)(BEM(ker,u,v)) ;  
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
 
-//Assemble the H-Matrix
-fespace Uh(ThS,P1);
-HMatrix<complex> H = vbem(Uh,Uh);
+    //Infinitesimal formulation
+    func dipolePressure = (-dipoleMomentum*rho*c*k*k)*sin(theta)*cos(phi)*G*(1 + 1/(1i*k*r));
 
-//Solve the linear system
-Uh<complex> p, b;
-varf vrhs(u,v) = int2d(ThS)(dipolePressure*v);
-b[] = vrhs(0,Uh);
-p[] = H^-1*b[];
+    for(int j = 0; j < Resolutions.n; j++)
+    {
+        //Define mesh
+        resolution = radius/Resolutions[j];
+        meshS ThS = meshSphere(radius, resolution);
+        ThS = OrientNormal(ThS,unbounded=1);
 
-//Compute the solution
-BemPotential Pot("SL",k=k);
-varf vpot(u,v) = int2d(ThS)(POT(Pot,u,v));
+        //Define variational problem
+        BemKernel ker("SL",k=k);
+        varf vbem(u,v) = int2dx2d(ThS)(ThS)(BEM(ker,u,v)) ;  
 
-//Plot solution
-meshS ThOut = meshSphere(radius*2, resolution);
+        //Assemble the H-Matrix
+        fespace Uh(ThS,P1);
+        HMatrix<complex> H = vbem(Uh,Uh);
 
-fespace UhOut(ThOut,P1);
-HMatrix<complex> HP = vpot(Uh,UhOut);
+        //Solve the linear system
+        Uh<complex> p, b;
+        varf vrhs(u,v) = int2d(ThS)(dipolePressure*v);
+        b[] = vrhs(0,Uh);
+        p[] = H^-1*b[];
 
-UhOut<complex> u;
-u[] = HP*p[];
+        //Compute the solution
+        BemPotential Pot("SL",k=k);
+        varf vpot(u,v) = int2d(ThS)(POT(Pot,u,v));
 
-//plot(u,wait=1,fill=1);
-medit("Result",ThOut,abs(u));   //For axis display ;)
+        //Plot solution
+        int cutSize = 100;
+        meshS ThOut = meshSphereOrdered(2*radius, cutSize, 2);
+        ThOut = trunc(ThOut,(abs(z) < 2*radius*sin(2*pi/cutSize))); //UNCOMMENT
+        fespace UhOut(ThOut,P1);
+
+        HMatrix<complex> HP = vpot(Uh,UhOut);
+        UhOut<complex> u;
+        u[] = HP*p[];
+
+        UhOut<complex> uTh = dipolePressure;
+
+        //medit("Computation",ThOut,abs(u));   //For axis display 
+        //medit("Theory",ThOut,abs(dipolePressure));   //For axis display 
+
+        //UNCOMMENT
+        //Fill output file
+        string outputFilePath = "BEM/output_" + frequency + "_0_" + ThS.nv + ".txt";
+        ofstream file(outputFilePath);
+
+        for (int i = 0; i < ThOut.nv; i++)
+        {
+            if(abs(ThOut(i).z) < 0.01)
+            {
+                file << ThOut(i).x << ";" << ThOut(i).y << ";" << ThOut(i).z << ";" << real(u[][i]) << ";" << imag(u[][i]) << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << endl;
+            }
+        }
+    }
+}
+

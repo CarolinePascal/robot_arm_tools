@@ -50,6 +50,8 @@ func meshS meshSphere(real radius, real resolution)
 
 func meshS meshSphereOrdered(real radius, int angularVerticesNumber, int borderLabel)
 {
+    assert(borderLabel != 0);
+
     int halfVerticesNumber = 0;
     
     if(angularVerticesNumber%2 != 0)

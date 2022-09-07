@@ -3,10 +3,13 @@ import glob
 import csv
 import os
 
+from measurements.Tools import *
+
 #Post-processing functions
 postProcessingFunctions = {}
 postProcessingFunctions["db"] = lambda X : 20*np.log10(np.abs(X)/20e-6)
-postProcessingFunctions["pa"] = lambda X : np.abs(X)
+postProcessingFunctions["mod"] = lambda X : np.abs(X)
+postProcessingFunctions["phase"] = lambda X : modulo(np.angle(X))
 postProcessingFunctions["id"] = lambda X : X
 
 def getParametersConfigurations():

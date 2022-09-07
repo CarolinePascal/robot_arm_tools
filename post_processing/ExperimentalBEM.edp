@@ -1,0 +1,68 @@
+//ff-mpirun -np 1 ExperimentalBEM.edp -wg
+
+// for the make check:
+// NBPROC 4
+// PARAM
+
+load "bem"
+include "ComputationTools.edp"
+include "getARGV.idp"
+include "SphericMeshTools.edp"
+
+real frequency = getARGV("-frequency",1000); 
+real k = 2*pi*frequency/c;
+
+meshS ThS("Mesh.mesh");
+
+//Define variational problem
+BemKernel ker("SL",k=k);
+varf vbem(u,v) = int2dx2d(ThS)(ThS)(BEM(ker,u,v));  
+
+//Assemble the H-Matrix
+fespace Uh(ThS,P1);
+HMatrix<complex> H = vbem(Uh,Uh);
+
+//Retrieve measured data
+Uh<complex> borderPressure;
+
+ifstream file("Measurements_" + frequency + ".txt");
+for(int i = 0; i < ThS.nv; i++)
+{
+    string line;
+    real localPressure;
+
+    file >> line;
+
+    localPressure = atof(line(0:line.find(",")-1));
+    line = line(line.find(",")+1:line.length);
+
+    borderPressure[][i] = localPressure;
+
+    localPressure = atof(line);
+
+    borderPressure[][i] += 1i*localPressure;
+}
+
+medit("Input",ThS,abs(borderPressure)); 
+
+//Solve the linear system
+Uh<complex> p, b;
+varf vrhs(u,v) = int2d(ThS)(borderPressure*v);
+b[] = vrhs(0,Uh);
+p[] = H^-1*b[];
+
+//Compute the solution
+BemPotential Pot("SL",k=k);
+varf vpot(u,v) = int2d(ThS)(POT(Pot,u,v));
+
+//Plot solution
+meshS ThOut = meshSphere(1, 0.1);
+fespace UhOut(ThOut,P1);
+
+HMatrix<complex> HP = vpot(Uh,UhOut);
+UhOut<complex> u;
+u[] = HP*p[];
+
+//plot(u,wait=1,fill=1);
+medit("Result",ThOut,abs(u));   //For axis display 
+

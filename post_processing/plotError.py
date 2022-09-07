@@ -28,6 +28,7 @@ def plotError(postProcessingID,analyticalFunctionID):
     scalingFactors = np.ones(np.shape(P)[0])
 
     if(normalisation == "y"):
+        #scalingFactor = 1/lambda = f/c
         scalingFactors = P[:,np.where(parametersList=="frequency")[0][0]]/c
 
     #Sort the output files according to the studied parameter values
@@ -84,6 +85,12 @@ def plotError(postProcessingID,analyticalFunctionID):
     dipoleDistanceIndex = np.where(parametersList=="dipoleDistance")[0][0]
     verticesIndex = np.where(parametersList=="vertices")[0][0]
 
+    #Relative or absolute error ?
+    errorType = "absolute"
+    relativeError = input("Relative error ? y/n")
+    if(relativeError == "y"):
+        errorType = "relative"
+
     plotCounter = 0
 
     for i,file in enumerate(fileList):
@@ -120,51 +127,53 @@ def plotError(postProcessingID,analyticalFunctionID):
                 y = float(row[1])
                 z = float(row[2])
 
-                R.append(np.sqrt(x*x + y*y + z*z))
-                Theta.append(np.arctan2(np.sqrt(x*x + y*y),z)+np.pi)
-                Phi.append(np.arctan2(y,x)+np.pi)
+                if(np.abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))) >= 1e-10 and not np.isinf(np.abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))):
+                    
+                    R.append(np.sqrt(x*x + y*y + z*z))
+                    Theta.append(np.arctan2(np.sqrt(x*x + y*y),z)+np.pi)
+                    Phi.append(np.arctan2(y,x)+np.pi)
 
-                analyticalValues.append(postProcessingFunction(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
-                numericValuesN.append(postProcessingFunction(np.complex(float(row[3]),float(row[4]))))
-                numericValuesA.append(postProcessingFunction(np.complex(float(row[5]),float(row[6]))))
-
-        #NEW TEST
-        PhiI = []
-        testInterpolation = []
-        for j in range(int(P[i,verticesIndex])*2):
-            PhiI.append(0 + j*np.pi/P[i,verticesIndex])
-
-        deltar = P[i,np.where(parametersList=="deltaR")[0][0]]
-        layers = P[i,np.where(parametersList=="layers")[0][0]]
-
-        for j,phi in enumerate(Phi):
-            testInterpolation.append(postProcessingFunction(interpolationPhi(phi,PhiI,R[j],Theta[j],f,demid,deltar,layers)))
+                    analyticalValues.append(postProcessingFunction(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
+                    numericValuesN.append(postProcessingFunction(np.complex(float(row[3]),float(row[4]))))
+                    numericValuesA.append(postProcessingFunction(np.complex(float(row[5]),float(row[6]))))
 
         analyticalValues = np.array(analyticalValues)
         numericValuesA = np.array(numericValuesA)
         numericValuesN = np.array(numericValuesN)
-        testInterpolation = np.array(testInterpolation)
-        
-        #Removing infinite values
-        IndexInf = np.where((np.isinf(np.abs(analyticalValues))) | (np.abs(analyticalValues) == 0))
-        analyticalValues = np.delete(analyticalValues,IndexInf)
-        numericValuesA = np.delete(numericValuesA,IndexInf)
-        numericValuesN = np.delete(numericValuesN,IndexInf)
-        testInterpolation = np.delete(testInterpolation,IndexInf)
+
+        #NEW TEST
+        if(analyticalFunctionID == "dPn"):
+            PhiI = []
+            testInterpolation = []
+            for j in range(int(P[i,verticesIndex])*2):
+                PhiI.append(0 + j*np.pi/P[i,verticesIndex])
+
+            deltar = P[i,np.where(parametersList=="deltaR")[0][0]]
+            layers = P[i,np.where(parametersList=="layers")[0][0]]
+
+            for j,phi in enumerate(Phi):
+                testInterpolation.append(postProcessingFunction(interpolationPhi(phi,PhiI,R[j],Theta[j],f,demid,deltar,layers)))
+
+            testInterpolation = np.array(testInterpolation)
+            plotListTest[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs(testInterpolation - analyticalValues)**2))
 
         #Computing error over the z=0 planeA
-        plotListA[configurationIndex][parameterValueIndex] = np.sqrt(np.average((np.abs(numericValuesA - analyticalValues)/np.abs(analyticalValues))**2))
-        plotListN[configurationIndex][parameterValueIndex] = np.sqrt(np.average((np.abs(numericValuesN - analyticalValues)/np.abs(analyticalValues))**2))
+        if(relativeError == "y"):
+            plotListA[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesA - analyticalValues)/analyticalValues)**2))
+            plotListN[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesN - analyticalValues)/analyticalValues)**2))
+        else:
+            plotListA[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesA - analyticalValues))**2))   
+            plotListN[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesN - analyticalValues))**2))
 
-        plotListTest[configurationIndex][parameterValueIndex] = np.sqrt(np.average((np.abs(testInterpolation - analyticalValues)/np.abs(analyticalValues))**2))
-        
     #Creating plots
-    _, axA = plt.subplots()
-    _, axN = plt.subplots()
+    figA, axA = plt.subplots()
+    figA.canvas.manager.set_window_title('Analytical results comparaison')
+    figN, axN = plt.subplots()
+    figN.canvas.manager.set_window_title('Numerical results comparaison')
 
     cmap = plt.cm.get_cmap('gist_rainbow', len(interestConfigurations))
 
-    title = "Relative error (" + postProcessingID + ") computed with : \n" 
+    title = errorType + " error (" + postProcessingID + ") computed with : \n" 
 
     for j,name in enumerate(parametersList[1:]): 
         if(len(np.unique(interestConfigurations[:,j])) == 1):
@@ -178,6 +187,7 @@ def plotError(postProcessingID,analyticalFunctionID):
     log = input("Log scale ? y/n")
     if(log == "y"):
         scalingFunction = lambda x: np.log10(x)
+    linearRegression = input("Linear regression ? y/n")
 
     for i,configuration in enumerate(interestConfigurations):
 
@@ -195,6 +205,16 @@ def plotError(postProcessingID,analyticalFunctionID):
         axA.plot(parameterValues[plotIndex],scalingFunction(plotListA[i][plotIndex]),label=label,color=cmap(i))
         axN.plot(parameterValues[plotIndex],scalingFunction(plotListN[i][plotIndex]),label=label,color=cmap(i))
 
+        if(linearRegression == "y"):
+            M = np.vstack((scalingFunction(parameterValues[plotIndex]),np.ones(len(parameterValues[plotIndex])))).T
+            VA = np.dot(np.linalg.pinv(M),scalingFunction(plotListA[i][plotIndex]))
+            VN = np.dot(np.linalg.pinv(M),scalingFunction(plotListN[i][plotIndex]))
+
+            axA.plot(parameterValues[plotIndex],VA[0]*scalingFunction(parameterValues[plotIndex])+VA[1],label=label,color=cmap(i),linestyle='dashed')
+            axA.annotate(str(np.round(VA[0],2)) + "log(x) + " + str(np.round(VA[1],2)),(np.average(parameterValues[plotIndex]),0.01 + VA[0]*np.average(scalingFunction(parameterValues[plotIndex]))+VA[1]),color=cmap(i))
+            axN.plot(parameterValues[plotIndex],VN[0]*scalingFunction(parameterValues[plotIndex])+VN[1],label=label,color=cmap(i),linestyle='dashed')
+            axN.annotate(str(np.round(VN[0],2)) + "log(x) + " + str(np.round(VN[1],2)),(np.average(parameterValues[plotIndex]),0.01 + VN[0]*np.average(scalingFunction(parameterValues[plotIndex]))+VN[1]),color=cmap(i))
+
         if(analyticalFunctionID == "dPn"):
             axN.plot(parameterValues[plotIndex],scalingFunction(plotListTest[i][plotIndex]),label=label,color=cmap(i),linestyle='dashed')
 
@@ -206,13 +226,13 @@ def plotError(postProcessingID,analyticalFunctionID):
         axN.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
 
     if(log=="y"):
-        axA.set_ylabel("log(Average relative error)")
+        axA.set_ylabel("log(Average " + errorType + " error)")
         axA.set_xscale('log')  
-        axN.set_ylabel("log(Average relative error)")
+        axN.set_ylabel("log(Average " + errorType + " error)")
         axN.set_xscale('log')  
     else:
-        axA.set_ylabel("Average relative error")
-        axN.set_ylabel("Average relative error")
+        axA.set_ylabel("Average " + errorType + " error")
+        axN.set_ylabel("Average " + errorType + " error")
     
     axA.set_title(title)
     axN.set_title(title)    

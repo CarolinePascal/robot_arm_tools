@@ -1,0 +1,21 @@
+support:
+  type: box
+  pose:
+    x: 0.0
+    y: 0.07
+    z: -0.5
+    rx: 0.0
+    ry: 0.0
+    rz: 0.0
+  size:
+    dx: 0.18
+    dy: 1.0
+    dz: 1.0
+  collisions: true
+  robot_base_collisions: false
+
+ceiling:
+  type: border
+  axis: z
+  offset: 1.0
+  collisions: true
