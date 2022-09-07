@@ -27,14 +27,14 @@ def plotSphericCut(postProcessingID,analyticalFunctionID):
 
     for i,parameter in enumerate(parametersList):
         if(len(np.unique(configuration[:,i])) == 1):
-            if(parametersUnits[i] == "m"):
+            if(parametersUnits[i] == "m" and normalisation == "y"):
                 print("Only possible value for " + parameter +" is " + str(np.round(scalingFactors[0]*configuration[0,i],2)) +  " (" + parametersUnits[i] + "/lambda)")
             else:
                 print("Only possible value for " + parameter +" is " + str(configuration[0,i]) +  " (" + parametersUnits[i] + ")")
         else:
             value = 0
             interestIndex = []
-            if(parametersUnits[i] == "m"):
+            if(parametersUnits[i] == "m" and normalisation == "y"):
                 value = float(input("What value for " + parameter + " ? " + str(np.unique(np.round(scalingFactors*configuration[:,i],2))) + " (" + parametersUnits[i] + "/lambda)"))
                 interestIndex = np.where(np.round(scalingFactors*configuration[:,i],2) == value)[0]
             else:
@@ -71,45 +71,40 @@ def plotSphericCut(postProcessingID,analyticalFunctionID):
             y = float(row[1])
             z = float(row[2])
 
-            R.append(np.sqrt(x*x + y*y + z*z))
-            Theta.append(np.arctan2(np.sqrt(x*x + y*y),z)+np.pi)
-            Phi.append(np.arctan2(y,x)+np.pi)
+            if(np.abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))) >= 1e-10 and not np.isinf(np.abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))):
     
-            analyticalValues.append(postProcessingFunction(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
-            numericValuesN.append(postProcessingFunction(np.complex(float(row[3]),float(row[4]))))
-            numericValuesA.append(postProcessingFunction(np.complex(float(row[5]),float(row[6]))))
+                R.append(np.sqrt(x*x + y*y + z*z))
+                Theta.append(np.arctan2(np.sqrt(x*x + y*y),z)+np.pi)
+                Phi.append(np.arctan2(y,x)+np.pi)
 
-            print(np.complex(float(row[3]),float(row[4])))
-            print(demid)
-            print(analyticalFunction(f,0,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x)))
-            print(analyticalFunction(f,0.0001,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x)))
+                analyticalValues.append(postProcessingFunction(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
+                numericValuesN.append(postProcessingFunction(np.complex(float(row[3]),float(row[4]))))
+                numericValuesA.append(postProcessingFunction(np.complex(float(row[5]),float(row[6]))))
 
-    #NEW TEST
-    PhiI = []
-    testInterpolation = []
-    for i in range(int(configuration[verticesIndex])*2):
-        PhiI.append(0 + i*np.pi/configuration[verticesIndex])
+                print(np.complex(float(row[3]),float(row[4])))
+                print(np.complex(float(row[5]),float(row[6])))
+                print(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x)))
+                print(abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
 
-    deltar = configuration[np.where(parametersList=="deltaR")[0][0]]
-    layers = configuration[np.where(parametersList=="layers")[0][0]]
-
-    for i,phi in enumerate(Phi):
-        testInterpolation.append(postProcessingFunction(interpolationPhi(phi,PhiI,R[i],Theta[i],f,demid,deltar,layers)))
-
-    Phi = np.array(Phi)
     analyticalValues = np.array(analyticalValues)
     numericValuesA = np.array(numericValuesA)
     numericValuesN = np.array(numericValuesN)
-    testInterpolation = np.array(testInterpolation)
-    
-    #Removing infinite values
-    IndexInf = np.argwhere((np.isinf(np.abs(analyticalValues))) | (np.abs(analyticalValues) == 0))
-    Phi = np.delete(Phi,IndexInf)
-    analyticalValues = np.delete(analyticalValues,IndexInf)
-    numericValuesA = np.delete(numericValuesA,IndexInf)
-    numericValuesN = np.delete(numericValuesN,IndexInf)
-    testInterpolation = np.delete(testInterpolation,IndexInf)
 
+    #NEW TEST
+    if(analyticalFunctionID == "dPn"):
+        PhiI = []
+        testInterpolation = []
+        for i in range(int(configuration[verticesIndex])*2):
+            PhiI.append(0 + i*np.pi/configuration[verticesIndex])
+
+        deltar = configuration[np.where(parametersList=="deltaR")[0][0]]
+        layers = configuration[np.where(parametersList=="layers")[0][0]]
+
+        for i,phi in enumerate(Phi):
+            testInterpolation.append(postProcessingFunction(interpolationPhi(phi,PhiI,R[i],Theta[i],f,demid,deltar,layers)))
+
+        testInterpolation = np.array(testInterpolation)
+    
     #Creating plot
     fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
 
@@ -119,6 +114,8 @@ def plotSphericCut(postProcessingID,analyticalFunctionID):
         ax.plot(Phi,numericValuesN,label="FreeFem numerical solution (" + postProcessingID+")",color='g')
         if(analyticalFunctionID == "dPn"):
             ax.plot(Phi,testInterpolation,label="Finite differences (" + postProcessingID+")",color='k')
+        maxAmp = max(max(analyticalValues),max(numericValuesA),max(numericValuesN))
+        minAmp = min(min(analyticalValues),min(numericValuesA),min(numericValuesN))
     else:
         ax.plot(Phi,np.real(analyticalValues),label="Analytical solution (Re)",color='r')
         ax.plot(Phi,np.real(numericValuesA),label="FreeFem analytical solution (Re)",color='b')
@@ -126,12 +123,17 @@ def plotSphericCut(postProcessingID,analyticalFunctionID):
         ax.plot(Phi,np.imag(analyticalValues),label="Analytical solution (Im)",color='r',linestyle='dashed')
         ax.plot(Phi,np.imag(numericValuesA),label="FreeFem analytical solution (Im)",color='b',linestyle='dashed')
         ax.plot(Phi,np.imag(numericValuesN),label="FreeFem numerical solution (Im)",color='g',linestyle='dashed')
+        maxAmp = max(max(np.real(analyticalValues),np.imag(analyticalValues)),max(np.real(numericValuesA),np.imag(numericValuesA)),max(np.real(numericValuesN),np.imag(numericValuesN)))
+        minAmp = min(min(np.real(analyticalValues),np.imag(analyticalValues)),min(np.real(numericValuesA),np.imag(numericValuesA)),min(np.real(numericValuesN),np.imag(numericValuesN)))
 
-    print("Relative error FreeFem analytical solution = " + str(np.sqrt(np.average((np.abs(numericValuesA - analyticalValues)/np.abs(analyticalValues))**2))))
-    print("Relative  error FreeFem numerical solution = " + str(np.sqrt(np.average((np.abs(numericValuesN - analyticalValues)/np.abs(analyticalValues))**2))))
+    print("Absolute error FreeFem analytical solution = " + str(np.sqrt(np.average(np.abs((numericValuesA - analyticalValues))**2))))
+    print("Absolute error FreeFem numerical solution = " + str(np.sqrt(np.average(np.abs((numericValuesN - analyticalValues))**2))))
+    print("Relative error FreeFem analytical solution = " + str(np.sqrt(np.average(np.abs((numericValuesA - analyticalValues)/analyticalValues)**2))))
+    print("Relative error FreeFem numerical solution = " + str(np.sqrt(np.average(np.abs((numericValuesN - analyticalValues)/analyticalValues)**2))))
 
     if(analyticalFunctionID == "dPn"):
-        print("Relative error finite differences = " + str(np.sqrt(np.average((np.abs(testInterpolation - analyticalValues)/np.abs(analyticalValues))**2))))
+        print("Absolute error finite differences = " + str(np.sqrt(np.average(np.abs((testInterpolation - analyticalValues))**2))))
+        print("Relative error finite differences = " + str(np.sqrt(np.average(np.abs((testInterpolation - analyticalValues)/analyticalValues)**2))))
 
     label = "Acoustic pressure field computed for : \n"
     for j,name in enumerate(parametersList):
@@ -140,10 +142,12 @@ def plotSphericCut(postProcessingID,analyticalFunctionID):
 
     ax.set_title(label)
 
-    maxAmp = max(max(np.abs(analyticalValues)),max(np.abs(numericValuesA)),max(np.abs(numericValuesN)))*1.1
+
 
     ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
     ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
+
+    ax.set_ylim([minAmp,maxAmp])
 
     plt.legend()
     plt.show()
