@@ -109,7 +109,7 @@ for i,d in enumerate(Angle):
         for subAx in ax:
             subAx.set_xlim([fmin,fmax])
             subAx.legend()
-        ax[0].set_title("Pressure" + label)
+        ax[0].set_title("Pressure" + label + " - 0 °")
         plt.show()
 
         ax = FV.plot(color=cmap(3),label="Raw data")
@@ -117,7 +117,7 @@ for i,d in enumerate(Angle):
         for subAx in ax:
             subAx.set_xlim([fmin,fmax])
             subAx.legend()
-        ax[0].set_title("Velocity" + label)
+        ax[0].set_title("Velocity" + label + " - 0 °")
         plt.show()
 
     for j,f in enumerate(Frequency):
@@ -127,6 +127,8 @@ for i,d in enumerate(Angle):
         PhiV[i,j] = np.angle(Vvalue)
         MP[i,j] = np.abs(Pvalue)
         MV[i,j] = np.abs(Vvalue)
+
+label += " - Frequency = " + str(Frequency[0]) + " Hz"
 
 figP = plt.figure()
 axP = figP.add_subplot(projection='polar')
