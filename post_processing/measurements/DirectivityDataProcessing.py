@@ -1,16 +1,21 @@
+
+import sys
+
+sys.path.append("/home/student/Desktop/measpy")
+
 import measpy as ms
 import ProbeSensitivity as ps
 
 import csv
 import glob
 import os
-import sys
 
 from scipy.spatial.transform import Rotation as R
 
 import numpy as np
 import matplotlib.pyplot as plt
 cmap = plt.get_cmap("tab20")
+
 
 if(not os.path.isfile("Directivity.npy")):
 
