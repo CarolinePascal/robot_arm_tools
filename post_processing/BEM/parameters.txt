@@ -1,0 +1,3 @@
+frequency Hz
+dipoleDistance m
+vertices
