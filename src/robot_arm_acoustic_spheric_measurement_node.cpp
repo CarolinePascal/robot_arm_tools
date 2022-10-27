@@ -27,7 +27,6 @@ int main(int argc, char **argv)
     RobotVisualTools visualTools;
 
     //Move the robot to its initial configuration
-    visualTools.setupUME();
 
     //Get the object radius, pose and the trajectory radius
     std::vector<double> poseReference, poseObject;

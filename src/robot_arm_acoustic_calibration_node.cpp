@@ -36,8 +36,7 @@ int main(int argc, char **argv)
 
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
-    visualTools.setupUME();
-
+    
     //Tf listenner initialisation
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener(tfBuffer);
