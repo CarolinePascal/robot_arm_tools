@@ -12,6 +12,8 @@ import matplotlib.pyplot as plt
 import _thread
 import time
 
+import sys
+
 import measpy as mp
 from measpy.audio import audio_run_measurement
 
@@ -23,7 +25,7 @@ class MicrophoneCalibrationServer :
     ## Constructor
     def __init__(self):
 
-        self.M0 = mp.Measurement(out_sig='logsweep',
+        self.M0 = mp.Measurement(out_sig='noise',
                     fs=48000,
                     out_sig_freqs=[20,20000],
                     out_map=[1],

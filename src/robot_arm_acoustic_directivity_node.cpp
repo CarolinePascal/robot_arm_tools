@@ -79,8 +79,10 @@ int main(int argc, char **argv)
     
     if(radiusObject != 0)
     {
+        geometry_msgs::Pose shiftedObjectPose = objectPose;
+        shiftedObjectPose.position.z += radiusObject + 0.5;
         visualTools.addSphere("collisionSphere", objectPose, radiusObject, false);
-        visualTools.addCylinder("collisonCylinder", objectPose, 0.01, 1.0, false);
+        visualTools.addCylinder("collisonCylinder", shiftedObjectPose, 0.01, 1.0, false);
     }
 
     //Create measurement waypoints poses
