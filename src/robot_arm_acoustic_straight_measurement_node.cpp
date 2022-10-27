@@ -26,9 +26,6 @@ int main(int argc, char **argv)
     //Robot visual tools initialisation
     RobotVisualTools visualTools;
 
-    //Move the robot to its initial configuration
-    visualTools.setupUME();
-
     //Get the object radius, pose and the trajectory radius
     std::vector<double> poseReference;
     double radiusObject, trajectoryStepsSize, distanceToObject;
@@ -110,7 +107,7 @@ int main(int argc, char **argv)
     }
     
     //Main loop
-    robot.runMeasurementRountine(waypoints,measurementServerName,false,storageFolderName+"Positions.csv");
+    robot.runMeasurementRountine(waypoints);
 
     //Shut down ROS node  
     ros::waitForShutdown();

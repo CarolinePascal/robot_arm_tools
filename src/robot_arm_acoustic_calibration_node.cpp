@@ -1,7 +1,6 @@
 #include <ros/ros.h>
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
-#include <robot_arm_tools/RobotVisualTools.h>
 
 #include <std_srvs/Empty.h>
 
@@ -33,10 +32,6 @@ int main(int argc, char **argv)
 
     ros::ServiceClient calibrationClient = n.serviceClient<std_srvs::Empty>(measurementServerName);
     calibrationClient.waitForExistence();
-
-    //Robot visual tools initialisation
-    RobotVisualTools visualTools;
-    visualTools.setupUME();
 
     //Tf listenner initialisation
     tf2_ros::Buffer tfBuffer;
