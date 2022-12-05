@@ -34,10 +34,6 @@ int main(int argc, char **argv)
     ros::ServiceClient calibrationClient = n.serviceClient<std_srvs::Empty>(measurementServerName);
     calibrationClient.waitForExistence();
 
-    //Robot visual tools initialisation
-    RobotVisualTools visualTools;
-    visualTools.setupUME();
-
     //Tf listenner initialisation
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener(tfBuffer);
