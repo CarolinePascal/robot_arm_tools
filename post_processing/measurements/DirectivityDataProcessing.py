@@ -104,18 +104,16 @@ for i,d in enumerate(Angle):
         label = " (transfer function)"
 
     if(i == 0):
-        ax = FP.plot(color=cmap(1),label="Raw data")
-        FP.filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(ax=ax,color=cmap(0),label="Filtered data")
+        ax = FP.filterout([fmin,fmax]).plot(color=cmap(1),label="Raw data")
+        FP.nth_oct_smooth_complex(octBand,fmin,fmax).filterout([fmin,fmax]).plot(ax=ax,color=cmap(0),label="Filtered data")
         for subAx in ax:
-            subAx.set_xlim([fmin,fmax])
             subAx.legend()
         ax[0].set_title("Pressure" + label + " - 0 °")
         plt.show()
 
-        ax = FV.plot(color=cmap(3),label="Raw data")
-        FV.filterout([fmin,fmax]).nth_oct_smooth_complex(octBand,fmin,fmax).plot(ax=ax,color=cmap(2),label="Filtered data")
+        ax = FV.filterout([fmin,fmax]).plot(color=cmap(3),label="Raw data")
+        FV.nth_oct_smooth_complex(octBand,fmin,fmax).filterout([fmin,fmax]).plot(ax=ax,color=cmap(2),label="Filtered data")
         for subAx in ax:
-            subAx.set_xlim([fmin,fmax])
             subAx.legend()
         ax[0].set_title("Velocity" + label + " - 0 °")
         plt.show()
