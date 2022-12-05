@@ -105,7 +105,11 @@ int main(int argc, char **argv)
     }
     
     //Main loop
+<<<<<<< HEAD
     robot.runMeasurementRountine(waypoints,false,true);
+=======
+    robot.runMeasurementRountine(waypoints);
+>>>>>>> d71334ab8c84f8c5a632939e848cdad108124ea6
 
     //Shut down ROS node  
     ros::waitForShutdown();

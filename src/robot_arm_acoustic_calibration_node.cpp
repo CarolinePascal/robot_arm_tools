@@ -1,7 +1,6 @@
 #include <ros/ros.h>
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
-#include <robot_arm_tools/RobotVisualTools.h>
 
 #include <std_srvs/Empty.h>
 
