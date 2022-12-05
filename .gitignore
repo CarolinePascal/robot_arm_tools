@@ -1,4 +1,4 @@
 post_processing/measurements/*/
 post_processing/Baseline*/
 post_processing/Derivative*/
-post_processing/meshes/
+post_processing/meshes/*/
