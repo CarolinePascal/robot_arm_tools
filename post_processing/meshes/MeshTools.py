@@ -11,7 +11,7 @@ import meshio
 ## Function creating a spheric mesh using an icosahedric approximation
 #  @param radius Radius of the sphere
 #  @param resolution Target resolution of the mesh
-def GenerateSphericMesh(radius,resolution,save=False):
+def GenerateSphericMesh(radius,resolution,elementType,save=False):
 
     #Icosahedron initial number of faces 
     k = 20
@@ -19,7 +19,11 @@ def GenerateSphericMesh(radius,resolution,save=False):
     #Tool functions
     T = lambda b,c:  b**2 + c**2 + b*c  #Triangulation number
 
-    TTarget = int(np.round((16*np.pi*radius**2)/(k*np.sqrt(3)*resolution**2)))
+    alpha = 1
+    if(elementType == "P0"):
+        alpha = 1/np.sqrt(1-(resolution**2)/(4*radius**2))
+        
+    TTarget = int(np.round((16*np.pi*(alpha*radius)**2)/(k*np.sqrt(3)*resolution**2)))
     maxBound = int(np.ceil(np.sqrt(TTarget))) + 1
 
     solutions = np.empty((maxBound,maxBound))
@@ -42,11 +46,18 @@ def GenerateSphericMesh(radius,resolution,save=False):
     points = np.array([np.array(line.split(" ")).astype(float) for line in points])
     points *= radius
 
+    if(elementType == "P0"):
+        hull = ConvexHull(points)
+        faces = hull.simplices
+        centroids = np.average(points[faces],axis=1)
+        delta = radius/np.average(np.linalg.norm(centroids,axis=1))
+        points *= delta
+
     hull = ConvexHull(points)
     faces = hull.simplices
 
     if(save):
-        meshPath = os.path.dirname(os.path.realpath(__file__)) + "/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.realpath(__file__)) + "/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -57,20 +68,23 @@ if __name__ == "__main__":
 
     radius = 0.1
     resolution = 0.01
+    elementType = "P0"
     save = 0
     info = 0
 
     try:
         radius = float(sys.argv[1])
         resolution = float(sys.argv[2])
-        save = int(sys.argv[3])
-        info = int(sys.argv[4])
+        elementType = sys.argv[3]
+        save = int(sys.argv[4])
+        info = int(sys.argv[5])
     except:
         print("Invalid radius and resolution, switching to default : ")
         print("radius = " + str(radius))
         print("resolution = " + str(resolution))
+        print("element type = " + elementType)
 
-    vertices,faces = GenerateSphericMesh(radius,resolution,save)
+    vertices,faces = GenerateSphericMesh(radius,resolution,elementType,save)
 
     if(info):
         import trimesh
