@@ -2,14 +2,16 @@
 <launch>
 
 	<!-- GENERAL ARGUMENTS -->
-	<arg name="robot" default="panda"/>
-	<arg name="tool" default="micro2"/>
+	<arg name="robot_name" default="panda"/>
+	<arg name="tool_name" default="microBK"/>
 	<arg name="simulation" default="false"/>
+	<arg name="safety_distance" default="0.03"/>
 
 	<!-- ROBOT SETUP -->
-	<include file="$(find robot_arm_tools)/launch/Setup_$(arg panda).launch">
-		<arg name="load_$(arg tool)" value="true"/>
+	<include file="$(find robot_arm_tools)/launch/Setup_$(arg robot_name).launch">
+		<arg name="tool_name" value="$(arg tool_name)"/>
 		<arg name="simulation" value="$(arg simulation)"/>
+		<arg name="safety_distance" value="$(arg safety_distance)"/>
 	</include>
 
 	<!-- MEASUREMENT SERVER -->
