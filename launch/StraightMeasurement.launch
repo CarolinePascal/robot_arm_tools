@@ -26,6 +26,6 @@
 	<!-- Run Rviz --> 
     <param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/AnechoicRoom.yaml"/>
     <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen"/>
-    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_tools)/config/RViz/AcousticSetup.rviz"/>
+    <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_acoustic)/config/AcousticSetup.rviz"/>
 
 </launch>
