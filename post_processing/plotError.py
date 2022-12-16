@@ -6,25 +6,61 @@ import sys
 from AcousticDipoleTools import *
 from plotTools import *
 
-def plotError(postProcessingID,analyticalFunctionID):
+import meshio as meshio
+
+def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     #Get post-processing and analytical functions
     postProcessingFunction = postProcessingFunctions[postProcessingID]
     analyticalFunction = analyticalFunctions[analyticalFunctionID]
+    errorFunction = errorFunctions[errorID]
 
+    #Get parameters names, values, units and corresponding output files
     P,parametersList,parametersUnits,fileList = getParametersConfigurations()
 
     #Studied parameter ?
     parameter = input("Abscissa parameter ? " + str(parametersList))
-    normalisation = input("Normalise results ? y/n")
+    try:
+        parameterIndex = np.where(parametersList == parameter)[0][0]
+    except:
+        print("INVALID PARAMETER")
+        sys.exit(-1)      
+
+    #Alternative for resolution parameter
+    verticesNumber = False
+    if(parameter == "resolution"):
+        flag = input("Number of vertices instead of resolution ? y/n")
+        if(flag == "y"):  
+            verticesNumber = True    
+            parameter = "vertices"
 
     #Put the studied parameter in the first position in each parameters configurations
-    parameterIndex = np.where(parametersList == parameter)[0][0]
     P[:,[0,parameterIndex]] = P[:,[parameterIndex,0]]
     parametersList[[0,parameterIndex]] = parametersList[[parameterIndex,0]]
     parametersUnits[[0,parameterIndex]] = parametersUnits[[parameterIndex,0]]
 
+    #Get all possible values for the studied parameter
+    parameterValues = np.unique(P[:,0])
+
+    #Any fixed values for the studied parameter ?
+    fixedParameterValues = list(input("Abscissa parameter values ? (default : *) " + str(parameterValues) + " (" + parametersUnits[0] + ") ").split(' '))
+    try:
+        fixedParameterValues = [float(item) for item in fixedParameterValues]
+    except:
+        fixedParameterValues = parameterValues
+
+    #Delete useless parameters configurations
+    fixedParameterValuesIndices = [item in fixedParameterValues for item in P[:,0]]
+    P = P[fixedParameterValuesIndices]
+    fileList = fileList[fixedParameterValuesIndices]
+
+    #Get all possible values for the studied parameter
+    parameterValues = np.unique(P[:,0])
+
     #Get the scaling factors in case of normalisation
+    normalisation = "n"
+    if(parametersUnits[0] == "m"):
+        normalisation = input("Normalise abscissa according to wavelength ? y/n")
     scalingFactors = np.ones(np.shape(P)[0])
 
     if(normalisation == "y"):
@@ -32,17 +68,14 @@ def plotError(postProcessingID,analyticalFunctionID):
         scalingFactors = P[:,np.where(parametersList=="frequency")[0][0]]/c
 
     #Sort the output files according to the studied parameter values
-    sortedIndices = np.argsort(np.round(P[:,0]*scalingFactors,2)) if np.any(scalingFactors != 1) else np.argsort(P[:,0])
+    sortedIndices = np.argsort(P[:,0])
     P = P[sortedIndices]
     fileList = fileList[sortedIndices]
     scalingFactors = scalingFactors[sortedIndices]
 
-    #Get all possible values for the studied parameter
-    parameterValues = np.unique(np.round(P[:,0]*scalingFactors,2)) if np.any(scalingFactors != 1) else np.unique(P[:,0])
-
     lastIndex = []
     for value in parameterValues[:-1]:  #The last index is the last one of the list !
-        index = np.where(np.round(P[:,0]*scalingFactors,2) == value)[0][-1] + 1 if np.any(scalingFactors != 1) else np.where(P[:,0] == value)[0][-1] + 1
+        index = np.where(P[:,0] == value)[0][-1] + 1
         lastIndex.append(index)
 
     #Split the parameters configurations according to the studied parameter values
@@ -56,15 +89,15 @@ def plotError(postProcessingID,analyticalFunctionID):
         configurations = configurations[:,1:]
         interestConfigurations = interestConfigurations[(interestConfigurations[:, None] == configurations).all(-1).any(1)]
 
-    #TODO Fix ?
     if(len(interestConfigurations) == 0):
+        print("[WARNING]: Inconsistent data, missing outputs for all parameters configurations.")
         interestConfigurations = np.unique(P[:,1:],axis=0)
 
     #Fixed parameter ? 
     flag = input("Any fixed parameter ? y/n")
     tmpParametersList = parametersList[1:]
 
-    while(flag != "n"):
+    while(flag == "y"):
         tmpParameter = input("What parameter ? " + str(tmpParametersList))
         tmpParameterIndex = np.where(parametersList[1:] == tmpParameter)[0][0]
         tmpValue = list(input("what values ? " + str(np.unique(interestConfigurations[:,tmpParameterIndex])) + " (" + parametersUnits[1:][tmpParameterIndex] + ") ").split(' '))
@@ -75,15 +108,27 @@ def plotError(postProcessingID,analyticalFunctionID):
         tmpParametersList = np.delete(tmpParametersList,np.where(tmpParametersList == tmpParameter)[0][0])
         flag = input("Any fixed parameter ? y/n")
 
-    #Create the interest configurations / plot values matrix
-    plotListA = np.zeros((len(interestConfigurations),len(parameterValues)))
-    plotListN = np.zeros((len(interestConfigurations),len(parameterValues)))
-    plotListTest = np.zeros((len(interestConfigurations),len(parameterValues)))
+    #Get interest files, scaling factors and complete configurations (i.e. with the studied parameter)
+    interestConfigurationsIndices = np.hstack([np.where((P[:,1:] == configuration).all(axis=1))[0] for configuration in interestConfigurations])
+    fileList = fileList[interestConfigurationsIndices]
+    scalingFactors = scalingFactors[interestConfigurationsIndices]
+    P = P[interestConfigurationsIndices]
 
-    #Get indices for frequency and dipole distance
+    #Create the interest configurations / plot values matrix
+    if(postProcessingID == "re/im"):
+        plotListA = np.zeros((2,len(interestConfigurations),len(parameterValues)))
+        plotListN = np.zeros((2,len(interestConfigurations),len(parameterValues)))
+    else:
+        plotListA = np.zeros((1,len(interestConfigurations),len(parameterValues)))
+        plotListN = np.zeros((1,len(interestConfigurations),len(parameterValues)))
+    plotListP = np.zeros((len(interestConfigurations),len(parameterValues)))
+
+    #Get indices frequency (mandatory parameter !) and dipole distance (optional parameter, default is 0)
     frequencyIndex = np.where(parametersList=="frequency")[0][0]
-    dipoleDistanceIndex = np.where(parametersList=="dipoleDistance")[0][0]
-    verticesIndex = np.where(parametersList=="vertices")[0][0]
+    try:
+        dipoleDistanceIndex = np.where(parametersList=="dipoleDistance")[0][0]
+    except:
+        dipoleDistanceIndex = None
 
     #Relative or absolute error ?
     errorType = "absolute"
@@ -91,20 +136,22 @@ def plotError(postProcessingID,analyticalFunctionID):
     if(relativeError == "y"):
         errorType = "relative"
 
-    plotCounter = 0
+    currentPlot = 0
 
-    for i,file in enumerate(fileList):
+    for i,configuration in enumerate(P):
+
+        if(i//len(parameterValues) + 1 != currentPlot):
+            currentPlot = i//len(parameterValues) + 1
+            print("Plot : " + str(currentPlot) + " on " + str(len(interestConfigurations)))
         
-        #Get interest parameters configuration index
-        try:
-            configurationIndex = np.where((interestConfigurations==P[i,1:]).all(axis=1))[0][0]
-            plotCounter += 1
-            print("Plot : " + str(plotCounter) + " on " + str(len(parameterValues)*len(interestConfigurations)))
-        except:
-            continue
+        #Get studied parameter value and configuration indices
+        parameterValueIndex = np.where(parameterValues == configuration[0])[0][0]
+        configurationIndex = np.where((interestConfigurations == configuration[1:]).all(axis=1))[0][0]
 
-        #Get studied parameter value index
-        parameterValueIndex = np.where(parameterValues == np.round(P[i,0]*scalingFactors[i],2))[0][0] if np.any(scalingFactors != 1) else np.where(parameterValues == P[i,0])[0][0]
+        #Get configuration frequency and dipole distance parameters
+        f = configuration[frequencyIndex]
+        k = 2*np.pi*f/c
+        demid = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
 
         #Create empty arrays
         numericValuesA = []
@@ -115,63 +162,68 @@ def plotError(postProcessingID,analyticalFunctionID):
         Theta = []
         Phi = []
 
-        #Filling arrays from output file and analytical function
-        with open(file, newline='') as csvfile:
+        #Fill arrays from output file and analytical function
+        with open(fileList[i], newline='') as csvfile:
             reader = csv.reader(csvfile, delimiter=';', quotechar='|')
-
-            f = P[i,frequencyIndex]
-            demid = P[i,dipoleDistanceIndex]/2
 
             for row in reader:
                 x = float(row[0])
                 y = float(row[1])
                 z = float(row[2])
 
-                if(np.abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))) >= 1e-10 and not np.isinf(np.abs(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))):
-                    
-                    R.append(np.sqrt(x*x + y*y + z*z))
-                    Theta.append(np.arctan2(np.sqrt(x*x + y*y),z)+np.pi)
-                    Phi.append(np.arctan2(y,x)+np.pi)
+                R.append(np.sqrt(x*x + y*y + z*z))
+                Theta.append(np.arctan2(np.sqrt(x*x + y*y),z))
+                Phi.append(np.arctan2(y,x))
 
-                    analyticalValues.append(postProcessingFunction(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x))))
-                    numericValuesN.append(postProcessingFunction(np.complex(float(row[3]),float(row[4]))))
-                    numericValuesA.append(postProcessingFunction(np.complex(float(row[5]),float(row[6]))))
+                #analyticalValues.append(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x)))
+                analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z)))
+                numericValuesA.append(np.complex(float(row[3]),float(row[4])))
+                numericValuesN.append(np.complex(float(row[5]),float(row[6])))               
 
-        analyticalValues = np.array(analyticalValues)
-        numericValuesA = np.array(numericValuesA)
-        numericValuesN = np.array(numericValuesN)
+        R = np.array(R)
+        Theta = np.array(Theta)
+        Phi = np.array(Phi)
 
-        #NEW TEST
-        if(analyticalFunctionID == "dPn"):
-            PhiI = []
-            testInterpolation = []
-            for j in range(int(P[i,verticesIndex])*2):
-                PhiI.append(0 + j*np.pi/P[i,verticesIndex])
+        #Remove outliers
+        outliers = np.concatenate((np.where(np.isinf(np.abs(analyticalValues)))[0],np.where(np.abs(analyticalValues) < np.mean(np.abs(analyticalValues)) - 2*np.std(np.abs(analyticalValues)))[0]))
 
-            deltar = P[i,np.where(parametersList=="deltaR")[0][0]]
-            layers = P[i,np.where(parametersList=="layers")[0][0]]
+        R = np.delete(R,outliers)
+        Theta = np.delete(Theta,outliers)
+        Phi = np.delete(Phi,outliers)
+        analyticalValues = postProcessingFunction(np.delete(analyticalValues,outliers))
+        numericValuesN = postProcessingFunction(np.delete(numericValuesN,outliers))
+        numericValuesA = postProcessingFunction(np.delete(numericValuesA,outliers))
 
-            for j,phi in enumerate(Phi):
-                testInterpolation.append(postProcessingFunction(interpolationPhi(phi,PhiI,R[j],Theta[j],f,demid,deltar,layers)))
-
-            testInterpolation = np.array(testInterpolation)
-            plotListTest[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs(testInterpolation - analyticalValues)**2))
-
-        #Computing error over the z=0 planeA
-        if(relativeError == "y"):
-            plotListA[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesA - analyticalValues)/analyticalValues)**2))
-            plotListN[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesN - analyticalValues)/analyticalValues)**2))
+        #Compute error over the z=0 plane
+        if(verticesNumber):
+            #TODO Non spheric mesh ?
+            radiusIndex = np.where(parametersList=="radius")[0][0]
+            mesh = meshio.read(os.path.dirname(os.path.realpath(__file__)) + "/meshes/sphere/S_" + str(np.round(configuration[radiusIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
+            plotListP[configurationIndex][parameterValueIndex] = len(mesh.points)*scalingFactors[i]
         else:
-            plotListA[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesA - analyticalValues))**2))   
-            plotListN[configurationIndex][parameterValueIndex] = np.sqrt(np.average(np.abs((numericValuesN - analyticalValues))**2))
+            plotListP[configurationIndex][parameterValueIndex] = configuration[0]*scalingFactors[i]
 
-    #Creating plots
-    figA, axA = plt.subplots()
-    figA.canvas.manager.set_window_title('Analytical results comparaison')
-    figN, axN = plt.subplots()
-    figN.canvas.manager.set_window_title('Numerical results comparaison')
+        if(relativeError == "y"):
+            plotListA[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)/errorFunction(analyticalValues)
+            plotListN[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)/errorFunction(analyticalValues)
+        else:
+            plotListA[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)
+            plotListN[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)
 
-    cmap = plt.cm.get_cmap('gist_rainbow', len(interestConfigurations))
+    #Create plots
+    if(postProcessingID == "re/im"):
+        figA, axA = plt.subplots(2,1)
+        figN, axN = plt.subplots(2,1)
+    else:
+        figA, axA = plt.subplots(1,1)
+        figN, axN = plt.subplots(1,1)
+        axA = [axA]
+        axN = [axN]
+
+    figA.canvas.manager.set_window_title('Analytical results comparaison - ' + os.path.basename(os.getcwd()))
+    figN.canvas.manager.set_window_title('Numerical results comparaison - ' + os.path.basename(os.getcwd()))
+
+    cmap = plt.cm.get_cmap('tab10')
 
     title = errorType + " error (" + postProcessingID + ") computed with : \n" 
 
@@ -187,6 +239,7 @@ def plotError(postProcessingID,analyticalFunctionID):
     log = input("Log scale ? y/n")
     if(log == "y"):
         scalingFunction = lambda x: np.log10(x)
+
     linearRegression = input("Linear regression ? y/n")
 
     for i,configuration in enumerate(interestConfigurations):
@@ -200,49 +253,67 @@ def plotError(postProcessingID,analyticalFunctionID):
                 label += "\n"
         label = label[:-1]
 
-        plotIndex = np.where(plotListA[i] != 0)
+        for axAi,axNi,plotN,plotA in zip(axA,axN,plotListN,plotListA):
+            #Avoid issues with 0 and log scaling function
+            plotIndex = np.arange(len(plotA[i]))
+            if(log == "y"):
+                plotIndex = np.where(plotA[i] != 0)[0]
+            axAi.plot(plotListP[i][plotIndex],scalingFunction(plotA[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
+            
+            plotIndex = np.arange(len(plotN[i]))
+            if(log == "y"):
+                plotIndex = np.where(plotN[i] != 0)[0]
+            axNi.plot(plotListP[i][plotIndex],scalingFunction(plotN[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
 
-        axA.plot(parameterValues[plotIndex],scalingFunction(plotListA[i][plotIndex]),label=label,color=cmap(i))
-        axN.plot(parameterValues[plotIndex],scalingFunction(plotListN[i][plotIndex]),label=label,color=cmap(i))
+            if(linearRegression == "y"):
+                M = np.vstack((scalingFunction(plotListP[i][plotIndex]),np.ones(len(parameterValues[plotIndex])))).T
+                #VA = np.dot(np.linalg.pinv(M),scalingFunction(plotA[i][plotIndex]))
+                VN = np.dot(np.linalg.pinv(M),scalingFunction(plotN[i][plotIndex]))
+                #R2A = 1 - np.sum((scalingFunction(plotA[i][plotIndex]) - (VA[0]*scalingFunction(plotListP[i][plotIndex])+VA[1]))**2)/np.sum((scalingFunction(plotA[i][plotIndex]) - np.mean(scalingFunction(plotA[i][plotIndex])))**2)
+                R2N = 1 - np.sum((scalingFunction(plotN[i][plotIndex]) - (VN[0]*scalingFunction(plotListP[i][plotIndex])+VN[1]))**2)/np.sum((scalingFunction(plotN[i][plotIndex]) - np.mean(scalingFunction(plotN[i][plotIndex])))**2)
 
-        if(linearRegression == "y"):
-            M = np.vstack((scalingFunction(parameterValues[plotIndex]),np.ones(len(parameterValues[plotIndex])))).T
-            VA = np.dot(np.linalg.pinv(M),scalingFunction(plotListA[i][plotIndex]))
-            VN = np.dot(np.linalg.pinv(M),scalingFunction(plotListN[i][plotIndex]))
+                #axAi.plot(plotListP[i][plotIndex],VA[0]*scalingFunction(plotListP[i][plotIndex])+VA[1],label="(" + str(np.round(VA[0],3)) + "," + str(np.round(VA[1],3)) + ")",color=cmap(i))
+                axNi.plot(plotListP[i][plotIndex],VN[0]*scalingFunction(plotListP[i][plotIndex])+VN[1],label="(" + str(np.round(VN[0],3)) + ","+ str(np.round(VN[1],3)) + "), R² = " + str(np.round(R2N,3)),color=cmap(i))
 
-            axA.plot(parameterValues[plotIndex],VA[0]*scalingFunction(parameterValues[plotIndex])+VA[1],label=label,color=cmap(i),linestyle='dashed')
-            axA.annotate(str(np.round(VA[0],2)) + "log(x) + " + str(np.round(VA[1],2)),(np.average(parameterValues[plotIndex]),0.01 + VA[0]*np.average(scalingFunction(parameterValues[plotIndex]))+VA[1]),color=cmap(i))
-            axN.plot(parameterValues[plotIndex],VN[0]*scalingFunction(parameterValues[plotIndex])+VN[1],label=label,color=cmap(i),linestyle='dashed')
-            axN.annotate(str(np.round(VN[0],2)) + "log(x) + " + str(np.round(VN[1],2)),(np.average(parameterValues[plotIndex]),0.01 + VN[0]*np.average(scalingFunction(parameterValues[plotIndex]))+VN[1]),color=cmap(i))
+    titleCounter = 0
+    for axAi,axNi in zip(axA,axN):
+        if(normalisation == "y"):
+            axAi.set_xlabel(parameter + r"/$\lambda$")
+            axNi.set_xlabel(parameter + r"/$\lambda$")
+        else:
+            axAi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
+            axNi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
 
-        if(analyticalFunctionID == "dPn"):
-            axN.plot(parameterValues[plotIndex],scalingFunction(plotListTest[i][plotIndex]),label=label,color=cmap(i),linestyle='dashed')
-
-    if(normalisation == "y"):
-        axA.set_xlabel(parameter + r"/$\lambda$")
-        axN.set_xlabel(parameter + r"/$\lambda$")
-    else:
-        axA.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
-        axN.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
-
-    if(log=="y"):
-        axA.set_ylabel("log(Average " + errorType + " error)")
-        axA.set_xscale('log')  
-        axN.set_ylabel("log(Average " + errorType + " error)")
-        axN.set_xscale('log')  
-    else:
-        axA.set_ylabel("Average " + errorType + " error")
-        axN.set_ylabel("Average " + errorType + " error")
+        if(log=="y"):
+            axAi.set_ylabel("log(Average " + errorType + " error)")
+            axAi.set_xscale('log')  
+            axNi.set_ylabel("log(Average " + errorType + " error)")
+            axNi.set_xscale('log')  
+            #axNi.set_ylim([-5,0])
+        else:
+            axAi.set_ylabel("Average " + errorType + " error")
+            axNi.set_ylabel("Average " + errorType + " error")
     
-    axA.set_title(title)
-    axN.set_title(title)    
-    axA.legend()
-    axN.legend()
+        if(titleCounter < 1):
+            axAi.set_title(title)
+            axNi.set_title(title)  
+            titleCounter += 1  
+
+
+        axAi.legend()
+        axNi.legend()
 
     plt.show()
 
 ### MAIN ###
 
-postProcessing = input("Post processing function ? " + str(list((postProcessingFunctions.keys()))))
-analytical = input("Analytical function ? " + str(list((analyticalFunctions.keys()))))
-plotError(postProcessing,analytical)
+postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
+if(postProcessing not in list((postProcessingFunctions.keys()))):
+    postProcessing = "id"
+analytical = input("Analytical function ? (default : PMn) " + str(list((analyticalFunctions.keys()))))
+if(analytical not in list((analyticalFunctions.keys()))):
+    analytical = "PMn"
+error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
+if(error not in list((errorFunctions.keys()))):
+    error = "l2"
+plotError(postProcessing,analytical,error)

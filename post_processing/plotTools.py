@@ -7,10 +7,15 @@ from measurements.Tools import *
 
 #Post-processing functions
 postProcessingFunctions = {}
-postProcessingFunctions["db"] = lambda X : 20*np.log10(np.abs(X)/20e-6)
+postProcessingFunctions["re/im"] = lambda X : np.array([np.real(X),np.imag(X)])
 postProcessingFunctions["mod"] = lambda X : np.abs(X)
-postProcessingFunctions["phase"] = lambda X : modulo(np.angle(X))
+postProcessingFunctions["phase"] = lambda X : np.angle(X)
 postProcessingFunctions["id"] = lambda X : X
+
+errorFunctions = {}
+errorFunctions["l2"] = lambda X : np.sqrt(np.sum(np.abs(X.T)**2,axis=0))
+errorFunctions["linf"] = lambda X : np.max(np.abs(X.T),axis=0)
+errorFunctions["mean"] = lambda X : np.mean(X.T,axis=0)
 
 def getParametersConfigurations():
 
