@@ -1,3 +1,12 @@
+//Spherical coordinates functions
+func r = sqrt(x*x + y*y + z*z);
+func theta = atan2(sqrt(x*x + y*y),z);
+func phi = atan2(y,x); 
+
+func normalx = sin(theta)*cos(phi);
+func normaly = sin(theta)*sin(phi);
+func normalz = cos(theta);
+
 //Sound parameters
 real Pref = 20e-6; //Pa
 real rho = 1.204;   //kg/m³ at 20°C
@@ -7,14 +16,15 @@ real c = 343.4;   //m/s at 20°C
 real Q = 1; //m³/s
 real dipoleMomentum = 1; //m⁴/s
 
-//Spherical coordinates functions
-func r = sqrt(x*x + y*y + z*z);
-func theta = atan2(sqrt(x*x + y*y),z);
-func phi = atan2(y,x); 
+//Frequency parameters
+func real k(real frequency){2*pi*frequency/c;}
+func real omega(real frequency){2*pi*frequency;}
 
-func normalx = sin(theta)*cos(phi);
-func normaly = sin(theta)*sin(phi);
-func normalz = cos(theta);
+//Acoustic field functions
+func complex G(real frequency){exp(1i*(k(frequency)/10)*r)/(4*pi*r);}
+
+//Infinitesimal formulation
+func complex monopolePressure(real frequency){(1i*omega(frequency))*G(frequency);}
 
 func real[int] logspace(real minPow, real maxPow, int itemNumber)
 {

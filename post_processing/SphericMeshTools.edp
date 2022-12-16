@@ -8,44 +8,40 @@ include "MeshSurface.idp"
 
 func meshS meshSphere(real radius, real resolution)
 {
-    // Mesh 2D
-    mesh Th = square(10, 20, [x*pi-pi/2, 2*y*pi]); // ]-pi/2, pi/2[X]0, 2pi[
+  mesh  Th=square(10,20,[(x)*pi-pi/2,2*(y)*pi]);  //  $]\frac{-pi}{2},frac{-pi}{2}[\times]0,2\pi[ $
 
-    // A parametrization of a sphere
-    func f1 = radius*cos(x)*cos(y);
-    func f2 = radius*cos(x)*sin(y);
-    func f3 = radius*sin(x);
-    // Partial derivative of the parametrization DF
-    func f1x = radius*sin(x)*cos(y);
-    func f1y = radius*-cos(x)*sin(y);
-    func f2x = radius*-sin(x)*sin(y);
-    func f2y = radius*cos(x)*cos(y);
-    func f3x = radius*cos(x);
-    func f3y = 0;
-    //M = DF^t DF
-    func m11 = f1x^2 + f2x^2 + f3x^2;
-    func m21 = f1x*f1y + f2x*f2y + f3x*f3y;
-    func m22 = f1y^2 + f2y^2 + f3y^2;
+  //Parametrization of a sphere 
+  func f1 = radius*cos(x)*cos(y);
+  func f2 = radius*cos(x)*sin(y);
+  func f3 = radius*sin(x);
 
-    // Periodic condition
-    func perio = [[4, y], [2, y], [1, x], [3, x]];
+  //Partial derivative 
+  func f1x = -radius*sin(x)*cos(y);   
+  func f1y = -radius*cos(x)*sin(y);
+  func f2x = -radius*sin(x)*sin(y);
+  func f2y = +radius*cos(x)*cos(y);
+  func f3x = -radius*cos(x);
+  func f3y = 0;
 
-    // Mesh adaptation
-    real vv = 1/(resolution*resolution);
-    Th = adaptmesh(Th, m11*vv, m21*vv, m22*vv, IsMetric=1, periodic=perio);
-    Th = adaptmesh(Th, m11*vv, m21*vv, m22*vv, IsMetric=1, periodic=perio);
-    Th = adaptmesh(Th, m11*vv, m21*vv, m22*vv, IsMetric=1, periodic=perio);
-    Th = adaptmesh(Th, m11*vv, m21*vv, m22*vv, IsMetric=1, periodic=perio);
+  //Metric on the sphere  $  M = DF^t DF $
+  func m11=f1x^2+f2x^2+f3x^2;
+  func m21=f1x*f1y+f2x*f2y+f3x*f3y;
+  func m22=f1y^2+f2y^2+f3y^2;
+  
+  func perio=[[4,y],[2,y],[1,x],[3,x]]; // to store the periodic condition 
 
-    // Sphere
-    meshS Th3 = movemesh23(Th, transfo=[f1, f2, f3]);
+  real hh = resolution; // hh  mesh size on unite sphere
+  real vv = 1/square(hh);
 
-    if(radius/resolution >= 25)
-    {
-        Th3 = mmgs(Th3,hmin=resolution,hmax=resolution,hgrad=2.0);
-    }
+  Th = adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+  Th = adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+  Th = adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+  Th = adaptmesh(Th,m11*vv,m21*vv,m22*vv,IsMetric=1,periodic=perio);
+  
+  meshS ThS = movemesh23(Th,transfo=[f1,f2,f3]);
+  //ThS = mmg3(ThS,hmin=resolution,hmax=resolution);
 
-    return(Th3);
+  return ThS;
 }
 
 func meshS meshSphereOrdered(real radius, int angularVerticesNumber, int borderLabel)

@@ -1,0 +1,196 @@
+//ff-mpirun -np 4 AcousticDipoleBEM.edp -wg
+
+// for the make check:
+// NBPROC 4
+// PARAM
+
+load "bem"
+load "shell"
+include "ComputationTools.edp"
+include "SphericMeshTools.edp"
+include "getARGV.idp"
+
+verbosity = 0;
+
+func int AcousticDipoleSL(real frequency, real radius, real resolution)
+{
+    //Frequency parameters
+    real k = 2*pi*frequency/c;
+    real omega = c*k;
+
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
+
+    //Infinitesimal formulation
+    func dipolePressure = (-dipoleMomentum*rho*c*k*k)*sin(theta)*cos(phi)*G*(1 + 1/(1i*k*r));
+
+    //Define mesh
+    meshS ThS("./meshes/sphere/S_" + radius + "_" + resolution + ".mesh");
+    ThS = OrientNormal(ThS,unbounded=1);
+
+    //DEBUG
+    //plot(ThS);
+    //cout << ThS.nv << endl;
+
+    //Define variational problem
+    BemKernel ker("SL",k=k);
+    varf vbem(u,v) = int2dx2d(ThS)(ThS)(BEM(ker,u,v)) ;  
+
+    //Assemble the H-Matrix
+    fespace Uh(ThS,P1);
+    HMatrix<complex> H = vbem(Uh,Uh);
+
+    //Solve the linear system
+    Uh<complex> p, b;
+    varf vrhs(u,v) = int2d(ThS)(dipolePressure*v);
+    b[] = vrhs(0,Uh);
+    p[] = H^-1*b[];
+
+    //Compute the solution
+    BemPotential Pot("SL",k=k);
+    varf vpot(u,v) = int2d(ThS)(POT(Pot,u,v));
+
+    //Plot solution
+    int cutSize = 100;
+    real cutRadius = 0.5;
+    meshS ThOut = meshSphereOrdered(cutRadius, cutSize, 2);
+    ThOut = trunc(ThOut,(abs(z) < cutRadius*sin(2*pi/(cutSize+1))));
+    fespace UhOut(ThOut,P1);
+
+    HMatrix<complex> HP = vpot(Uh,UhOut);
+    UhOut<complex> u;
+    u[] = HP*p[];
+
+    UhOut<complex> uTh = dipolePressure;
+
+    //DEBUG
+    //medit("Analytic",ThOut,abs(uTh));
+    //medit("Numeric",ThOut,abs(u));
+    
+    //Fill output file
+    string dirName = "BEM_P1_SL";
+    if(isdir("./" + dirName) == -1)
+    {
+        mkdir("./" + dirName);
+    }
+    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + radius + ".txt";
+    ofstream file(outputFilePath);
+
+    //P0
+    /*real Xt,Yt,Zt;
+    for (int i = 0; i < 2*cutSize; i+=2)
+    {
+        Xt = (ThOut[i][0].x + ThOut[i][1].x + ThOut[i][2].x)/3;
+        Yt = (ThOut[i][0].y + ThOut[i][1].y + ThOut[i][2].y)/3;
+        Zt = (ThOut[i][0].z + ThOut[i][1].z + ThOut[i][2].z)/3;
+        file << Xt  << ";" << Yt << ";" << Zt << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }*/
+
+    //P1
+    for (int i = cutSize; i < 2*cutSize; i++)
+    {
+        file << ThOut(i).x << ";" << ThOut(i).y << ";" << ThOut(i).z << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }
+
+    return(0);
+}
+
+func int AcousticDipoleCL(real frequency, real radius, real resolution)
+{
+    //Frequency parameters
+    real k = 2*pi*frequency/c;
+    real omega = c*k;
+
+    //Acoustic field functions
+    func G = exp(-1i*k*r)/(4*pi*r);
+
+    //Infinitesimal formulation
+    func dipolePressure = (-dipoleMomentum*rho*c*k*k)*sin(theta)*cos(phi)*G*(1 + 1/(1i*k*r));
+
+    //Define mesh
+    meshS ThS("./meshes/sphere/S_" + radius + "_" + resolution + ".mesh");
+    ThS = OrientNormal(ThS,unbounded=1);
+
+    //DEBUG
+    //plot(ThS);
+    //cout << ThS.nv << endl;
+
+    //Define variational problem
+    BemKernel kerSL("SL",k=k);
+    BemKernel kerDL("DL",k=k);
+    BemKernel ker=(-k*1i)*kerSL+kerDL;
+    varf vbem(u,v)=int2dx2d(ThS)(ThS)(BEM(ker,u,v)) + int2d(ThS)(0.5*u*v); 
+
+    //Assemble the H-Matrix
+    fespace Uh(ThS,P1);
+    HMatrix<complex> H = vbem(Uh,Uh);
+
+    //Solve the linear system
+    Uh<complex> p, b;
+    varf vrhs(u,v) = int2d(ThS)(dipolePressure*v);
+    b[] = vrhs(0,Uh);
+    p[] = H^-1*b[];
+
+    //Compute the solution
+    BemPotential PotSL("SL",k=k);
+    varf vpotSL(u,v) = int2d(ThS)(POT(PotSL,u,v));
+    BemPotential PotDL("DL",k=k);
+    varf vpotDL(u,v) = int2d(ThS)(POT(PotDL,u,v));
+
+    //Plot solution
+    int cutSize = 100;
+    real cutRadius = 0.5;
+    meshS ThOut = meshSphereOrdered(cutRadius, cutSize, 2);
+    ThOut = trunc(ThOut,(abs(z) < cutRadius*sin(2*pi/(cutSize+1))));
+    fespace UhOut(ThOut,P1);
+
+    HMatrix<complex> HPSL = vpotSL(Uh,UhOut);
+    HMatrix<complex> HPDL = vpotDL(Uh,UhOut);
+    UhOut<complex> u,uSL,uDL;
+    uSL[] = HPSL*p[];
+    uDL[] = HPDL*p[];
+    u = (-k*1i)*uSL + uDL;
+
+    UhOut<complex> uTh = dipolePressure;
+
+    //DEBUG
+    //medit("Analytic",ThOut,abs(uTh));
+    //medit("Numeric",ThOut,abs(u));
+    
+    //Fill output file
+    string dirName = "BEM_P1_CL";
+    if(isdir("./" + dirName) == -1)
+    {
+        mkdir("./" + dirName);
+    }
+    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + radius + ".txt";
+    ofstream file(outputFilePath);
+
+    //P0
+    /*real Xt,Yt,Zt;
+    for (int i = 0; i < 2*cutSize; i+=2)
+    {
+        Xt = (ThOut[i][0].x + ThOut[i][1].x + ThOut[i][2].x)/3;
+        Yt = (ThOut[i][0].y + ThOut[i][1].y + ThOut[i][2].y)/3;
+        Zt = (ThOut[i][0].z + ThOut[i][1].z + ThOut[i][2].z)/3;
+        file << Xt  << ";" << Yt << ";" << Zt << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }*/
+
+    //P1
+    for (int i = cutSize; i < 2*cutSize; i++)
+    {
+        file << ThOut(i).x << ";" << ThOut(i).y << ";" << ThOut(i).z << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }
+
+    return(0);
+}
+
+//MAIN
+real frequency = getARGV("-frequency",1000); 
+real radius = getARGV("-radius",0.1); 
+real resolution = getARGV("-resolution",0.01);
+
+AcousticDipoleSL(frequency,radius,resolution);
+AcousticDipoleCL(frequency,radius,resolution);
+
+

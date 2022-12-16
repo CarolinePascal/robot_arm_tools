@@ -1,0 +1,273 @@
+//ff-mpirun -np 4 AcousticMonopoleBEM.edp -ns
+
+// for the make check:
+// NBPROC 4
+// PARAM
+
+load "bem"
+load "shell"
+include "ComputationTools.edp"
+include "SphericMeshTools.edp"
+include "getARGV.idp"
+
+verbosity = 0;
+htoolEpsilon = 1e-6;
+htoolEta = 1.;
+htoolMinclustersize = 100;
+htoolMaxblocksize = 1000000;
+
+func int AcousticMonopoleSL(real frequency, real radius, real resolution)
+{
+    //Define mesh
+    string radiusWithDecimal;
+    if(radius - floor(radius) > 0)
+    {
+        radiusWithDecimal = radius;
+    }
+    else
+    {
+        radiusWithDecimal = radius + ".0";
+    }
+
+    string resolutionWithDecimal;
+    if(resolution - floor(resolution) > 0)
+    {
+        resolutionWithDecimal = resolution;
+    }
+    else
+    {
+        resolutionWithDecimal = resolution + ".0";
+    }
+
+    meshS ThS("./meshes/sphere/S_" + radiusWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+    //meshS ThS = Sphere(radius,resolution,0,1);
+    ThS = OrientNormal(ThS,unbounded=1);
+
+    //fespace Dummy(ThS,P0);
+    //Dummy meshSize = hTriangle;
+    //if(mpirank==0)
+    //{
+    //    cout << "MESH SIZE" << " expected : " << resolution << " real : " << meshSize[].max << endl;
+    //}
+
+    //DEBUG
+    //plot(ThS);
+    //cout << ThS.nv << endl;
+
+    //Define variational problem
+    BemKernel ker("SL",k=k(frequency)/10);
+    varf vbem(u,v) = int2dx2d(ThS)(ThS)(BEM(ker,u,v)) ;  
+
+    //Assemble the H-Matrix
+    fespace Uh(ThS,P0);
+    HMatrix<complex> H = vbem(Uh,Uh);
+
+    //if(mpirank==0)
+    //{
+    //    cout << H.infos << endl;
+    //}
+
+    //Solve the linear system
+    Uh<complex> p, b;
+    varf vrhs(u,v) = int2d(ThS)(monopolePressure(frequency)*v);
+    b[] = vrhs(0,Uh);
+    p[] = H^-1*b[];
+
+    //Compute the solution
+    BemPotential Pot("SL",k=k(frequency)/10);
+    varf vpot(u,v) = int2d(ThS)(POT(Pot,u,v));
+
+    //Plot solution
+    int cutSize = 100;
+    real cutRadius = 5.0;
+
+    //meshS ThOut = meshSphereOrdered(cutRadius, cutSize, 2);
+    //ThOut = trunc(ThOut,(abs(z) < cutRadius*sin(2*pi/(cutSize+1))));
+    
+    border circle(t = 0, 2*pi){x=cutRadius*cos(t); y=cutRadius*sin(t);}
+    meshL ThOut = buildmeshL(circle(cutSize));
+
+    fespace UhOut(ThOut,P1);
+
+    HMatrix<complex> HP = vpot(Uh,UhOut);
+    UhOut<complex> u;
+    u[] = HP*p[];
+
+    UhOut<complex> uTh = monopolePressure(frequency);
+
+    //DEBUG
+    /*if(mpirank==0)
+    {
+        medit("Analytic",ThOut,abs(uTh));
+        medit("Numeric",ThOut,abs(u));
+        medit("Error",ThOut,abs(u-uTh));
+    }*/
+
+    UhOut error = abs(u-uTh);
+    if(mpirank==0)
+    {
+        cout << "LINF ERROR SL : " << error[].max << endl;
+    }
+
+    //Fill output file
+    string dirName = "BEM_P0_SL_5.0";
+    if(isdir("./" + dirName) == -1)
+    {
+        mkdir("./" + dirName);
+    }
+    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + radius + ".txt";
+    ofstream file(outputFilePath);
+    int np = file.precision(20);
+
+    //P0
+    /*real Xt,Yt,Zt;
+    for (int i = 0; i < 2*cutSize; i+=2)
+    {
+        Xt = (ThOut[i][0].x + ThOut[i][1].x + ThOut[i][2].x)/3;
+        Yt = (ThOut[i][0].y + ThOut[i][1].y + ThOut[i][2].y)/3;
+        Zt = (ThOut[i][0].z + ThOut[i][1].z + ThOut[i][2].z)/3;
+        file << Xt  << ";" << Yt << ";" << Zt << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }*/
+
+    //P1
+    for (int i = 0; i < cutSize; i++)
+    {
+        file << ThOut(i).x << ";" << ThOut(i).y << ";" << ThOut(i).z << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }
+
+    return(0);
+}
+
+func int AcousticMonopoleCL(real frequency, real radius, real resolution)
+{
+    //Define mesh
+    string radiusWithDecimal;
+    if(radius - floor(radius) > 0)
+    {
+        radiusWithDecimal = radius;
+    }
+    else
+    {
+        radiusWithDecimal = radius + ".0";
+    }
+
+    string resolutionWithDecimal;
+    if(resolution - floor(resolution) > 0)
+    {
+        resolutionWithDecimal = resolution;
+    }
+    else
+    {
+        resolutionWithDecimal = resolution + ".0";
+    }
+
+    meshS ThS("./meshes/sphere/S_" + radiusWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+    //meshS ThS = Sphere(radius,resolution,0,1);
+    ThS = OrientNormal(ThS,unbounded=1);
+
+    fespace Dummy(ThS,P0);
+    Dummy meshSize = hTriangle;
+    if(mpirank==0)
+    {
+        cout << "MESH SIZE" << " expected : " << resolution << " real : " << meshSize[].max << endl;
+    }
+
+    //DEBUG
+    //plot(ThS);
+    //cout << ThS.nv << endl;
+
+    //Define variational problem
+    BemKernel kerSL("SL",k=k(frequency)/10);
+    BemKernel kerDL("DL",k=k(frequency)/10);
+    BemKernel ker=(-k(frequency)*1i)*kerSL+kerDL;
+    varf vbem(u,v)=int2dx2d(ThS)(ThS)(BEM(ker,u,v)) + int2d(ThS)(0.5*u*v); 
+
+    //Assemble the H-Matrix
+    fespace Uh(ThS,P0);
+    HMatrix<complex> H = vbem(Uh,Uh);
+
+    //Solve the linear system
+    Uh<complex> p, b;
+    varf vrhs(u,v) = int2d(ThS)(monopolePressure(frequency)*v);
+    b[] = vrhs(0,Uh);
+    p[] = H^-1*b[];
+
+    //Compute the solution
+    BemPotential PotSL("SL",k=k(frequency)/10);
+    varf vpotSL(u,v) = int2d(ThS)(POT(PotSL,u,v));
+    BemPotential PotDL("DL",k=k(frequency)/10);
+    varf vpotDL(u,v) = int2d(ThS)(POT(PotDL,u,v));
+
+    //Plot solution
+    int cutSize = 100;
+    real cutRadius = 5.0;
+    
+    //meshS ThOut = meshSphereOrdered(cutRadius, cutSize, 2);
+    //ThOut = trunc(ThOut,(abs(z) < cutRadius*sin(2*pi/(cutSize+1))));
+    
+    border circle(t = 0, 2*pi){x=cutRadius*cos(t); y=cutRadius*sin(t);}
+    meshL ThOut = buildmeshL(circle(cutSize));
+
+    fespace UhOut(ThOut,P1);
+
+    HMatrix<complex> HPSL = vpotSL(Uh,UhOut);
+    HMatrix<complex> HPDL = vpotDL(Uh,UhOut);
+    UhOut<complex> u,uSL,uDL;
+    uSL[] = HPSL*p[];
+    uDL[] = HPDL*p[];
+    u = (-k(frequency)*1i)*uSL + uDL;
+
+    UhOut<complex> uTh = monopolePressure(frequency);
+
+    //DEBUG
+    /*if(mpirank==0)
+    {
+        medit("Analytic",ThOut,abs(uTh));
+        medit("Numeric",ThOut,abs(u));
+        medit("Error",ThOut,abs(u-uTh));
+    }*/
+
+    UhOut error = abs(u-uTh);
+    if(mpirank==0)
+    {
+        cout << "LINF ERROR CL : " << error[].max << endl;
+    }
+    
+    //Fill output file
+    string dirName = "BEM_P0_CL_5.0";
+    if(isdir("./" + dirName) == -1)
+    {
+        mkdir("./" + dirName);
+    }
+    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + radius + ".txt";
+    ofstream file(outputFilePath);
+    int np = file.precision(20);
+
+    //P0
+    /*real Xt,Yt,Zt;
+    for (int i = 0; i < 2*cutSize; i+=2)
+    {
+        Xt = (ThOut[i][0].x + ThOut[i][1].x + ThOut[i][2].x)/3;
+        Yt = (ThOut[i][0].y + ThOut[i][1].y + ThOut[i][2].y)/3;
+        Zt = (ThOut[i][0].z + ThOut[i][1].z + ThOut[i][2].z)/3;
+        file << Xt  << ";" << Yt << ";" << Zt << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }*/
+
+    //P1
+    for (int i = 0; i < cutSize; i++)
+    {
+        file << ThOut(i).x << ";" << ThOut(i).y << ";" << ThOut(i).z << ";" << real(uTh[][i]) << ";" << imag(uTh[][i]) << ";" << real(u[][i]) << ";" << imag(u[][i]) << endl;
+    }
+
+    return(0);
+}
+
+//MAIN
+real frequency = getARGV("-frequency",100); 
+real radius = getARGV("-radius",0.1); 
+real resolution = getARGV("-resolution",0.05);
+
+AcousticMonopoleSL(frequency,radius,resolution);
+AcousticMonopoleCL(frequency,radius,resolution);
+
+
