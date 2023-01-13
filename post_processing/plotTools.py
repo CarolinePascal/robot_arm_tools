@@ -1,9 +1,17 @@
-import numpy as np
+#!/usr/bin/python3
+
+#System packages
 import glob
-import csv
 import os
 
-from measurements.Tools import *
+#Utility packages
+import numpy as np
+
+#Fancy plot functions
+from fig_config import (
+    add_grid,
+    figure_features,
+)
 
 #Post-processing functions
 postProcessingFunctions = {}
@@ -12,11 +20,17 @@ postProcessingFunctions["mod"] = lambda X : np.abs(X)
 postProcessingFunctions["phase"] = lambda X : np.angle(X)
 postProcessingFunctions["id"] = lambda X : X
 
+#Error functions
 errorFunctions = {}
 errorFunctions["l2"] = lambda X : np.sqrt(np.sum(np.abs(X.T)**2,axis=0))
 errorFunctions["linf"] = lambda X : np.max(np.abs(X.T),axis=0)
 errorFunctions["mean"] = lambda X : np.mean(X.T,axis=0)
 
+## Function returning all the available parameters configurations in an output files folder
+#  @return P Output files / parameters configurations matrix
+#  @return parametersList List of the parameters names
+#  @return parametersUnits List of the parameters units
+#  @return fileLits List of the output files names
 def getParametersConfigurations():
 
     #Get all output files

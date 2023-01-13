@@ -1,13 +1,27 @@
+#!/usr/bin/python3
+
+#System packages
+import sys
+import os
+import csv
+
+#Utility packages
 import matplotlib.pyplot as plt
 import numpy as np
 
-import sys
+#Mesh packages
+import meshio as meshio
+sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + "/scripts")
+from MeshTools import generateSphericMesh
 
-from AcousticDipoleTools import *
+#Custom tools packages
+from acousticTools import *
 from plotTools import *
 
-import meshio as meshio
-
+## Function plotting the error between computed values and analytical values for an output files folder according to a given parameter
+#  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
+#  @param analyticalFunctionID ID of the analytical function (c.f. acousticTools.py)
+#  @param errorID ID of the error function (c.f. plotTools.py)
 def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     #Get post-processing and analytical functions
@@ -19,7 +33,10 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     P,parametersList,parametersUnits,fileList = getParametersConfigurations()
 
     #Studied parameter ?
-    parameter = input("Abscissa parameter ? " + str(parametersList))
+    parameter = input("Abscissa parameter ? (default : resolution)" + str(parametersList))
+    if(parameter not in parametersList):
+        parameter = "resolution"
+
     try:
         parameterIndex = np.where(parametersList == parameter)[0][0]
     except:
@@ -175,10 +192,9 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
                 Theta.append(np.arctan2(np.sqrt(x*x + y*y),z))
                 Phi.append(np.arctan2(y,x))
 
-                #analyticalValues.append(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x)))
-                analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z)))
-                numericValuesA.append(np.complex(float(row[3]),float(row[4])))
-                numericValuesN.append(np.complex(float(row[5]),float(row[6])))               
+                analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),demid))
+                numericValuesA.append(complex(float(row[3]),float(row[4])))
+                numericValuesN.append(complex(float(row[5]),float(row[6])))               
 
         R = np.array(R)
         Theta = np.array(Theta)
@@ -198,8 +214,12 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
         if(verticesNumber):
             #TODO Non spheric mesh ?
             radiusIndex = np.where(parametersList=="radius")[0][0]
-            mesh = meshio.read(os.path.dirname(os.path.realpath(__file__)) + "/meshes/sphere/S_" + str(np.round(configuration[radiusIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
-            plotListP[configurationIndex][parameterValueIndex] = len(mesh.points)*scalingFactors[i]
+            try:
+                mesh = meshio.read(os.path.dirname(os.path.realpath(__file__)) + "/config/meshes/sphere/S_" + str(np.round(configuration[radiusIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
+                plotListP[configurationIndex][parameterValueIndex] = len(mesh.points)*scalingFactors[i]
+            except:
+                points,_ = generateSphericMesh(np.round(configuration[radiusIndex],4),np.round(configuration[0],4))
+                plotListP[configurationIndex][parameterValueIndex] = len(points)*scalingFactors[i]
         else:
             plotListP[configurationIndex][parameterValueIndex] = configuration[0]*scalingFactors[i]
 
@@ -231,9 +251,8 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
         if(len(np.unique(interestConfigurations[:,j])) == 1):
             title += name + " = " + str(interestConfigurations[0,j]) 
             if(parametersUnits[1:][j] != " "):
-                title += " (" + parametersUnits[1:][j] + ")"
-            title += " "
-    title = title[:-1]
+                title += " " + parametersUnits[1:][j] + " - "
+    title = title[:-2]
 
     scalingFunction = lambda x: x
     log = input("Log scale ? y/n")
@@ -273,7 +292,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
                 R2N = 1 - np.sum((scalingFunction(plotN[i][plotIndex]) - (VN[0]*scalingFunction(plotListP[i][plotIndex])+VN[1]))**2)/np.sum((scalingFunction(plotN[i][plotIndex]) - np.mean(scalingFunction(plotN[i][plotIndex])))**2)
 
                 #axAi.plot(plotListP[i][plotIndex],VA[0]*scalingFunction(plotListP[i][plotIndex])+VA[1],label="(" + str(np.round(VA[0],3)) + "," + str(np.round(VA[1],3)) + ")",color=cmap(i))
-                axNi.plot(plotListP[i][plotIndex],VN[0]*scalingFunction(plotListP[i][plotIndex])+VN[1],label="(" + str(np.round(VN[0],3)) + ","+ str(np.round(VN[1],3)) + "), R² = " + str(np.round(R2N,3)),color=cmap(i))
+                axNi.plot(plotListP[i][plotIndex],VN[0]*scalingFunction(plotListP[i][plotIndex])+VN[1],label=r"$\alpha$" + " = " + str(np.round(VN[0],3)) + ", " + r"$\beta$" + " = " + str(np.round(VN[1],3)) + ", $R^2$ = " + str(np.round(R2N,3)),color=cmap(i))
 
     titleCounter = 0
     for axAi,axNi in zip(axA,axN):
@@ -285,35 +304,41 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
             axNi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
 
         if(log=="y"):
-            axAi.set_ylabel("log(Average " + errorType + " error)")
+            axAi.set_ylabel("log(average " + errorType + " error)")
             axAi.set_xscale('log')  
-            axNi.set_ylabel("log(Average " + errorType + " error)")
+            axNi.set_ylabel("log(average " + errorType + " error)")
             axNi.set_xscale('log')  
             #axNi.set_ylim([-5,0])
         else:
-            axAi.set_ylabel("Average " + errorType + " error")
-            axNi.set_ylabel("Average " + errorType + " error")
+            axAi.set_ylabel("average " + errorType + " error")
+            axNi.set_ylabel("average " + errorType + " error")
     
         if(titleCounter < 1):
             axAi.set_title(title)
             axNi.set_title(title)  
             titleCounter += 1  
 
-
         axAi.legend()
         axNi.legend()
-
+    
+    plt.grid(linestyle = '--',which="minor")
+    plt.grid(which="major")
     plt.show()
 
-### MAIN ###
+if __name__ == "__main__": 
+    postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
+    if(postProcessing not in list((postProcessingFunctions.keys()))):
+        postProcessing = "id"
 
-postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
-if(postProcessing not in list((postProcessingFunctions.keys()))):
-    postProcessing = "id"
-analytical = input("Analytical function ? (default : PMn) " + str(list((analyticalFunctions.keys()))))
-if(analytical not in list((analyticalFunctions.keys()))):
-    analytical = "PMn"
-error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
-if(error not in list((errorFunctions.keys()))):
-    error = "l2"
-plotError(postProcessing,analytical,error)
+    if(os.path.basename(os.getcwd()).split("_")[1] in list((analyticalFunctions.keys()))):
+        analytical = os.path.basename(os.getcwd()).split("_")[1]
+    else:
+        analytical = input("Analytical function ? (default : monopole) " + str(list((analyticalFunctions.keys()))))
+        if(analytical not in list((analyticalFunctions.keys()))):
+            analytical = "monopole"
+
+    error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
+    if(error not in list((errorFunctions.keys()))):
+        error = "l2"
+
+    plotError(postProcessing,analytical,error)

@@ -1,12 +1,21 @@
+#!/usr/bin/python3
+
+#System packages
+import sys
+import csv
+
+#Utility packages
 import matplotlib.pyplot as plt
 import numpy as np
-import scipy.stats as st
 
-import sys
-
-from AcousticDipoleTools import *
+#Custom tools packages
+from acousticTools import *
 from plotTools import *
 
+## Function plotting the error between computed values and analytical values for an output files folder on the z=0 plane for a given parameters configuration
+#  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
+#  @param analyticalFunctionID ID of the analytical function (c.f. acousticTools.py)
+#  @param errorID ID of the error function (c.f. plotTools.py)
 def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
 
     #Get post-processing and analytical functions
@@ -68,10 +77,9 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
             Theta.append(np.arctan2(np.sqrt(x*x + y*y),z))
             Phi.append(np.arctan2(y,x))
 
-            #analyticalValues.append(analyticalFunction(f,demid,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x)))
-            analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z)))
-            numericValuesA.append(np.complex(float(row[3]),float(row[4])))
-            numericValuesN.append(np.complex(float(row[5]),float(row[6])))
+            analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),demid))
+            numericValuesA.append(complex(float(row[3]),float(row[4])))
+            numericValuesN.append(complex(float(row[5]),float(row[6])))
 
     R = np.array(R)
     Theta = np.array(Theta)
@@ -95,60 +103,73 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
 
     #Create plot
     Phi = np.append(Phi,Phi[0])
-    analyticalValues = np.append(analyticalValues,analyticalValues[0])
-    numericValuesA = np.append(numericValuesA,numericValuesA[0])
-    numericValuesN = np.append(numericValuesN,numericValuesN[0])
+    if(len(np.shape(analyticalValues)) == 1):
+        analyticalValues = np.append(analyticalValues,analyticalValues[0])
+        numericValuesA = np.append(numericValuesA,numericValuesA[0])
+        numericValuesN = np.append(numericValuesN,numericValuesN[0])
+    else:
+        analyticalValues = np.vstack((analyticalValues.T,analyticalValues.T[0])).T
+        numericValuesA = np.vstack((numericValuesA.T,numericValuesA.T[0])).T
+        numericValuesN = np.vstack((numericValuesN.T,numericValuesN.T[0])).T
 
     label = "Acoustic pressure field computed for : \n"
     for j,name in enumerate(parametersList):
-        label += name + " = " + str(configuration[j]) + " (" + parametersUnits[j] + ") "
-    label = label[:-1]
+        label += name + " = " + str(configuration[j]) + " " + parametersUnits[j] + " - "
+    label = label[:-2]
 
-    if(postProcessingID != "re/im"):
-        fig, ax = plt.subplots(subplot_kw={'projection': 'polar'})
+    def plotSphericFunction(function,functionName,unit):
+        fig = plt.figure()
+        ax = fig.add_subplot(111, polar=True)
 
-        ax.plot(Phi,analyticalValues,label="Analytical solution (" + postProcessingID+")",color='r')
-        ax.plot(Phi,numericValuesA,label="FreeFem analytical solution (" + postProcessingID+")",color='b')
-        ax.plot(Phi,numericValuesN,label="FreeFem numerical solution (" + postProcessingID+")",color='g')
-        maxAmp = max(max(analyticalValues),max(numericValuesA),max(numericValuesN))
-        minAmp = min(min(analyticalValues),min(numericValuesA),min(numericValuesN))
+        ax.plot(Phi,function(analyticalValues),label="Analytical solution " + functionName + " (" + unit + ")",color='r')
+        ax.plot(Phi,function(numericValuesA),label="FreeFem analytical solution " + functionName + " (" + unit + ")",color='b')
+        ax.plot(Phi,function(numericValuesN),label="FreeFem numerical solution " + functionName + " (" + unit + ")",color='g')
+        maxAmp = max(max(function(analyticalValues)),max(function(numericValuesA)),max(function(numericValuesN)))
+        minAmp = min(min(function(analyticalValues)),min(function(numericValuesA)),min(function(numericValuesN)))
+        delta = np.abs(maxAmp - minAmp)
 
-        ax.set_title(label)
-        ax.annotate('x', xy=(np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
-        ax.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmp), xycoords='data', annotation_clip=False, size = 12)
-        ax.set_ylim([minAmp*0.9,maxAmp*1.1])
+        maxAmp = maxAmp + 0.1*delta 
+        minAmp = minAmp - 0.1*delta 
 
-    else:
-        figR, axR = plt.subplots(subplot_kw={'projection': 'polar'})
-        figI, axI = plt.subplots(subplot_kw={'projection': 'polar'})
+        ax.set_title(label + "(" + functionName + ")")
 
-        axR.plot(Phi,np.real(analyticalValues),label="Analytical solution (Re)",color='r')
-        axR.plot(Phi,np.real(numericValuesA),label="FreeFem analytical solution (Re)",color='b')
-        axR.plot(Phi,np.real(numericValuesN),label="FreeFem numerical solution (Re)",color='g')
-        axI.plot(Phi,np.imag(analyticalValues),label="Analytical solution (Im)",color='r')
-        axI.plot(Phi,np.imag(numericValuesA),label="FreeFem analytical solution (Im)",color='b')
-        axI.plot(Phi,np.imag(numericValuesN),label="FreeFem numerical solution (Im)",color='g')
-        maxAmpR = max(max(np.real(analyticalValues)),max(np.real(numericValuesA)),max(np.real(numericValuesN)))
-        minAmpR = min(min(np.real(analyticalValues)),min(np.real(numericValuesA)),min(np.real(numericValuesN)))
-        maxAmpI = max(max(np.imag(analyticalValues)),max(np.imag(numericValuesA)),max(np.imag(numericValuesN)))
-        minAmpI = min(min(np.imag(analyticalValues)),min(np.imag(numericValuesA)),min(np.imag(numericValuesN)))
+        ax.set_rmin(minAmp)
+        ax.set_rmax(maxAmp)
+        ax.set_thetagrids(np.arange(0,360,45),['0',r'$\frac{\pi}{4}$',r'$\frac{\pi}{2}$',r'$\frac{3\pi}{4}$',r'$\pi$',r'$\frac{5\pi}{4}$',r'$\frac{3\pi}{2}$',r'$\frac{7\pi}{4}$'])
 
-        axR.set_title(label + "\n[Real part]")
-        axI.set_title(label + "\n[Imaginary part]")
-        axR.annotate('x', xy=(np.pi/40,maxAmpR), xycoords='data', annotation_clip=False, size = 12)
-        axR.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmpR), xycoords='data', annotation_clip=False, size = 12)
-        axI.annotate('x', xy=(np.pi/40,maxAmpI), xycoords='data', annotation_clip=False, size = 12)
-        axI.annotate('y', xy=(np.pi/2 - np.pi/40,maxAmpI), xycoords='data', annotation_clip=False, size = 12)
-        axR.set_ylim([minAmpR*0.9,maxAmpR*1.1])
-        axI.set_ylim([minAmpI*0.9,maxAmpI*1.1])
+        arrow = dict(arrowstyle='<-')
+        ax.annotate("",xy=(0,minAmp),xytext=(0,maxAmp),xycoords="data",arrowprops=arrow,va='center')
+        ax.annotate('x',xy=(0,minAmp),xytext=(-0.01,maxAmp - np.abs(maxAmp)*0.03),xycoords="data",va='top',ha='right')
+        ax.annotate("",xy=(np.pi/2,minAmp),xytext=(np.pi/2,maxAmp),xycoords="data",arrowprops=arrow,va='center')
+        ax.annotate('y',xy=(np.pi/2,minAmp),xytext=(np.pi/2+0.01,maxAmp - np.abs(maxAmp)*0.03),xycoords="data",va='top',ha='right')
 
-    plt.legend()
+        plt.grid(linestyle = '--')
+        plt.legend()
+
+    if(postProcessingID == "re/im"):
+        plotSphericFunction(lambda x : x[0],"real part","Pa")
+        plotSphericFunction(lambda x : x[1],"imaginary part","Pa")
+    elif(postProcessingID == "id"):
+        plotSphericFunction(np.abs,"modulus","Pa")
+        plotSphericFunction(np.angle,"phase","rad")
+    elif(postProcessingID == "mod"):
+        plotSphericFunction(lambda x:x,"modulus","Pa")
+    elif(postProcessingID == "phase"):
+        plotSphericFunction(lambda x:x,"phase","rad")
+
     plt.show()
 
-### MAIN ###
+if __name__ == "__main__": 
+    postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
+    if(postProcessing not in list((postProcessingFunctions.keys()))):
+        postProcessing = "id"
+    analytical = input("Analytical function ? (default : monopole) " + str(list((analyticalFunctions.keys()))))
+    if(analytical not in list((analyticalFunctions.keys()))):
+        analytical = "monopole"
+    error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
+    if(error not in list((errorFunctions.keys()))):
+        error = "l2"
 
-postProcessing = input("Post processing function ? " + str(list((postProcessingFunctions.keys()))))
-analytical = input("Analytical function ? " + str(list((analyticalFunctions.keys()))))
-error = input("Error function ? " + str(list((errorFunctions.keys()))))
-plotSphericCut(postProcessing,analytical,error)
+    plotSphericCut(postProcessing,analytical,error)
+
 
