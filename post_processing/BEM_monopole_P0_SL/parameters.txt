@@ -1,0 +1,3 @@
+frequency Hz
+resolution m
+radius m
