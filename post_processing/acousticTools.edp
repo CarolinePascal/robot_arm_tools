@@ -1,0 +1,50 @@
+//Sound parameters
+real Pref = 20e-6; //Pa
+real rho = 1.204;   //kg/m³ at 20°C
+real c = 343.4;   //m/s at 20°C
+
+//Sound source
+real Q = 1; //m³/s
+real dipoleMomentum = 1; //m⁴/s
+
+//Frequency parameters
+func real k(real frequency){return 2*pi*frequency/c;}
+func real omega(real frequency){return 2*pi*frequency;}
+
+//Geometrical parameters
+real demid = 0.0; //m -> To be defined as global variable !
+func rplus = sqrt(r*r + demid*demid - 2*r*demid*sin(theta)*cos(phi));
+func rminus = sqrt(r*r + demid*demid + 2*r*demid*sin(theta)*cos(phi));
+
+//Acoustic field functions
+func complex G(real frequency){return exp(1i*k(frequency)*r)/(4*pi*r);}
+func complex Gplus(real frequency){return exp(1i*k(frequency)*rplus)/(4*pi*rplus);}
+func complex Gminus(real frequency){return exp(1i*k(frequency)*rminus)/(4*pi*rminus);}
+
+//Monopole 
+func complex monopolePressure(real frequency){return (-1i*omega(frequency)*Q*rho)*G(frequency);}
+
+//Infinitesimal dipole
+func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*omega(frequency)*rho*k(frequency)*sin(theta)*cos(phi)*G(frequency)*(1/(1i*k(frequency)*r) - 1);}
+
+//Dipole
+func complex dipolePressure(real frequency){return -1i*omega(frequency)*Q*rho*(Gplus(frequency) - Gminus(frequency));}
+
+//Test
+func complex test(real frequency){return G(frequency);}
+
+func complex inputFunction(real frequency, string input)
+{
+    if(input == "monopole")
+    {
+        return monopolePressure(frequency);
+    }
+    else if(input == "dipole")
+    {
+        return dipolePressure(frequency);
+    }
+    else if(input == "infinitesimalDipole")
+    {
+        return infinitesimalDipolePressure(frequency);
+    }
+}
