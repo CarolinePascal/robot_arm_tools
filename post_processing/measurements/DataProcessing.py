@@ -80,8 +80,8 @@ for j in range(N):
                             quotechar='|', quoting=csv.QUOTE_MINIMAL)
 
             if(np.abs(Amp[i*N+j] - avg) > std and std > 1):
-                plusValue = np.complex(Re[i*N+j+1],Im[i*N+j+1])
-                minusValue = np.complex(Re[i*N+j-1],Im[i*N+j-1])
+                plusValue = complex(Re[i*N+j+1],Im[i*N+j+1])
+                minusValue = complex(Re[i*N+j-1],Im[i*N+j-1])
 
                 avgValue = ((np.abs(plusValue)+np.abs(minusValue))/2)*np.exp(1j*(np.angle(plusValue)+np.angle(minusValue))/2)
 
@@ -146,7 +146,7 @@ for sphere in Spheres:
         reader = csv.reader(csvfile, delimiter=',', quotechar='|')
 
         for row in reader:
-            P = np.complex(float(row[0]),float(row[1]))
+            P = complex(float(row[0]),float(row[1]))
             Amp.append(20*np.log10(np.abs(P/20e-6)))
 
 fig = plt.figure()
