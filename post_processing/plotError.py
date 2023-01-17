@@ -6,7 +6,6 @@ import os
 import csv
 
 #Utility packages
-import matplotlib.pyplot as plt
 import numpy as np
 
 #Mesh packages
@@ -245,7 +244,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     cmap = plt.cm.get_cmap('tab10')
 
-    title = errorType + " error (" + postProcessingID + ") computed with : \n" 
+    title = errorType + " error computed with : \n" 
 
     for j,name in enumerate(parametersList[1:]): 
         if(len(np.unique(interestConfigurations[:,j])) == 1):
@@ -253,11 +252,18 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
             if(parametersUnits[1:][j] != " "):
                 title += " " + parametersUnits[1:][j] + " - "
     title = title[:-2]
+    title = title[0].upper() + title[1:]
 
     scalingFunction = lambda x: x
     log = input("Log scale ? y/n")
     if(log == "y"):
-        scalingFunction = lambda x: np.log10(x)
+        if(errorType == "absolute" and (postProcessingID == "id" or postProcessingID == "mod")):
+            scalingFunction = lambda x: 20*np.log10(x/Pref)
+        else:
+            scalingFunction = lambda x: np.log10(x)   
+
+    if(log != "y" and errorType == "relative"):
+        scalingFunction = lambda x: 100*x  
 
     linearRegression = input("Linear regression ? y/n")
 
@@ -297,32 +303,47 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     titleCounter = 0
     for axAi,axNi in zip(axA,axN):
         if(normalisation == "y"):
-            axAi.set_xlabel(parameter + r"/$\lambda$")
-            axNi.set_xlabel(parameter + r"/$\lambda$")
+            axAi.set_xlabel(parameter + "/" + r"$\lambda$")
+            axNi.set_xlabel(parameter + "/" + r"$\lambda$")
         else:
             axAi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
             axNi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
 
         if(log=="y"):
-            axAi.set_ylabel("log(average " + errorType + " error)")
-            axAi.set_xscale('log')  
-            axNi.set_ylabel("log(average " + errorType + " error)")
-            axNi.set_xscale('log')  
-            #axNi.set_ylim([-5,0])
+            axAi.set_xscale('log') 
+            axNi.set_xscale('log')
+            if(errorType == "absolute" and (postProcessingID == "id" or postProcessingID == "mod")):
+                axAi.set_ylabel("average " + errorType + " error (dB)")
+                axNi.set_ylabel("average " + errorType + " error (dB)")
+            else:
+                axAi.set_ylabel("log(average " + errorType + " error)")
+                axNi.set_ylabel("log(average " + errorType + " error)")
+              
         else:
-            axAi.set_ylabel("average " + errorType + " error")
-            axNi.set_ylabel("average " + errorType + " error")
+            if(errorType == "relative"):
+                tmpUnit = "(%)"
+            else:
+                if(postProcessingID == "phase"):
+                    tmpUnit = "(rad)"
+                else:
+                    tmpUnit = "(Pa)"
+            axAi.set_ylabel("average " + errorType + " error " + tmpUnit)
+            axNi.set_ylabel("average " + errorType + " error " + tmpUnit)
     
         if(titleCounter < 1):
             axAi.set_title(title)
-            axNi.set_title(title)  
+            axNi.set_title(title)
             titleCounter += 1  
 
-        axAi.legend()
-        axNi.legend()
+        if(len(axAi.get_legend_handles_labels()[0]) != 0 or len(axAi.get_legend_handles_labels()[1]) != 0):
+            axAi.legend()
+        if(len(axNi.get_legend_handles_labels()[0]) != 0 or len(axNi.get_legend_handles_labels()[1]) != 0):
+            axNi.legend()
     
-    plt.grid(linestyle = '--',which="minor")
-    plt.grid(which="major")
+    axAi.grid(which="major")
+    axAi.grid(linestyle = '--',which="minor")
+    axNi.grid(which="major")
+    axNi.grid(linestyle = '--',which="minor")
     plt.show()
 
 if __name__ == "__main__": 

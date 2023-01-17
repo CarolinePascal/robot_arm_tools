@@ -7,11 +7,11 @@ import os
 #Utility packages
 import numpy as np
 
-#Fancy plot functions
-from fig_config import (
-    add_grid,
-    figure_features,
-)
+#Fancy plot parameter
+import matplotlib.pyplot as plt
+plt.rc('font', **{'size': 12, 'family': 'serif', 'serif': ['Computer Modern']})
+plt.rc('text', usetex=True)
+
 
 #Post-processing functions
 postProcessingFunctions = {}
@@ -24,6 +24,7 @@ postProcessingFunctions["id"] = lambda X : X
 errorFunctions = {}
 errorFunctions["l2"] = lambda X : np.sqrt(np.sum(np.abs(X.T)**2,axis=0))
 errorFunctions["linf"] = lambda X : np.max(np.abs(X.T),axis=0)
+errorFunctions["RMS"] = lambda X : np.sqrt(np.mean(np.abs(X.T)**2,axis=0))
 errorFunctions["mean"] = lambda X : np.mean(X.T,axis=0)
 
 ## Function returning all the available parameters configurations in an output files folder

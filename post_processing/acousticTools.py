@@ -9,6 +9,8 @@ rho = 1.204
 Q = 1
 dipoleMomentum = 1
 
+Pref = 2e-5
+
 ###Acoustic dipole functions
 rplus = lambda demid,r,theta,phi : np.sqrt(r**2 + demid**2 - 2*r*demid*np.sin(theta)*np.cos(phi))
 rminus = lambda demid,r,theta,phi : np.sqrt(r**2 + demid**2 + 2*r*demid*np.sin(theta)*np.cos(phi))

@@ -5,7 +5,6 @@ import sys
 import csv
 
 #Utility packages
-import matplotlib.pyplot as plt
 import numpy as np
 
 #Custom tools packages
@@ -96,10 +95,11 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
     numericValuesA = postProcessingFunction(np.delete(numericValuesA,outliers))
 
     #Compute error over the z=0 plane
-    print("Absolute error FreeFem analytical solution = " + str(errorFunction(numericValuesA - analyticalValues)))
-    print("Absolute error FreeFem numerical solution = " +  str(errorFunction(numericValuesN - analyticalValues)))
-    print("Relative error FreeFem analytical solution = " + str(errorFunction((numericValuesA - analyticalValues)/analyticalValues)))
-    print("Relative error FreeFem numerical solution = " +  str(errorFunction((numericValuesN - analyticalValues)/analyticalValues)))
+    tmpUnit = "Pa" if postProcessingID != "phase" else "rad"
+    print("Absolute error FreeFem analytical solution = " + str(np.round(errorFunction(numericValuesA - analyticalValues),3)) + " (" + tmpUnit + ")")
+    print("Absolute error FreeFem numerical solution = " +  str(np.round(errorFunction(numericValuesN - analyticalValues),3)) + " (" + tmpUnit + ")")
+    print("Relative error FreeFem analytical solution = " + str(np.round(100*errorFunction((numericValuesA - analyticalValues)/analyticalValues),3)) + " %")
+    print("Relative error FreeFem numerical solution = " +  str(np.round(100*errorFunction((numericValuesN - analyticalValues)/analyticalValues),3)) + " %")
 
     #Create plot
     Phi = np.append(Phi,Phi[0])
@@ -128,8 +128,8 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
         minAmp = min(min(function(analyticalValues)),min(function(numericValuesA)),min(function(numericValuesN)))
         delta = np.abs(maxAmp - minAmp)
 
-        maxAmp = maxAmp + 0.1*delta 
-        minAmp = minAmp - 0.1*delta 
+        maxAmp = maxAmp + 0.5*delta 
+        minAmp = minAmp - 0.5*delta 
 
         ax.set_title(label + "(" + functionName + ")")
 
