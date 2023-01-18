@@ -63,7 +63,7 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
     faces = hull.simplices
 
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -92,7 +92,7 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
             sortedIndex = np.argsort(np.arctan2(meshPoses[pointsIndex,2],meshPoses[pointsIndex,1]))
             sortedMeshPoses = np.vstack((sortedMeshPoses,meshPoses[pointsIndex[sortedIndex]]))
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".yaml"
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -167,7 +167,7 @@ if __name__ == "__main__":
         print("resolution = " + str(resolution))
         print("element type = " + elementType)
 
-    if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.realpath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".yaml")) or info):
+    if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".yaml")) or info):
         vertices,faces = generateSphericMesh(radius, resolution, elementType, saveMesh, saveYAML)
         if(info):
             getMeshInfo(vertices,faces)
