@@ -25,14 +25,27 @@
 		<param name="environmentFileName" value=""/>
 	</node>
 
+	<!-- MESH HANDLING -->
+	<arg name="mesh_generation" default="automatic"/>
+	<arg name="mesh_type" default="sphere"/>
+	<arg name="mesh_size" default="0.1"/>
+	<arg name="mesh_resolution" default="0.01"/>
+
+	<arg name="mesh_path" default=""/>
+	<arg name="mesh_path" value="$(find robot_arm_acoustic)/config/meshes/$(arg mesh_type)/S_$(arg mesh_size)_$(arg mesh_resolution).yaml" if="$(eval arg('mesh_generation') != 'automatic')"/>
+	<param name="meshPath" value="$(arg mesh_path)"/>
+	<node pkg="robot_arm_acoustic" type="MeshTools.py" name="mesh_tools" args="sphere $(arg mesh_size) $(arg mesh_resolution) P0 0 1 0" if="$(eval arg('mesh_generation') != 'automatic')"/>
+
+	<node pkg="robot_arm_acoustic" type="MeshCreationServer.py" name="mesh_creation_server" output="screen" if="$(eval arg('mesh_generation') == 'automatic')"/>
+	
 	<!-- MAIN NODE -->
 	<param name="measurementServerName" value="/sound_measurement_server"/>
-	<param name="storageFolderName" value="/tmp/DirectivityMeasurements/"/>
+	<param name="storageFolderName" value="/tmp/SoundMeasurements/"/>
 	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_directivity_measurement_node" name="robot_arm_acoustic_directivity_measurement_node" output="screen"/>
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_mesh_measurement_node" name="robot_arm_acoustic_mesh_measurement_node" output="screen"/>
 
 	<!-- Run Rviz --> 
-    <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen">
+    <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node_environment" output="screen">
 		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/AnechoicRoom.yaml"/>
 	</node>
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_acoustic)/config/AcousticSetup.rviz"/>

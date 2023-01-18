@@ -3,15 +3,18 @@
 
 	<!-- GENERAL ARGUMENTS -->
 	<arg name="robot_name" default="panda"/>
-	<arg name="tool_name" default="microBK"/>
+	<arg name="tool_name" default="microGRAS"/>
 	<arg name="simulation" default="false"/>
-	<arg name="safety_distance" default="0.03"/>
+	<arg name="calibration" default="true"/>
+	<arg name="safety_distance" default="0.01"/>
 
 	<!-- ROBOT SETUP -->
 	<include file="$(find robot_arm_tools)/launch/Setup_$(arg robot_name).launch">
 		<arg name="tool_name" value="$(arg tool_name)"/>
 		<arg name="simulation" value="$(arg simulation)"/>
+		<arg name="calibration" value="$(arg calibration)"/>
 		<arg name="safety_distance" value="$(arg safety_distance)"/>
+		<arg name="planner_name" default="RRTConnect"/>
 	</include>
 	
 	<!-- MEASUREMENT SERVER -->
@@ -25,8 +28,9 @@
 	</node>
 
 	<!-- Run Rviz --> 
-    <param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/AnechoicRoom.yaml"/>
-    <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen"/>
+    <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen">
+		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/AnechoicRoom.yaml"/>
+	</node>
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_acoustic)/config/AcousticSetup.rviz"/>
 
 </launch>
