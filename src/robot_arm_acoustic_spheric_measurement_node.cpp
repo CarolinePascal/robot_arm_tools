@@ -1,16 +1,8 @@
 #include <ros/ros.h>
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
-#include <robot_arm_tools/RobotVisualTools.h>
 
-#include <std_srvs/Empty.h>
-
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
-#include <iostream>
-#include <fstream>
-
-#include <cmath>
+#include "AnechoicRoomSupportSetup.hpp"
 
 int main(int argc, char **argv)
 {
@@ -20,26 +12,32 @@ int main(int argc, char **argv)
     spinner.start();
     ros::WallDuration(1.0).sleep();
 
-    //Robot initialisation TODO More generic approach
+    //Robot initialisation
     Robot robot;
-    RobotVisualTools visualTools;
 
-    //Get the object radius, pose and the trajectory radius
-    std::vector<double> poseReference, poseObject;
-    double radiusObject, radiusTrajectory, distanceToObject;
-
+    //Get studied object pose
     ros::NodeHandle n;
-    if(!n.getParam("poseReference",poseObject))
+    std::vector<double> objectPoseArray;
+    if(!n.getParam("objectPose",objectPoseArray))
     {
-        ROS_ERROR("Unable to retrieve measurements reference pose !");
+        ROS_ERROR("Unable to retrieve studied object pose !");
         throw std::runtime_error("MISSING PARAMETER");
     }
 
-    if(!n.getParam("radiusObject",radiusObject))
-    {
-        ROS_ERROR("Unable to retrieve measured object radius !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
+    tf2::Quaternion quaternion;
+    quaternion.setRPY(objectPoseArray[3],objectPoseArray[4],objectPoseArray[5]);
+
+    geometry_msgs::Pose objectPose;
+    objectPose.position.x = objectPoseArray[0];
+    objectPose.position.y = objectPoseArray[1];
+    objectPose.position.z = objectPoseArray[2];
+    objectPose.orientation =  tf2::toMsg(quaternion);
+
+    addTopSupport(robot,objectPose);
+
+    //Get trajectory parameters
+    double radiusTrajectory;
+    int trajectoryStepsNumber;
 
     if(!n.getParam("radiusTrajectory",radiusTrajectory))
     {
@@ -47,72 +45,16 @@ int main(int argc, char **argv)
         throw std::runtime_error("MISSING PARAMETER");
     }
 
-    if(!n.getParam("distanceToObject",distanceToObject))
+    if(!n.getParam("trajectoryStepsNumber",trajectoryStepsNumber))
     {
-        ROS_ERROR("Unable to retrieve distance to object !");
+        ROS_ERROR("Unable to retrieve trajectory steps number !");
         throw std::runtime_error("MISSING PARAMETER");
     }
 
-    geometry_msgs::Pose objectPose;
-    objectPose.position.x = poseObject[0];
-    objectPose.position.y = poseObject[1];
-    objectPose.position.z = poseObject[2] + distanceToObject;
-    
-    if(radiusObject != 0)
-    {
-        visualTools.addSphere("collisionSphere", objectPose, radiusObject + 0.025, false);
-    }
-
-    //Create spherical scanning waypoints poses
-    tf2::Quaternion leftQuaternion, rightQuaternion;
-    leftQuaternion.setRPY(M_PI/2,0,atan2(objectPose.position.y,objectPose.position.x));
-    rightQuaternion.setRPY(-M_PI/2,0,atan2(objectPose.position.y,objectPose.position.x));
-
-    int N=10;   //Waypoints number
+    //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
-    /*
-    //Close field measurements
-    double dinclination = M_PI / (N-1);
-
-    for(int i = 0; i < N; i++)
-    {
-        sphericInclinationTrajectory(objectPose, radiusTrajectory, i*dinclination, 0, 2*M_PI, N*(i > 0 ? 1 : 0), waypoints); //1+round((N-1)*sin(i*dinclination))   
-    }
-
-    //Post-processing
-    rotateTrajectory(waypoints,objectPose.position,-M_PI/2,0,atan2(objectPose.position.y,objectPose.position.x));
-
-    for(int i = 0; i < waypoints.size(); i++)
-    {      
-        if(waypoints[i].position.x*objectPose.position.y/objectPose.position.x > waypoints[i].position.y)
-        {
-            waypoints[i].orientation = tf2::toMsg(rightQuaternion); 
-        }
-        else
-        {
-            waypoints[i].orientation = tf2::toMsg(leftQuaternion); 
-        }
-    }
-    */
-
-    //Far field measurement
-    sphericAzimuthTrajectory(objectPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, N, waypoints);
-
-    //Get the measurement server name
-    std::string measurementServerName, storageFolderName;
-    if(!n.getParam("measurementServerName",measurementServerName))
-    {
-        ROS_ERROR("Unable to retrieve measurement server name !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    //Get the storage folder name
-    if(!n.getParam("storageFolderName",storageFolderName))
-    {
-        ROS_ERROR("Unable to retrieve positions file name !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
+    sphericAzimuthTrajectory(objectPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, trajectoryStepsNumber, waypoints);
     
     //Main loop
     robot.runMeasurementRountine(waypoints,false,true);
