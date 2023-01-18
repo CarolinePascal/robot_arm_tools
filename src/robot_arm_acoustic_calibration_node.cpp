@@ -1,6 +1,5 @@
 #include <ros/ros.h>
 #include <robot_arm_tools/Robot.h>
-#include <robot_arm_tools/RobotTrajectories.h>
 
 #include <std_srvs/Empty.h>
 
@@ -40,7 +39,7 @@ int main(int argc, char **argv)
     //Switch the robot to manual control mode (user action required)
     do 
     {
-        ROS_INFO("Switch the robot to manual control mode, and move the tool to its reference position - Press enter to continue");
+        ROS_INFO("Switch the robot to manual control mode, and move the tool to its reference pose - Press enter to continue");
     } while (std::cin.get() != '\n');
 
     //Run the microphone calibration measurement procedure
@@ -57,7 +56,7 @@ int main(int argc, char **argv)
         return 1;
     }
 
-    //Print reference position
+    //Print reference pose
     std::string endEffectorName;
     if(!n.getParam("endEffectorName",endEffectorName))
     {
@@ -80,9 +79,15 @@ int main(int argc, char **argv)
     double roll, pitch, yaw;
     tf2::Matrix3x3(quaternion).getRPY(roll, pitch, yaw);
 
-    ROS_INFO("Reference position : \n X : %f \n Y : %f \n Z : %f \n RX : %f \n RY : %f \n RZ : %f",transform.translation.x,transform.translation.y,transform.translation.z,roll,pitch,yaw);
+    ROS_INFO("Reference pose : \n X : %f \n Y : %f \n Z : %f \n RX : %f \n RY : %f \n RZ : %f",transform.translation.x,transform.translation.y,transform.translation.z,roll,pitch,yaw);
 
-    //Save reference position
+    double objectSize, distanceToObject;
+    std::cout << "Distance between reference pose and the studied object : " << std::endl;
+    std::cin >> distanceToObject;
+    std::cout << "Characteristic size of the studied object : " << std::endl;
+    std::cin >> objectSize;
+
+    //Save reference pose [legacy]
     std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/AcquisitionParameters.yaml";
     YAML::Node config;
     try
@@ -95,18 +100,78 @@ int main(int argc, char **argv)
         config = YAML::LoadFile(yamlFile);
     }
 
-    if (config["poseReference"]) 
+    if (config["referencePose"]) 
     {
-        config.remove("poseReference");
+        config.remove("referencePose");
     }
-    config["poseReference"].push_back(transform.translation.x);
-    config["poseReference"].push_back(transform.translation.y);
-    config["poseReference"].push_back(transform.translation.z);
-    config["poseReference"].push_back(roll);
-    config["poseReference"].push_back(pitch);
-    config["poseReference"].push_back(yaw);
+    config["referencePose"].push_back(transform.translation.x);
+    config["referencePose"].push_back(transform.translation.y);
+    config["referencePose"].push_back(transform.translation.z);
+    config["referencePose"].push_back(roll);
+    config["referencePose"].push_back(pitch);
+    config["referencePose"].push_back(yaw);
 
     std::ofstream fout(yamlFile);   
+    fout << config;
+
+    //Create a dedicated environment file for the studied object
+    yamlFile = ros::package::getPath("robot_arm_acoustic")+"/environments/StudiedObject.yaml";
+    try
+    {
+        config = YAML::LoadFile(yamlFile);
+    }
+    catch(const std::exception& e)
+    {
+        std::ofstream {yamlFile};
+        config = YAML::LoadFile(yamlFile);
+    }
+
+    //Studied object
+    if (config["studiedObject"]) 
+    {
+        config.remove("studiedObject");
+    }
+    YAML::Node configObject = config["studiedObject"];
+    configObject["type"] = "sphere";
+    
+    YAML::Node configObjectPose = configObject["pose"];
+
+    //Get reference pose orientation as matrix
+    tf2::Matrix3x3 matrix(quaternion);
+
+    configObjectPose["x"] = transform.translation.x + (distanceToObject+objectSize)*matrix[0][2];
+    configObjectPose["y"] = transform.translation.y + (distanceToObject+objectSize)*matrix[1][2];
+    configObjectPose["z"] = transform.translation.z + (distanceToObject+objectSize)*matrix[2][2];
+    configObjectPose["rx"] = 0.0;
+    configObjectPose["ry"] = 0.0;
+    configObjectPose["rz"] = 0.0;
+
+    YAML::Node configObjectSize = configObject["size"];
+    configObjectSize["radius"] = objectSize;
+
+    configObject["collisions"] = true;
+    configObject["robot_base_collisions"] = false;
+
+    //Studied object global parameters
+    if (config["objectPose"]) 
+    {
+        config.remove("objectPose");
+    }
+    config["objectPose"] = distanceToObject;
+    config["objectPose"].push_back(transform.translation.x + (distanceToObject+objectSize)*matrix[0][2]);
+    config["objectPose"].push_back(transform.translation.y + (distanceToObject+objectSize)*matrix[1][2]);
+    config["objectPose"].push_back(transform.translation.z + (distanceToObject+objectSize)*matrix[2][2]);
+    config["objectPose"].push_back(0.0);
+    config["objectPose"].push_back(0.0);
+    config["objectPose"].push_back(0.0);
+
+    if (config["objectSize"]) 
+    {
+        config.remove("objectSize");
+    }
+    config["objectSize"] = objectSize;
+
+    fout = std::ofstream(yamlFile);   
     fout << config;
 
     ros::waitForShutdown();
