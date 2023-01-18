@@ -1,14 +1,9 @@
 #include <ros/ros.h>
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
-#include <robot_arm_tools/RobotVisualTools.h>
 
-#include <std_srvs/Empty.h>
-
-#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
-
-#include <iostream>
-#include <fstream>
+#include "robot_arm_acoustic/CreateMesh.h"
+#include "AnechoicRoomSupportSetup.hpp"
 
 #include <cmath>
 
@@ -20,75 +15,75 @@ int main(int argc, char **argv)
     spinner.start();
     ros::WallDuration(1.0).sleep();
 
-    //Robot initialisation TODO More generic approach
+    //Robot initialisation
     Robot robot;
-    RobotVisualTools visualTools;
-
-    //Get the object radius, pose and the trajectory radius
-    std::vector<double> poseReference, poseObject;
-    double radiusObject, distanceToObject;
-
-    ros::NodeHandle n;
-    if(!n.getParam("poseReference",poseObject))
-    {
-        ROS_ERROR("Unable to retrieve measurements reference pose !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    if(!n.getParam("radiusObject",radiusObject))
-    {
-        ROS_ERROR("Unable to retrieve measured object radius !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    if(!n.getParam("distanceToObject",distanceToObject))
-    {
-        ROS_ERROR("Unable to retrieve distance to object !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    geometry_msgs::Pose objectPose, supportPose;
-    objectPose.position.x = poseObject[0];
-    objectPose.position.y = poseObject[1];
-    objectPose.position.z = poseObject[2] + distanceToObject;
-    supportPose = objectPose;
-    supportPose.position.z += 0.5;
     
-    if(radiusObject != 0)
+    //Get studied object pose
+    ros::NodeHandle n;
+    std::vector<double> objectPoseArray;
+    
+    if(!n.getParam("objectPose",objectPoseArray))
     {
-        visualTools.addSphere("collisionSphere", objectPose, radiusObject, false);
-        visualTools.addCylinder("collisionSupport", supportPose, 0.01, 1.0, false);
+        ROS_ERROR("Unable to retrieve studied object pose !");
+        throw std::runtime_error("MISSING PARAMETER");
     }
 
+    tf2::Quaternion quaternion;
+    quaternion.setRPY(objectPoseArray[3],objectPoseArray[4],objectPoseArray[5]);
+
+    geometry_msgs::Pose objectPose;
+    objectPose.position.x = objectPoseArray[0];
+    objectPose.position.y = objectPoseArray[1];
+    objectPose.position.z = objectPoseArray[2];
+    objectPose.orientation =  tf2::toMsg(quaternion);
+
+    addTopSupport(robot,objectPose);
+
+    //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
+    //Get mesh file path, or generate mesh and get its file path
     std::string meshPath;
-    if(!n.getParam("meshPath",meshPath))
+    try
     {
-        ROS_ERROR("Unable to retrieve mesh path !");
-        throw std::runtime_error("MISSING PARAMETER");
+        //Custom mode
+        if(!n.getParam("meshPath",meshPath))
+        {
+            ROS_ERROR("Unable to retrieve mesh path !");
+            throw std::runtime_error("MISSING PARAMETER");
+        }
+        ros::Duration(10.0).sleep();
     }
+    catch(const std::exception& e)
+    {
+        //Automatic mode
+        double objectSize;
+        if(!n.getParam("objectSize",objectSize))
+        {
+            ROS_ERROR("Unable to retrieve studied object size !");
+            throw std::runtime_error("MISSING PARAMETER");
+        }
 
-    ros::Duration(10.0).sleep();
-
+        ros::ServiceClient client = n.serviceClient<robot_arm_acoustic::CreateMesh>("/mesh_creation_server");
+        robot_arm_acoustic::CreateMesh srv;
+        srv.request.type = "sphere";
+        srv.request.size = round(10000 * objectSize + 0.05)/10000;
+        srv.request.resolution = 0.01;
+        if (client.call(srv))
+        {
+            ROS_INFO("Mesh successfully generated !");
+            meshPath = srv.response.mesh_path;
+        }
+        else
+        {
+            ROS_ERROR("Failed to generate mesh !");
+            throw std::runtime_error("SERVICE FAILURE");
+        }
+    }
+    
     trajectoryFromFile(meshPath, waypoints);
     translateTrajectory(waypoints, objectPose.position.x, objectPose.position.y, objectPose.position.z);
 
-    //Get the measurement server name
-    std::string measurementServerName, storageFolderName;
-    if(!n.getParam("measurementServerName",measurementServerName))
-    {
-        ROS_ERROR("Unable to retrieve measurement server name !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    //Get the storage folder name
-    if(!n.getParam("storageFolderName",storageFolderName))
-    {
-        ROS_ERROR("Unable to retrieve positions file name !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-    
     //Main loop
     robot.runMeasurementRountine(waypoints,false,true);
 
