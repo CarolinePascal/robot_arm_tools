@@ -2,6 +2,7 @@ import measpy as ms
 
 import glob
 import os
+import sys
 
 import csv
 
@@ -11,11 +12,17 @@ import matplotlib.pyplot as plt
 cmap = plt.get_cmap("tab10")
 
 Data = []   
-fmin = 150  #Anechoic room cutting frquency
-fmax =  10000   #PU probe upper limit
-f = 0
+#fmin = 150  #Anechoic room cutting frquency
+#fmax =  10000   #PU probe upper limit
+fmin = 20
+fmax = 20000
 
-octBand = 3
+try:
+        f = float(sys.argv[1])
+except:
+        print("Defaulting to f = " + str(f) + " Hz")
+
+octBand = 12
 
 Files = sorted(glob.glob("*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 
@@ -27,11 +34,7 @@ for i,file in enumerate(Files):
         p = M.data["In1"]
         v = M.data["In2"]
 
-        tfe = p.tfe_welch(v)
-        f = tfe.freqs[4]
-        print(f)
-
-        Data.append(tfe.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex)
+        Data.append(p.tfe_welch(v).nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex)
 
 X = []
 Y = []
