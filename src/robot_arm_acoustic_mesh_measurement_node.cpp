@@ -1,9 +1,7 @@
 #include <ros/ros.h>
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
-
-#include "robot_arm_acoustic/CreateMesh.h"
-#include "AnechoicRoomSupportSetup.hpp"
+#include <robot_arm_tools/RobotVisualTools.h>
 
 #include <cmath>
 
@@ -17,6 +15,7 @@ int main(int argc, char **argv)
 
     //Robot initialisation
     Robot robot;
+    RobotVisualTools robotVisualTools;
     
     //Get studied object pose
     ros::NodeHandle n;
@@ -37,58 +36,66 @@ int main(int argc, char **argv)
     objectPose.position.z = objectPoseArray[2];
     objectPose.orientation =  tf2::toMsg(quaternion);
 
-    addTopSupport(robot,objectPose);
+    double meshSize, objectSize;
+    std::string meshType;
+    if(!n.getParam("objectSize",objectSize))
+    {
+        ROS_ERROR("Unable to retrieve studied object size !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+    if(!n.getParam("meshSize",meshSize))
+    {
+        ROS_ERROR("Unable to retrieve mesh size !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+    if(!n.getParam("meshType",meshType))
+    {
+        ROS_ERROR("Unable to retrieve mesh type !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    if(objectSize > meshSize)
+    {
+        ROS_WARN("Mesh size below object size : some poses might not be reachable !");
+    }
+
+    if(meshType=="sphere")
+    {
+        robotVisualTools.addSphere("meshSphere",objectPose,meshSize/2,true);
+    }
 
     //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
     //Get mesh file path, or generate mesh and get its file path
     std::string meshPath;
-    try
+    if(!n.getParam("meshPath",meshPath))
     {
-        //Custom mode
-        if(!n.getParam("meshPath",meshPath))
-        {
-            ROS_ERROR("Unable to retrieve mesh path !");
-            throw std::runtime_error("MISSING PARAMETER");
-        }
-        ros::Duration(10.0).sleep();
+        ROS_ERROR("Unable to retrieve mesh path !");
+        throw std::runtime_error("MISSING PARAMETER");
     }
-    catch(const std::exception& e)
-    {
-        //Automatic mode
-        double objectSize;
-        if(!n.getParam("objectSize",objectSize))
-        {
-            ROS_ERROR("Unable to retrieve studied object size !");
-            throw std::runtime_error("MISSING PARAMETER");
-        }
+    
+    double startTime = ros::WallTime::now().toSec();
 
-        ros::ServiceClient client = n.serviceClient<robot_arm_acoustic::CreateMesh>("/mesh_creation_server");
-        robot_arm_acoustic::CreateMesh srv;
-        srv.request.type = "sphere";
-        srv.request.size = round(10000 * objectSize + 0.05)/10000;
-        srv.request.resolution = 0.01;
-        if (client.call(srv))
+    while(ros::WallTime::now().toSec() - startTime < 10.0)
+    {
+        try
         {
-            ROS_INFO("Mesh successfully generated !");
-            meshPath = srv.response.mesh_path;
+            trajectoryFromFile(meshPath, waypoints);
+            break;
         }
-        else
+        catch(const std::exception& e)
         {
-            ROS_ERROR("Failed to generate mesh !");
-            throw std::runtime_error("SERVICE FAILURE");
+            ros::WallDuration(2.0).sleep();
         }
     }
     
-    trajectoryFromFile(meshPath, waypoints);
     translateTrajectory(waypoints, objectPose.position.x, objectPose.position.y, objectPose.position.z);
 
     //Main loop
-    robot.runMeasurementRountine(waypoints,false,true);
+    robot.runMeasurementRoutine(waypoints,false,true);
 
-    //Shut down ROS node
-    robot.init();   
-    ros::waitForShutdown();
+    //Shut down ROS node 
+    ros::shutdown();
     return 0;
 }
