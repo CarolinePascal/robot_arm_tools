@@ -2,14 +2,14 @@ support:
   type: box
   pose:
     x: 0.0
-    y: 0.07
+    y: 0.0
     z: -0.5
     rx: 0.0
     ry: 0.0
     rz: 0.0
   size:
-    dx: 0.18
-    dy: 1.0
+    dx: 0.20
+    dy: 1.5
     dz: 1.0
   collisions: true
   robot_base_collisions: false
@@ -18,4 +18,10 @@ ceiling:
   type: border
   axis: z
   offset: 1.0
+  collisions: true
+
+door:
+  type: border
+  axis: x
+  offset: -0.6
   collisions: true
