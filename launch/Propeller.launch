@@ -21,11 +21,10 @@
 	<node pkg="robot_arm_acoustic" type="PropellerMeasurementServer.py" name="propeller_measurement_server" output="screen"/>
 
 	<!-- MAIN NODE -->
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen">
-		<param name="measurementServerName" value="/propeller_measurement_server"/>
-		<param name="storageFolderName" value="/tmp/PropellerMeasurements/"/>
-		<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
-	</node>
+	<param name="measurementServerName" value="/propeller_measurement_server"/>
+	<param name="measurementServerStorageFolder" value="/tmp/PropellerMeasurements/"/>
+	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 
     <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen">

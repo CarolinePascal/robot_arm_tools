@@ -26,11 +26,10 @@
 	</node>
 
 	<!-- MAIN NODE -->
-	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen">
-    	<param name="measurementServerName" value="/sound_measurement_server"/>
-		<param name="storageFolderName" value="/tmp/SoundMeasurements/"/>
-		<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
-	</node>
+	<param name="measurementServerName" value="/sound_measurement_server"/>
+	<param name="measurementServerStorageFolder" value="/tmp/SoundMeasurements/"/>
+	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 
     <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen">

@@ -20,18 +20,6 @@ int main(int argc, char **argv)
     //Robot initialisation
     Robot robot;
 
-    //Get ROS service calibration server name and create client
-    ros::NodeHandle n;
-    std::string measurementServerName;
-    if(!n.getParam("measurementServerName",measurementServerName))
-    {
-        ROS_ERROR("Unable to retrieve measurement server name !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    ros::ServiceClient calibrationClient = n.serviceClient<std_srvs::Empty>(measurementServerName);
-    calibrationClient.waitForExistence();
-
     //Tf listenner initialisation
     tf2_ros::Buffer tfBuffer;
     tf2_ros::TransformListener tfListener(tfBuffer);
@@ -42,44 +30,15 @@ int main(int argc, char **argv)
         ROS_INFO("Switch the robot to manual control mode, and move the tool to its reference pose - Press enter to continue");
     } while (std::cin.get() != '\n');
 
-    //Run the microphone calibration measurement procedure
-    std_srvs::Empty request;
-
-    if(calibrationClient.call(request))
-    {
-        ROS_INFO("Calibration - done !");
-    }
-    else
-    {
-        throw std::runtime_error("ERROR DURING CALIBRATION !");
-        ros::waitForShutdown();
-        return 1;
-    }
-
     //Print reference pose
-    std::string endEffectorName;
-    if(!n.getParam("endEffectorName",endEffectorName))
-    {
-        ROS_ERROR("Unable to retrieve measurement server name !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-    geometry_msgs::Transform transform;
-
-    try
-    {
-        transform = tfBuffer.lookupTransform("world", endEffectorName, ros::Time(0), ros::Duration(5.0)).transform;
-    } 
-    catch (tf2::TransformException &ex) 
-    {
-        throw std::runtime_error("CANNOT RETRIVE SEEKED TRANSFORM !");
-    }
+    geometry_msgs::Pose referencePose = robot.getCurrentPose();
 
     tf2::Quaternion quaternion;
-    tf2::fromMsg(transform.rotation,quaternion);
+    tf2::fromMsg(referencePose.orientation,quaternion);
     double roll, pitch, yaw;
     tf2::Matrix3x3(quaternion).getRPY(roll, pitch, yaw);
 
-    ROS_INFO("Reference pose : \n X : %f \n Y : %f \n Z : %f \n RX : %f \n RY : %f \n RZ : %f",transform.translation.x,transform.translation.y,transform.translation.z,roll,pitch,yaw);
+    ROS_INFO("Reference pose : \n X : %f \n Y : %f \n Z : %f \n RX : %f \n RY : %f \n RZ : %f",referencePose.position.x,referencePose.position.y,referencePose.position.z,roll,pitch,yaw);
 
     double objectSize, distanceToObject;
     std::cout << "Distance between reference pose and the studied object : " << std::endl;
@@ -87,7 +46,7 @@ int main(int argc, char **argv)
     std::cout << "Characteristic size of the studied object : " << std::endl;
     std::cin >> objectSize;
 
-    //Save reference pose [legacy]
+    //Save reference pose
     std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/AcquisitionParameters.yaml";
     YAML::Node config;
     try
@@ -104,18 +63,28 @@ int main(int argc, char **argv)
     {
         config.remove("referencePose");
     }
-    config["referencePose"].push_back(transform.translation.x);
-    config["referencePose"].push_back(transform.translation.y);
-    config["referencePose"].push_back(transform.translation.z);
+    config["referencePose"].push_back(referencePose.position.x);
+    config["referencePose"].push_back(referencePose.position.y);
+    config["referencePose"].push_back(referencePose.position.z);
     config["referencePose"].push_back(roll);
     config["referencePose"].push_back(pitch);
     config["referencePose"].push_back(yaw);
+
+    if (config["jointsValues"]) 
+    {
+        config.remove("jointsValues");
+    }
+    std::vector<double> jointsValues = robot.getCurrentJointsValues();
+    for (std::vector<double>::iterator it = jointsValues.begin(); it != jointsValues.end(); it++)
+    {
+        config["jointsValues"].push_back(*it);
+    }
 
     std::ofstream fout(yamlFile);   
     fout << config;
 
     //Create a dedicated environment file for the studied object
-    yamlFile = ros::package::getPath("robot_arm_acoustic")+"/environments/StudiedObject.yaml";
+    yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/environments/StudiedObject.yaml";
     try
     {
         config = YAML::LoadFile(yamlFile);
@@ -139,9 +108,9 @@ int main(int argc, char **argv)
     //Get reference pose orientation as matrix
     tf2::Matrix3x3 matrix(quaternion);
 
-    configObjectPose["x"] = transform.translation.x + (distanceToObject+objectSize)*matrix[0][2];
-    configObjectPose["y"] = transform.translation.y + (distanceToObject+objectSize)*matrix[1][2];
-    configObjectPose["z"] = transform.translation.z + (distanceToObject+objectSize)*matrix[2][2];
+    configObjectPose["x"] = referencePose.position.x + (distanceToObject+objectSize)*matrix[0][2];
+    configObjectPose["y"] = referencePose.position.y + (distanceToObject+objectSize)*matrix[1][2];
+    configObjectPose["z"] = referencePose.position.z + (distanceToObject+objectSize)*matrix[2][2];
     configObjectPose["rx"] = 0.0;
     configObjectPose["ry"] = 0.0;
     configObjectPose["rz"] = 0.0;
@@ -157,10 +126,10 @@ int main(int argc, char **argv)
     {
         config.remove("objectPose");
     }
-    config["objectPose"] = distanceToObject;
-    config["objectPose"].push_back(transform.translation.x + (distanceToObject+objectSize)*matrix[0][2]);
-    config["objectPose"].push_back(transform.translation.y + (distanceToObject+objectSize)*matrix[1][2]);
-    config["objectPose"].push_back(transform.translation.z + (distanceToObject+objectSize)*matrix[2][2]);
+    //config["objectPose"] = distanceToObject;
+    config["objectPose"].push_back(referencePose.position.x + (distanceToObject+objectSize)*matrix[0][2]);
+    config["objectPose"].push_back(referencePose.position.y + (distanceToObject+objectSize)*matrix[1][2]);
+    config["objectPose"].push_back(referencePose.position.z + (distanceToObject+objectSize)*matrix[2][2]);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
@@ -174,7 +143,10 @@ int main(int argc, char **argv)
     fout = std::ofstream(yamlFile);   
     fout << config;
 
-    ros::waitForShutdown();
+    robot.runMeasurementRoutine(std::vector<geometry_msgs::Pose>(),true,true);
+
+    //Shutdown node
+    ros::shutdown();
     return 0;
 }
 

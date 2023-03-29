@@ -2,8 +2,6 @@
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
 
-#include "AnechoicRoomSupportSetup.hpp"
-
 int main(int argc, char **argv)
 {
     //ROS node initialisation
@@ -33,13 +31,11 @@ int main(int argc, char **argv)
     objectPose.position.z = objectPoseArray[2];
     objectPose.orientation =  tf2::toMsg(quaternion);
 
-    addTopSupport(robot,objectPose);
-
     //Get trajectory parameters
-    double radiusTrajectory;
+    double trajectoryRadius;
     int trajectoryStepsNumber;
 
-    if(!n.getParam("radiusTrajectory",radiusTrajectory))
+    if(!n.getParam("trajectoryRadius",trajectoryRadius))
     {
         ROS_ERROR("Unable to retrieve trajectory radius !");
         throw std::runtime_error("MISSING PARAMETER");
@@ -54,13 +50,12 @@ int main(int argc, char **argv)
     //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
-    sphericAzimuthTrajectory(objectPose, radiusTrajectory, M_PI/2, M_PI/2, 3*M_PI/2, trajectoryStepsNumber, waypoints);
+    sphericAzimuthTrajectory(objectPose, trajectoryRadius, M_PI/2, M_PI/2, 3*M_PI/2, trajectoryStepsNumber, waypoints);
     
     //Main loop
-    robot.runMeasurementRountine(waypoints,false,true);
+    robot.runMeasurementRoutine(waypoints,false,true);
 
-    //Shut down ROS node
-    robot.init();   
-    ros::waitForShutdown();
+    //Shut down ROS node  
+    ros::shutdown();
     return 0;
 }

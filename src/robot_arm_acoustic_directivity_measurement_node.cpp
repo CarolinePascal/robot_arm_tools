@@ -2,7 +2,7 @@
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
 
-#include "AnechoicRoomSupportSetup.hpp"
+#include <Eigen/Geometry> 
 
 int main(int argc, char **argv)
 {
@@ -15,32 +15,13 @@ int main(int argc, char **argv)
     //Robot initialisation
     Robot robot;
 
-    //Get studied object pose
-    ros::NodeHandle n;
-    std::vector<double> objectPoseArray;
-    if(!n.getParam("objectPose",objectPoseArray))
-    {
-        ROS_ERROR("Unable to retrieve studied object pose !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    tf2::Quaternion quaternion;
-    quaternion.setRPY(objectPoseArray[3],objectPoseArray[4],objectPoseArray[5]);
-
-    geometry_msgs::Pose objectPose;
-    objectPose.position.x = objectPoseArray[0];
-    objectPose.position.y = objectPoseArray[1];
-    objectPose.position.z = objectPoseArray[2];
-    objectPose.orientation =  tf2::toMsg(quaternion);
-
-    addTopSupport(robot,objectPose);
-
     //Get trajectory parameters
-    std::vector<double> trajectoryAxis;
-    double radiusTrajectory, trajectoryStepsSize;
+    ros::NodeHandle n;
+    std::vector<double> trajectoryAxis, centerPoseArray;
+    double trajectoryRadius;
     int trajectoryStepsNumber;
    
-    if(!n.getParam("radiusTrajectory",radiusTrajectory))
+    if(!n.getParam("trajectoryRadius",trajectoryRadius))
     {
         ROS_ERROR("Unable to retrieve measured trajectory radius !");
         throw std::runtime_error("MISSING PARAMETER");
@@ -58,16 +39,34 @@ int main(int argc, char **argv)
         throw std::runtime_error("MISSING PARAMETER");
     }
 
+    if(!n.getParam("trajectoryCenterPose",centerPoseArray))
+    {
+        ROS_ERROR("Unable to retrieve trajectory center pose !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    geometry_msgs::Pose centerPose;
+    tf2::Quaternion quaternion;
+    quaternion.setRPY(centerPoseArray[3],centerPoseArray[4],centerPoseArray[5]);
+    centerPose.position.x = centerPoseArray[0];
+    centerPose.position.y = centerPoseArray[1];
+    centerPose.position.z = centerPoseArray[2];
+    centerPose.orientation =  tf2::toMsg(quaternion);
+
     //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
-    sphericInclinationTrajectory(objectPose,radiusTrajectory,M_PI/2,trajectoryAxis[0]*(M_PI/2) + M_PI*trajectoryAxis[1],trajectoryAxis[0]*(-M_PI/2),trajectoryStepsNumber,waypoints);
+    //Default z=1 trajectory
+    sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
+
+    //TODO FIX
+    //Eigen::Vector3d RPY = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(trajectoryAxis.data()), Eigen::Vector3d(0,0,1)).toRotationMatrix().eulerAngles(0, 1, 2);
+    //rotateTrajectory(waypoints, geometry_msgs::Point(centerPose.position.x,centerPose.position.y,centerPose.position.z), RPY[0],RPY[1],RPY[2]);
 
     //Main loop 
-    robot.runMeasurementRountine(waypoints,false,true);
+    robot.runMeasurementRoutine(waypoints,false,true);
 
-    //Shut down ROS node
-    robot.init();   
-    ros::waitForShutdown();
+    //Shut down ROS node   
+    ros::shutdown();
     return 0;
 }
