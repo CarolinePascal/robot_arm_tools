@@ -1,6 +1,7 @@
 #!/usr/bin/env python3.8
 
 import numpy as np
+import matplotlib.pyplot as plt
 import os
 
 import subprocess
@@ -25,11 +26,16 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
     #Tool functions
     T = lambda b,c:  b**2 + c**2 + b*c  #Triangulation number
 
+    #Not sure about this..
+    beta = 1
+    #if (elementType == "P0"):
+        #beta = np.sqrt(3)
+
     alpha = 1
     if(elementType == "P0"):
-        alpha = 1/np.sqrt(1-(resolution**2)/(4*radius**2))
+        alpha = 1/np.sqrt(1-((beta*resolution)**2)/(4*radius**2))
         
-    TTarget = int(np.round((16*np.pi*(alpha*radius)**2)/(k*np.sqrt(3)*resolution**2)))
+    TTarget = int(np.round((16*np.pi*(alpha*radius)**2)/(k*np.sqrt(3)*(beta*resolution)**2)))
     maxBound = int(np.ceil(np.sqrt(TTarget))) + 1
 
     solutions = np.empty((maxBound,maxBound))
@@ -55,15 +61,15 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
     if(elementType == "P0"):
         hull = ConvexHull(points)
         faces = hull.simplices
-        centroids = np.average(points[faces],axis=1)
-        delta = radius/np.average(np.linalg.norm(centroids,axis=1))
+        centroids = np.average(points[faces],axis=1)    #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
+        delta = radius/np.average(np.linalg.norm(centroids,axis=1)) #axis 0 : we choose the face, axis 1 : we choose the coordinate
         points *= delta
 
     hull = ConvexHull(points)
     faces = hull.simplices
 
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(radius*2) + "_" + str(resolution) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -72,7 +78,7 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
         listPoints = None
 
         if(elementType == 'P0'):
-            listPoints = trimesh.Trimesh(points,faces).triangles_center
+            listPoints = np.average(points[faces],axis=1)   #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
             
         elif(elementType == 'P1'):
             listPoints = points
@@ -82,39 +88,83 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
             meshPoses = np.vstack((meshPoses,np.hstack((point,[np.pi,inclination,azimuth]))))
 
         sortedMeshPoses = np.empty((0,6))
-        sortedXIndex = np.argsort(meshPoses[:,0])
-        sortedX = meshPoses[sortedXIndex,0]
-        clusterX = np.linspace(sortedX[0],sortedX[-1],int(np.pi*radius/resolution) + 1)
-        for i in range(len(clusterX) - 1):
-            pointsIndex = np.where((meshPoses[:,0] > clusterX[i]) & (meshPoses[:,0] <= clusterX[i+1]))[0]
-            if(i == 0):
-                pointsIndex = np.where((meshPoses[:,0] >= clusterX[i]) & (meshPoses[:,0] <= clusterX[i+1]))[0]
-            sortedIndex = np.argsort(np.arctan2(meshPoses[pointsIndex,2],meshPoses[pointsIndex,1]))
-            sortedMeshPoses = np.vstack((sortedMeshPoses,meshPoses[pointsIndex[sortedIndex]]))
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".yaml"
+        sortedMeshPosesInclination = meshPoses[np.argsort(meshPoses[:,4])]
+
+        inclinationRange = np.arange(0,np.pi,resolution/(2*radius))
+
+        minBound = inclinationRange[0]
+        for maxBound in inclinationRange[1:]:
+            localIndex = np.where((sortedMeshPosesInclination[:,4] >= minBound) & (sortedMeshPosesInclination[:,4] < maxBound))[0]   
+            localMeshPoses = sortedMeshPosesInclination[localIndex]
+            localSortedMeshPosesAzimuth = localMeshPoses[np.argsort(localMeshPoses[:,5])]
+            sortedMeshPoses = np.vstack((sortedMeshPoses,localSortedMeshPosesAzimuth))
+            minBound = maxBound
+
+        sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesInclination[np.where(sortedMeshPoses[:,4] == inclinationRange[-1])[0]]))
+
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(radius*2) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
             yaml.dump({"poses":sortedMeshPoses.tolist()},file)
 
-        #import matplotlib.pyplot as plt
-        #ax = plt.axes(projection='3d')
-        #scatter = ax.scatter(sortedMeshPoses[:,0],sortedMeshPoses[:,1],sortedMeshPoses[:,2],c=np.#arange(len(sortedMeshPoses)),cmap='jet')
-        #ax.set_xlabel("x")
-        #ax.set_ylabel("y")
-        #ax.set_zlabel("z")
-        #plt.colorbar(scatter)
-        #plt.show()
+        """
+        import matplotlib.pyplot as plt
+        ax = plt.axes(projection='3d')
+        scatter = ax.scatter(sortedMeshPoses[:200,0],sortedMeshPoses[:200,1],sortedMeshPoses[:200,2],c=np.arange(200),cmap='jet')
+        ax.set_xlabel("x")
+        ax.set_ylabel("y")
+        ax.set_zlabel("z")
+        plt.colorbar(scatter)
+
+        extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+        sz = extents[:,1] - extents[:,0]
+        centers = np.mean(extents, axis=1)
+        maxsize = max(abs(sz))
+        r = maxsize/2
+        for ctr, dim in zip(centers, 'xyz'):
+            getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+
+        plt.show()
+        """
 
     return(points, faces)
+
+## Function plotting a wire representation of a mesh
+#  @param vertices Mesh vertices
+#  @param faces Mesh faces
+#  @param elementType Type of element
+def plotMesh(vertices,faces,elementType):
+    ax = plt.figure().add_subplot(projection='3d')
+
+    for face in faces:
+        facePoints = vertices[face]
+        facePoints = np.vstack((facePoints,facePoints[0,:]))
+        ax.plot(facePoints[:,0],facePoints[:,1],facePoints[:,2],'k',linewidth='1')
+
+    if (elementType == "P0"):
+        centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
+        ax.scatter(centroids[:,0],centroids[:,1],centroids[:,2],marker='o',color='r')
+    elif (elementType == "P1"):
+        ax.scatter(vertices[:,0],vertices[:,1],vertices[:,2],marker='o',color='r')
+
+    extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
+    sz = extents[:,1] - extents[:,0]
+    centers = np.mean(extents, axis=1)
+    maxsize = max(abs(sz))
+    r = maxsize/2
+    for ctr, dim in zip(centers, 'xyz'):
+        getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
+    plt.show()
 
 ## Function displaying mesh information
 #  @param vertices Mesh vertices
 #  @param faces Mesh faces
-def getMeshInfo(vertices,faces):
+#  @param elementType Type of element
+def getMeshInfo(vertices,faces,elementType="P0"):
+
     mesh = trimesh.Trimesh(vertices,faces)
-        #mesh.show()
 
     def getMeshSize(mesh):
         try:
@@ -141,11 +191,28 @@ def getMeshInfo(vertices,faces):
     print("MESH AREAS - min, max, avg, std")
     print(getMeshAreas(mesh))
 
+    if elementType == "P0":
+        centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
+        distances = []  
+        for i,centroid in enumerate(centroids):
+            closestNeighbours = [face for face in faces if ((faces[i][0] in face and faces[i][1] in face) or (faces[i][1] in face and faces[i][2] in face) or (faces[i][2] in face and faces[i][0] in face)) and (face != faces[i]).any()]   
+
+            distances.extend([np.linalg.norm(centroid - np.average(vertices[face],axis=0)) for face in closestNeighbours])  #axis 0 : we choose the point, axis 1 : we choose the coordinate
+
+        distances = np.array(distances)
+
+        print("CONTROL POINTS DISTANCE - min, max, avg, std : ")
+        print((np.min(distances),np.max(distances),np.average(distances),np.std(distances)))
+        
+    elif elementType == "P1":
+        print("CONTROL POINTS DISTANCE - min, max, avg, std : ")
+        print(getMeshSize(mesh))
+
 if __name__ == "__main__":
     import sys
 
     meshType = "sphere"
-    radius = 0.1
+    size = 0.1
     resolution = 0.01
     elementType = "P0"
     saveMesh = 0
@@ -154,21 +221,28 @@ if __name__ == "__main__":
 
     try:
         meshType = sys.argv[1]
-        radius = float(sys.argv[2])
+        size = float(sys.argv[2])
         resolution = float(sys.argv[3])
         elementType = sys.argv[4]
         saveMesh = int(sys.argv[5])
         saveYAML = int(sys.argv[6])
         info = int(sys.argv[7])
     except:
-        print("Invalid radius and resolution, switching to default : ")
+        print("Invalid size and resolution, switching to default : ")
         print("mesh type = " + meshType)
-        print("radius = " + str(radius))
+        print("size = " + str(size))
         print("resolution = " + str(resolution))
         print("element type = " + elementType)
 
-    if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".yaml")) or info):
-        vertices,faces = generateSphericMesh(radius, resolution, elementType, saveMesh, saveYAML)
-        if(info):
-            getMeshInfo(vertices,faces)
+    if(meshType == "sphere"):
+        radius = size/2
+        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
+            vertices,faces = generateSphericMesh(radius, resolution, elementType, saveMesh, saveYAML)
+            if(info):
+                getMeshInfo(vertices,faces,elementType)
+                plotMesh(vertices,faces,elementType)
+
+    else:
+        print("Invalid mesh type !")
+        sys.exit(-1)
     
