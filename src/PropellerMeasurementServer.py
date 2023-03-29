@@ -36,12 +36,12 @@ class PropellerMeasurementServer :
                     dur=5+1)
 
         ## Storage folder name
-        self.storageFolderName = rospy.get_param("storageFolderName")
+        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder")
         try:
-            os.mkdir(self.storageFolderName)
-            rospy.loginfo("Creating " + self.storageFolderName + " ...")
+            os.mkdir(self.measurementServerStorageFolder)
+            rospy.loginfo("Creating " + self.measurementServerStorageFolder + " ...")
         except OSError:
-            rospy.logwarn(self.storageFolderName + "already exists : its contents will be overwritten !")
+            rospy.logwarn(self.measurementServerStorageFolder + "already exists : its contents will be overwritten !")
             pass 
 
         ## ROS Service Server
@@ -79,7 +79,7 @@ class PropellerMeasurementServer :
         #plt.show()
 
         #Save measurement results
-        self.M1.to_csvwav(self.storageFolderName+"noise_measurement"+str(self.measurementCounter))
+        self.M1.to_csvwav(self.measurementServerStorageFolder+"noise_measurement"+str(self.measurementCounter))
 
         return EmptyResponse()
 

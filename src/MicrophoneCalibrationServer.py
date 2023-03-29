@@ -26,26 +26,38 @@ class MicrophoneCalibrationServer :
     def __init__(self):
 
         self.M0 = mp.Measurement(out_sig='noise',
-                    fs=48000,
-                    out_sig_freqs=[20,20000],
-                    out_map=[1],
-                    out_desc=['Sent signal'],
-                    out_dbfs=[1.0],
-                    in_map=[1],
-                    out_amp=1.0/1.53,
-                    in_desc=['Pressure'],
-                    in_cal=[1.0],
-                    in_unit=['Pa'],
-                    in_dbfs=[1.0/0.593],
-                    extrat=[0,0],
-                    out_sig_fades=[0,0],
-                    dur=10,
-                    io_sync=0,
-                    in_device=6,
-                    out_device=6)
+                                fs=48000,
+                                out_sig_freqs=[20,20000],
+                                out_map=[1],
+                                out_desc=['Sent signal'],
+                                out_dbfs=[1.5552],
+                                in_map=[1,2,3],
+                                out_amp=1.0,
+                                in_desc=['Pressure','Voltage','Current'],
+                                in_cal=[1.0,1.0,1.0],
+                                in_unit=['Pa','V','A'],
+                                in_dbfs=[1.7108,1.7120,1.7108],
+                                extrat=[0,0],
+                                out_sig_fades=[0,0],
+                                dur=10,
+                                io_sync=0,
+                                in_device=4,
+                                out_device=4)
+
+        ## Storage folder name
+        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder")
+        try:
+            os.mkdir(self.measurementServerStorageFolder)
+            rospy.loginfo("Creating " + self.measurementServerStorageFolder + " ...")
+        except OSError:
+            rospy.logwarn(self.measurementServerStorageFolder + "already exists : its contents will be overwritten !")
+            pass 
 
         ## ROS Service Server used to trigger the calibration measurement
-        self.microCalibrationServer = rospy.Service("/microphone_calibration_server",Empty,self.measure)
+        self.microCalibrationServer = rospy.Service(rospy.get_param("measurementServerName"),Empty,self.measure)
+
+        ## Measurement counter
+        self.measurementCounter = 0
 
     ## Thread safe plotting method for calibration measurements display
     #  @param fig A matplotlib figure
@@ -61,7 +73,6 @@ class MicrophoneCalibrationServer :
     ## Method triggering a microphone calibration measurement
     #  @param req An empty ROS service request
     def measure(self, req):
-
         isGainOK = False
         print("Running micro gain setting test...")
 
@@ -71,8 +82,11 @@ class MicrophoneCalibrationServer :
 
         #Measurement loop
         while(not isGainOK):
+            self.measurementCounter += 1
+
             #Run measurement
             audio_run_measurement(self.M0)
+            self.M0.to_csvwav(self.measurementServerStorageFolder+"measurement_"+str(self.measurementCounter))
 
             #Dispay measurements
             #_thread.start_new_thread(self.plotting_thread,(fig,ax))
