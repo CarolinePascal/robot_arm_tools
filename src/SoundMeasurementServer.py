@@ -13,6 +13,8 @@ import sys
 import measpy as mp
 from measpy.audio import audio_run_measurement
 
+import subprocess
+
 
 ## SoundMeasurementServer
 #
@@ -61,7 +63,7 @@ class SoundMeasurementServer :
                                 out_device=4)
 
         ## Storage folder name
-        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder")
+        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder","/tmp/Measurements/")
         try:
             os.mkdir(self.measurementServerStorageFolder)
             rospy.loginfo("Creating " + self.measurementServerStorageFolder + " ...")
@@ -84,7 +86,12 @@ class SoundMeasurementServer :
         rospy.sleep(1.0)
 
         #Run measurement
-        audio_run_measurement(self.M1,progress=False)
+        try:
+            audio_run_measurement(self.M1,progress=False)
+        except:
+            #Recover TODO Reload measurements
+            subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
+            audio_run_measurement(self.M1,progress=False)
 
         #[Debug] Plot measurement
         #self.M1.plot()
@@ -93,7 +100,12 @@ class SoundMeasurementServer :
 
         rospy.sleep(3.0)
 
-        audio_run_measurement(self.M2,progress=False)
+        try:
+            audio_run_measurement(self.M2,progress=False)
+        except:
+            #Recover TODO Reload measurements
+            subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
+            audio_run_measurement(self.M2,progress=False)
 
         self.M2.to_csvwav(self.measurementServerStorageFolder+"noise_measurement_"+str(self.measurementCounter))
 
