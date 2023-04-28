@@ -214,7 +214,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
             #TODO Non spheric mesh ?
             radiusIndex = np.where(parametersList=="radius")[0][0]
             try:
-                mesh = meshio.read(os.path.dirname(os.path.abspath(__file__)) + "/config/meshes/sphere/S_" + str(np.round(configuration[radiusIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
+                mesh = meshio.read(os.path.dirname(os.path.abspath(__file__)) + "/config/meshes/sphere/" + str(np.round(configuration[radiusIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
                 plotListP[configurationIndex][parameterValueIndex] = len(mesh.points)*scalingFactors[i]
             except:
                 points,_ = generateSphericMesh(np.round(configuration[radiusIndex],4),np.round(configuration[0],4))

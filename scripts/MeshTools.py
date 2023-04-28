@@ -13,12 +13,15 @@ import trimesh
 import yaml
 
 ## Function creating a spheric mesh using an icosahedric approximation
-#  @param radius Radius of the sphere
+#  @param size Size of the sphere as its diameter
 #  @param resolution Target resolution of the mesh
 #  @param elementType Type of element for triangular faces
 #  @param saveMesh Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
-def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False, saveYAML = False):
+def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False):
+
+    #Sphere radius 
+    radius = size/2
 
     #Icosahedron initial number of faces 
     k = 20
@@ -69,7 +72,7 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
     faces = hull.simplices
 
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(radius*2) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(size) + "_" + str(resolution) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -103,7 +106,7 @@ def generateSphericMesh(radius, resolution, elementType = "P0", saveMesh = False
 
         sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesInclination[np.where(sortedMeshPoses[:,4] == inclinationRange[-1])[0]]))
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(radius*2) + "_" + str(resolution) + ".yaml"
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(size) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -166,7 +169,7 @@ def getMeshInfo(vertices,faces,elementType="P0"):
 
     mesh = trimesh.Trimesh(vertices,faces)
 
-    def getMeshSize(mesh):
+    def getMeshResolution(mesh):
         try:
             lines = np.array(mesh.vertices[mesh.edges_unique])
         except:
@@ -185,8 +188,8 @@ def getMeshInfo(vertices,faces,elementType="P0"):
 
         return(np.min(areas),np.max(areas),np.average(areas),np.std(areas))
 
-    print("MESH SIZE - min, max, avg, std : ")
-    print(getMeshSize(mesh))
+    print("MESH RESOLUTION - min, max, avg, std : ")
+    print(getMeshResolution(mesh))
 
     print("MESH AREAS - min, max, avg, std")
     print(getMeshAreas(mesh))
@@ -206,7 +209,7 @@ def getMeshInfo(vertices,faces,elementType="P0"):
         
     elif elementType == "P1":
         print("CONTROL POINTS DISTANCE - min, max, avg, std : ")
-        print(getMeshSize(mesh))
+        print(getMeshResolution(mesh))
 
 if __name__ == "__main__":
     import sys
@@ -235,9 +238,8 @@ if __name__ == "__main__":
         print("element type = " + elementType)
 
     if(meshType == "sphere"):
-        radius = size/2
         if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
-            vertices,faces = generateSphericMesh(radius, resolution, elementType, saveMesh, saveYAML)
+            vertices,faces = generateSphericMesh(size, resolution, elementType, saveMesh, saveYAML)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
                 plotMesh(vertices,faces,elementType)

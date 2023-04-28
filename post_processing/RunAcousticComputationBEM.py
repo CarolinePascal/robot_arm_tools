@@ -31,30 +31,34 @@ if(__name__ == "__main__"):
 
             ### Generate computation mesh
             
-            #Add resolution value check : For small resolutions, the final error tends to explode due to very small surfaces. We solve this issue by increasing all dimensions by a ten-fold factor.
+            #Add resolution value check : For small resolutions, the final error tends to explode due to very small surfaces. We solve this issue by increasing all dimensions by a two-fold factor.
             scalingFactor = 1.
             if(resolution < 0.01):
                 scalingFactor = 2.
 
-            meshRadius = np.round(scalingFactor*radius,4)
-            meshResolution = np.round(scalingFactor*resolution,4)
-            if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/S_" + str(meshRadius) + "_" + str(meshResolution) + ".mesh")):
-                generateSphericMesh(meshRadius,meshResolution,saveMesh=True)
+            scaledRadius = scalingFactor*radius
+            scaledResolution = scalingFactor*resolution
 
-            if(scalingFactor != 1.0 and not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/S_" + str(radius) + "_" + str(resolution) + ".mesh")):
-                generateSphericMesh(radius,resolution,saveMesh=True)
+            size = 2*radius
+            scaledSize = 2*scaledRadius
+
+            if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/" + str(scaledSize) + "_" + str(scaledResolution) + ".mesh")):
+                generateSphericMesh(scaledSize,scaledResolution,saveMesh=True)
+
+            if(scalingFactor != 1.0 and not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/" + str(size) + "_" + str(resolution) + ".mesh")):
+                generateSphericMesh(size,resolution,saveMesh=True)
 
             for frequency in Frequencies:
 
                 print("Combination : " + str(counter) + "/" + str(parametersCombinations))
                 print("Frequency : " + str(frequency) + " Hz")
-                print("Radius : " + str(radius) + " m")
+                print("Size : " + str(size) + " m")
                 print("Resolution : " + str(resolution) + " m")
                 counter += 1
 
                 ### Run computation
 
-                bashCommand = "ff-mpirun -np 4 AcousticComputationBEM.edp -wg -frequency " + str(frequency) + " -radius " + str(radius) + " -resolution " + str(resolution) + " -studiedFunction " + function + " -ns"
+                bashCommand = "ff-mpirun -np 4 AcousticComputationBEM.edp -wg -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -studiedFunction " + function + " -ns"
                 process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
                 output, error = process.communicate()
 

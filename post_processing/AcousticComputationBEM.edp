@@ -16,17 +16,17 @@ htoolMaxblocksize = 1000000;
 
 int cutSize = 100;
 
-func meshS getSphericMesh(real radius, real resolution)
+func meshS getSphericMesh(real size, real resolution)
 {
     //Solve rounding issues...
-    string radiusWithDecimal;
-    if(radius - floor(radius) > 0)
+    string sizeWithDecimal;
+    if(size - floor(size) > 0)
     {
-        radiusWithDecimal = radius;
+        sizeWithDecimal = size;
     }
     else
     {
-        radiusWithDecimal = radius + ".0";
+        sizeWithDecimal = size + ".0";
     }
 
     string resolutionWithDecimal;
@@ -40,7 +40,7 @@ func meshS getSphericMesh(real radius, real resolution)
     }
 
     //Load mesh
-    meshS ThS("../config/meshes/sphere/S_" + radiusWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+    meshS ThS("../config/meshes/sphere/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
     ThS = OrientNormal(ThS,unbounded=1);
 
     //DEBUG
@@ -56,8 +56,10 @@ func meshS getSphericMesh(real radius, real resolution)
     return(ThS);
 }
 
-func int AcousticSL(real frequency, real radius, real resolution, real cutRadius, string studiedFunction)
+func int AcousticSL(real frequency, real size, real resolution, real cutRadius, string studiedFunction)
 {
+
+
     //Add resolution value check : For small resolutions, the final error tends to explode due to very small surfaces. We solve this issue by increasing all dimensions by a ten-fold factor.
     real scalingFactor = 1.;
     if(resolution < 0.01)
@@ -66,7 +68,7 @@ func int AcousticSL(real frequency, real radius, real resolution, real cutRadius
     }
 
     //Load mesh
-    meshS ThS = getSphericMesh(radius*scalingFactor,resolution*scalingFactor);
+    meshS ThS = getSphericMesh(size*scalingFactor,resolution*scalingFactor);
 
     //Define the variational problem
     BemKernel ker("SL",k=(k(frequency)/scalingFactor));
@@ -82,7 +84,7 @@ func int AcousticSL(real frequency, real radius, real resolution, real cutRadius
     //When a scaling factor is used, we must simulate measurements on the original mesh !    
     if(scalingFactor != 1.)
     {
-        meshS ThSInit = getSphericMesh(radius,resolution);
+        meshS ThSInit = getSphericMesh(size,resolution);
         fespace UhInit(ThSInit,P0);
         UhInit<complex> measurementsInit = inputFunction(frequency,studiedFunction);
         measurements[] = measurementsInit[];
@@ -141,7 +143,7 @@ func int AcousticSL(real frequency, real radius, real resolution, real cutRadius
     {
         mkdir("./" + dirName);
     }
-    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + radius + ".txt";
+    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + size + ".txt";
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -153,7 +155,7 @@ func int AcousticSL(real frequency, real radius, real resolution, real cutRadius
     return(0);
 }
 
-func int AcousticCL(real frequency, real radius, real resolution, real cutRadius, string studiedFunction)
+func int AcousticCL(real frequency, real size, real resolution, real cutRadius, string studiedFunction)
 {
     //Add resolution value check : For small resolutions, the final error tends to explode due to very small surfaces. We solve this issue by increasing all dimensions by a ten-fold factor.
     real scalingFactor = 1.;
@@ -163,7 +165,7 @@ func int AcousticCL(real frequency, real radius, real resolution, real cutRadius
     }
 
     //Load mesh
-    meshS ThS = getSphericMesh(radius*scalingFactor,resolution*scalingFactor);
+    meshS ThS = getSphericMesh(size*scalingFactor,resolution*scalingFactor);
 
     //Define the variational problem
     BemKernel kerSL("SL",k=(k(frequency)/scalingFactor));
@@ -181,7 +183,7 @@ func int AcousticCL(real frequency, real radius, real resolution, real cutRadius
     //When a scaling factor is used, we must simulate measurements on the original mesh !    
     if(scalingFactor != 1.)
     {
-        meshS ThSInit = getSphericMesh(radius,resolution);
+        meshS ThSInit = getSphericMesh(size,resolution);
         fespace UhInit(ThSInit,P0);
         UhInit<complex> measurementsInit = inputFunction(frequency,studiedFunction);
         measurements[] = measurementsInit[];
@@ -236,7 +238,7 @@ func int AcousticCL(real frequency, real radius, real resolution, real cutRadius
     {
         mkdir("./" + dirName);
     }
-    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + radius + ".txt";
+    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + size + ".txt";
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -251,7 +253,7 @@ func int AcousticCL(real frequency, real radius, real resolution, real cutRadius
 //MAIN
 
 real frequency = getARGV("-frequency",100); 
-real radius = getARGV("-radius",0.1); 
+real size = getARGV("-size",0.1); 
 real resolution = getARGV("-resolution",0.05);
 real cutRadius = getARGV("-cutRadius",0.5);
 
@@ -260,7 +262,7 @@ string studiedFunction = getARGV("-studiedFunction", "monopole");
 real tmp = getARGV("-dipoleDistance",0.001);
 demid = tmp;
 
-AcousticSL(frequency,radius,resolution,cutRadius,studiedFunction);
-AcousticCL(frequency,radius,resolution,cutRadius,studiedFunction);
+AcousticSL(frequency,size,resolution,cutRadius,studiedFunction);
+AcousticCL(frequency,size,resolution,cutRadius,studiedFunction);
 
 

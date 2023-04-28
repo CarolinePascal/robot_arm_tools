@@ -24,7 +24,7 @@ def monopolePressure(f,r,theta=0,phi=0,demid=0):
     return(-1j*omega(f)*Q*rho*G(f,r))
 
 def dipolePressure(f,r,theta,phi,demid):
-    return(PM(f,rplus(demid,r,theta,phi)) - PM(f,rminus(demid,r,theta,phi)))
+    return(monopolePressure(f,rplus(demid,r,theta,phi)) - monopolePressure(f,rminus(demid,r,theta,phi)))
 
 def infinitesimalDipolePressure(f,r,theta,phi,demid=0):
     return((dipoleMomentum*omega(f)*rho*k(f))*np.sin(theta)*np.cos(phi)*G(f,r)*(1/(1j*k(f)*r) - 1))
