@@ -197,17 +197,16 @@ def getMeshInfo(vertices,faces,elementType="P0"):
     if elementType == "P0":
         centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
         distances = []  
-        for i,centroid in enumerate(centroids):
-            closestNeighbours = [face for face in faces if ((faces[i][0] in face and faces[i][1] in face) or (faces[i][1] in face and faces[i][2] in face) or (faces[i][2] in face and faces[i][0] in face)) and (face != faces[i]).any()]   
-
-            distances.extend([np.linalg.norm(centroid - np.average(vertices[face],axis=0)) for face in closestNeighbours])  #axis 0 : we choose the point, axis 1 : we choose the coordinate
-
+        for centroid in centroids:
+            distances.extend([np.sort(np.linalg.norm(centroids - centroid, axis=1))[1:4]])  #axis 0 : we choose the point, axis 1 : we choose the coordinate
         distances = np.array(distances)
 
+        print("CONTROL POINTS NUMBER : " + str(len(centroids)))
         print("CONTROL POINTS DISTANCE - min, max, avg, std : ")
         print((np.min(distances),np.max(distances),np.average(distances),np.std(distances)))
         
     elif elementType == "P1":
+        print("CONTROL POINTS NUMBER : " + str(len(vertices)))
         print("CONTROL POINTS DISTANCE - min, max, avg, std : ")
         print(getMeshResolution(mesh))
 
