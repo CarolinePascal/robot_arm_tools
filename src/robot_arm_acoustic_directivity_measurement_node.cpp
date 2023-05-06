@@ -3,6 +3,7 @@
 #include <robot_arm_tools/RobotTrajectories.h>
 
 #include <Eigen/Geometry> 
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 int main(int argc, char **argv)
 {
@@ -64,7 +65,7 @@ int main(int argc, char **argv)
     //rotateTrajectory(waypoints, geometry_msgs::Point(centerPose.position.x,centerPose.position.y,centerPose.position.z), RPY[0],RPY[1],RPY[2]);
 
     //Main loop 
-    robot.runMeasurementRoutine(waypoints,false,true);
+    robot.runMeasurementRoutine(waypoints,false,true,-1);
 
     //Shut down ROS node   
     ros::shutdown();
