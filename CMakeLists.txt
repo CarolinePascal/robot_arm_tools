@@ -179,6 +179,7 @@ target_link_libraries(${PROJECT_NAME}_mesh_measurement_node
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/MeshTools.py
+  scripts/PlotScanMesh.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 
