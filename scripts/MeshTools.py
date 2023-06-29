@@ -290,7 +290,7 @@ def getMeshInfo(vertices,faces,elementType="P0"):
         centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
         distances = []  
         for centroid in centroids:
-            distances.extend([np.sort(np.linalg.norm(centroids - centroid, axis=1))[1:4]])     
+            distances.extend([np.sort(np.linalg.norm(centroids - centroid, axis=1))[1:4]])  #axis 0 : we choose the point, axis 1 : we choose the coordinate
         distances = np.array(distances)
 
         print("CONTROL POINTS NUMBER : " + str(len(centroids)))
