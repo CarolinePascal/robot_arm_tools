@@ -5,25 +5,21 @@
 # Defines the attributes and methods used to trigger a microphone calibration measurement
 
 import rospy
-from std_srvs.srv import Empty,EmptyResponse
-
-import os
-import matplotlib.pyplot as plt
-import _thread
-import time
-
-import sys
 
 import measpy as mp
 from measpy.audio import audio_run_measurement
+import subprocess
+
+from robot_arm_tools import MeasurementServer
 
 ## MicrophoneCalibrationServer
 #
 # Defines the attributes and methods used to trigger a microphone calibration measurement
-class MicrophoneCalibrationServer :
+class MicrophoneCalibrationServer(MeasurementServer) :
     
     ## Constructor
     def __init__(self):
+        super(MicrophoneCalibrationServer,self).__init__()
 
         self.M0 = mp.Measurement(out_sig='noise',
                                 fs=48000,
@@ -44,41 +40,21 @@ class MicrophoneCalibrationServer :
                                 in_device=4,
                                 out_device=4)
 
-        ## Storage folder name
-        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder")
-        try:
-            os.mkdir(self.measurementServerStorageFolder)
-            rospy.loginfo("Creating " + self.measurementServerStorageFolder + " ...")
-        except OSError:
-            rospy.logwarn(self.measurementServerStorageFolder + "already exists : its contents will be overwritten !")
-            pass 
+    ## Method triggering ALSA drivers recovery
+    def recovery(self):
 
-        ## ROS Service Server used to trigger the calibration measurement
-        self.microCalibrationServer = rospy.Service(rospy.get_param("measurementServerName"),Empty,self.measure)
-
-        ## Measurement counter
-        self.measurementCounter = 0
-
-    ## Thread safe plotting method for calibration measurements display
-    #  @param fig A matplotlib figure
-    #  @param ax A matplotlib axes
-    def plotting_thread(self,fig,ax):
-        while(True):
-            time.sleep(2)
-            ax.clear()
-            self.M0.data['Out4'].plot(ax=ax)
-            self.M0.data['In1'].plot(ax=ax)
-            fig.canvas.draw_idle()
+        #sudo chmod -R a+rw /var/run/alsa/
+        subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
+        return(True)
 
     ## Method triggering a microphone calibration measurement
-    #  @param req An empty ROS service request
-    def measure(self, req):
+    def measure(self):
+
+        #Delay used to avoid sound card Alsa related bugs...
+        rospy.sleep(1.0)
+
         isGainOK = False
         print("Running micro gain setting test...")
-
-        #Creating figure and axes for calibration measurements display
-        #fig = plt.figure()
-        #ax = fig.add_subplot(111)
 
         #Measurement loop
         while(not isGainOK):
@@ -87,10 +63,6 @@ class MicrophoneCalibrationServer :
             #Run measurement
             audio_run_measurement(self.M0)
             self.M0.to_csvwav(self.measurementServerStorageFolder+"measurement_"+str(self.measurementCounter))
-
-            #Dispay measurements
-            #_thread.start_new_thread(self.plotting_thread,(fig,ax))
-            #plt.show()
 
             #Repeat while microphone calibration is not acceptable
             a = ""
@@ -102,11 +74,10 @@ class MicrophoneCalibrationServer :
             if a == 'n':
                 isGainOK = True
 
-            #plt.close("all")
+        return(True)
 
-        return EmptyResponse()
+if __name__ == "__main__":
 
-def main():
     #Launch ROS node
     rospy.init_node('microphone_calibration_server')
 
@@ -119,6 +90,3 @@ def main():
         except KeyboardInterrupt:
             print("Shutting down ROS microphone calibration sever")
             break
-
-if __name__ == "__main__":
-    main()
