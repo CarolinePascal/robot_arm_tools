@@ -4,6 +4,7 @@
 #include <robot_arm_tools/RobotVisualTools.h>
 
 #include <cmath>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
 
 int main(int argc, char **argv)
 {
@@ -93,7 +94,7 @@ int main(int argc, char **argv)
     translateTrajectory(waypoints, objectPose.position.x, objectPose.position.y, objectPose.position.z);
 
     //Main loop
-    robot.runMeasurementRoutine(waypoints,false,true);
+    robot.runMeasurementRoutine(waypoints,false,true,-1);
 
     //Shut down ROS node 
     ros::shutdown();

@@ -5,116 +5,96 @@
 # Defines the attributes and methods used to trigger a sound measurement
 
 import rospy
-from std_srvs.srv import Empty,EmptyResponse
-
-import os
-import sys
 
 import measpy as mp
 from measpy.audio import audio_run_measurement
-
 import subprocess
 
+from robot_arm_tools import MeasurementServer
 
 ## SoundMeasurementServer
 #
 # Defines the attributes and methods used to trigger a sound measurement
-class SoundMeasurementServer :
+class SoundMeasurementServer(MeasurementServer) :
     
     ## Constructor
     def __init__(self):
+        super(SoundMeasurementServer, self).__init__()
 
         self.M1 = mp.Measurement(out_sig='logsweep',
                                 fs=96000,
-                                out_sig_freqs=[20,20000],
+                                out_sig_freqs=[10,25000],
                                 out_map=[1],
                                 out_desc=['Sent signal'],
                                 out_dbfs=[1.5552],
-                                in_map=[1,2,3,4],
+                                in_map=[1,4,2,3],
                                 out_amp=1.0,
-                                in_desc=['Pressure','Voltage','Current','Sent signal'],
-                                in_cal=[1.0,0.1,0.1,1.0],
+                                in_desc=['Pressure','Sent signal','Current','Voltage'],
+                                in_cal=[1.0,1.0,0.1,0.1],
                                 in_unit=['Pa','V','A','V'],
                                 in_dbfs=[1.7108,1.7108,1.7108,1.7108],
                                 extrat=[0,0],
                                 out_sig_fades=[0,0],
                                 dur=10,
                                 io_sync=0,
-                                in_device=4,
-                                out_device=4)
+                                in_device=5,
+                                out_device=5)
 
         self.M2 = mp.Measurement(out_sig='noise',
                                 fs=96000,
-                                out_sig_freqs=[20,20000],
+                                out_sig_freqs=[10,25000],
                                 out_map=[1],
                                 out_desc=['Sent signal'],
                                 out_dbfs=[1.5552],
-                                in_map=[1,2,3,4],
+                                in_map=[1,4,2,3],
                                 out_amp=1.0,
-                                in_desc=['Pressure','Voltage','Current','Sent signal'],
-                                in_cal=[1.0,0.1,0.1,1.0],
+                                in_desc=['Pressure','Sent signal','Current','Voltage'],
+                                in_cal=[1.0,1.0,0.1,0.1],
                                 in_unit=['Pa','V','A','V'],
                                 in_dbfs=[1.7108,1.7108,1.7108,1.7108],
                                 extrat=[0,0],
                                 out_sig_fades=[0,0],
                                 dur=10,
                                 io_sync=0,
-                                in_device=4,
-                                out_device=4)
+                                in_device=5,
+                                out_device=5)
 
-        ## Storage folder name
-        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder","/tmp/Measurements/")
-        try:
-            os.mkdir(self.measurementServerStorageFolder)
-            rospy.loginfo("Creating " + self.measurementServerStorageFolder + " ...")
-        except OSError:
-            rospy.logwarn(self.measurementServerStorageFolder + "already exists : its contents will be overwritten !")
-            pass 
+    ## Method triggering ALSA drivers recovery
+    def recovery(self):
 
-        ## ROS Service Server
-        self.microServer = rospy.Service("/sound_measurement_server",Empty,self.measure)
-
-        ## Measurement counter
-        self.measurementCounter = 0
+        #sudo chmod -R a+rw /var/run/alsa/
+        subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
+        return(True)
 
     ## Method triggering a sound measurement
-    #  @param req An empty ROS service request
-    def measure(self, req):
-        self.measurementCounter += 1
+    def measure(self):
         
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(1.0)
 
-        #Run measurement
-        try:
-            audio_run_measurement(self.M1,progress=False)
-        except:
-            #Recover TODO Reload measurements
-            subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
-            audio_run_measurement(self.M1,progress=False)
+        audio_run_measurement(self.M1,progress=False)
 
         #[Debug] Plot measurement
         #self.M1.plot()
         #plt.show()
+        
         self.M1.to_csvwav(self.measurementServerStorageFolder+"sweep_measurement_"+str(self.measurementCounter))
 
-        rospy.sleep(3.0)
-
-        try:
-            audio_run_measurement(self.M2,progress=False)
-        except:
-            #Recover TODO Reload measurements
-            subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
-            audio_run_measurement(self.M2,progress=False)
-
-        self.M2.to_csvwav(self.measurementServerStorageFolder+"noise_measurement_"+str(self.measurementCounter))
-
         #Delay used to avoid sound card Alsa related bugs...
-        #rospy.sleep(0.5)
+        rospy.sleep(2.0)
 
-        return EmptyResponse()
+        audio_run_measurement(self.M2,progress=False)
 
-def main():
+        #[Debug] Plot measurement
+        #self.M2.plot()
+        #plt.show()
+        
+        self.M2.to_csvwav(self.measurementServerStorageFolder+"noise_measurement_"+str(self.measurementCounter))
+        
+        return(True)
+
+if __name__ == "__main__":
+    
     #Launch ROS node
     rospy.init_node('sound_measurement_server')
 
@@ -127,6 +107,3 @@ def main():
         except KeyboardInterrupt:
             print("Shutting down ROS sound measurement server")
             break
-
-if __name__ == "__main__":
-    main()

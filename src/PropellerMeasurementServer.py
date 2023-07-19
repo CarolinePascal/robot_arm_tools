@@ -9,18 +9,19 @@
 # export ROS_IP=this_computer_IP_address 
 
 import rospy
-from std_srvs.srv import Empty,EmptyResponse
 
-import os
 import threading
 
 import measpy as mp
 from measpy.audio import audio_run_measurement
+import subprocess
+
+from robot_arm_tools import MeasurementServer
 
 ## PropellerMeasurementServer
 #
 # Defines the attributes and methods used to trigger a propeller measurement
-class PropellerMeasurementServer :
+class PropellerMeasurementServer(MeasurementServer) :
     
     ## Constructor
     def __init__(self):
@@ -35,29 +36,18 @@ class PropellerMeasurementServer :
                     out_sig_fades=[0.0,0.0],
                     dur=5+1)
 
-        ## Storage folder name
-        self.measurementServerStorageFolder = rospy.get_param("measurementServerStorageFolder")
-        try:
-            os.mkdir(self.measurementServerStorageFolder)
-            rospy.loginfo("Creating " + self.measurementServerStorageFolder + " ...")
-        except OSError:
-            rospy.logwarn(self.measurementServerStorageFolder + "already exists : its contents will be overwritten !")
-            pass 
-
-        ## ROS Service Server
-        self.microServer = rospy.Service("/propeller_measurement_server",Empty,self.measure)
-
-        ## Measurement counter 
-        self.measurementCounter = 0
-
         # ROS Service Client
         rospy.wait_for_service("propeller_server")
 
+    ## Method triggering ALSA drivers recovery
+    def recovery(self):
+
+        #sudo chmod -R a+rw /var/run/alsa/
+        subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
+        return(True)
+
     ## Method triggering a propeller measurement
-    #  @param req An empty ROS service request
-    def measure(self, req):
-        
-        self.measurementCounter += 1
+    def measure(self):
 
         #Delay used to avoid sound card Alsa related bugs...
         rospy.sleep(2.0)
@@ -74,16 +64,13 @@ class PropellerMeasurementServer :
         #Wait for the measurement to be over
         thread.join()
 
-        #[Debug] Plot measurement
-        #self.M1.plot()
-        #plt.show()
-
         #Save measurement results
         self.M1.to_csvwav(self.measurementServerStorageFolder+"noise_measurement"+str(self.measurementCounter))
 
-        return EmptyResponse()
+        return(True)
 
-def main():
+if __name__ == "__main__":
+    
     #Launch ROS node
     rospy.init_node('propeller_measurement_server')
 
@@ -96,6 +83,3 @@ def main():
         except KeyboardInterrupt:
             print("Shutting down ROS propeller measurement server")
             break
-
-if __name__ == "__main__":
-    main()

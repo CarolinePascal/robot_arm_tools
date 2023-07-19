@@ -2,6 +2,8 @@
 #include <robot_arm_tools/Robot.h>
 #include <robot_arm_tools/RobotTrajectories.h>
 
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+
 int main(int argc, char **argv)
 {
     //ROS node initialisation
@@ -60,7 +62,7 @@ int main(int argc, char **argv)
     straightTrajectory(startPose, endPose, trajectoryStepsNumber, waypoints);
     
     //Main loop
-    robot.runMeasurementRoutine(waypoints,false,true,M_PI/2);
+    robot.runMeasurementRoutine(waypoints,false,true,-1);
 
     //Shut down ROS node  
     ros::shutdown();
