@@ -139,6 +139,9 @@ add_executable(${PROJECT_NAME}_straight_measurement_node src/robot_arm_acoustic_
 add_executable(${PROJECT_NAME}_directivity_measurement_node src/robot_arm_acoustic_directivity_measurement_node.cpp)
 add_executable(${PROJECT_NAME}_mesh_measurement_node src/robot_arm_acoustic_mesh_measurement_node.cpp)
 
+add_executable(${PROJECT_NAME}_garteur_node src/robot_arm_acoustic_garteur_node.cpp)
+
+
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
 ## target back to the shorter version for ease of user use
@@ -164,6 +167,10 @@ target_link_libraries(${PROJECT_NAME}_directivity_measurement_node
   ${catkin_LIBRARIES}
 )
 target_link_libraries(${PROJECT_NAME}_mesh_measurement_node
+  ${catkin_LIBRARIES}
+)
+
+target_link_libraries(${PROJECT_NAME}_garteur_node
   ${catkin_LIBRARIES}
 )
 
