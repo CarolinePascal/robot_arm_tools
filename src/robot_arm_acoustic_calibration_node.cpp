@@ -54,7 +54,7 @@ int main(int argc, char **argv)
     try
     {
         config = YAML::LoadFile(yamlFile);
-        ROS_WARN("config/CalibrationParameters.yaml already exists, its contents will be overwritten !")
+        ROS_WARN("config/CalibrationParameters.yaml already exists, its contents will be overwritten !");
     }
     catch(const std::exception& e)
     {
@@ -91,7 +91,7 @@ int main(int argc, char **argv)
     try
     {
         config = YAML::LoadFile(yamlFile);
-        ROS_WARN("config/environments/StudiedObject.yaml already exists, its contents will be overwritten !")
+        ROS_WARN("config/environments/StudiedObject.yaml already exists, its contents will be overwritten !");
     }
     catch(const std::exception& e)
     {
@@ -137,9 +137,9 @@ int main(int argc, char **argv)
         config.remove("objectPose");
     }
     //config["objectPose"] = distanceToObject;
-    config["objectPose"].push_back(objectPose.position.x;);
-    config["objectPose"].push_back(objectPose.position.y;);
-    config["objectPose"].push_back(objectPose.position.z;);
+    config["objectPose"].push_back(objectPose.position.x);
+    config["objectPose"].push_back(objectPose.position.y);
+    config["objectPose"].push_back(objectPose.position.z);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
