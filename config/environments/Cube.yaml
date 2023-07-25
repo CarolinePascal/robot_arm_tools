@@ -1,0 +1,69 @@
+objectPose:
+  - 0.43520395193183264
+  - -0.015475821997893293
+  - 0.5020558723686521
+  - 0.0
+  - 0.0
+  - 0.0
+objectSize: 0.21049125152727544
+
+object1:
+  collisions: true
+  pose:
+    rx: -0.7261
+    ry: 0.5137
+    rz: 1.9895
+    x: 0.4461
+    y: -0.017
+    z: 0.5091
+  robot_base_collisions: true
+  size:
+    dx: 0.118
+    dy: 0.1196
+    dz: 0.1252
+  type: box
+
+studiedObjectSupport:
+  pose:
+    x: 0.43520395193183264
+    y: -0.015475821997893293
+    z: 1.0
+    rx: 0
+    rz: 0
+    ry: 0
+  size:
+    radius: 0.01
+    height: 1.0
+  collisions: true
+  type: cylinder
+  robot_base_collisions: false
+
+Nut:
+  pose:
+    x: 0.43520395193183264
+    y: -0.015475821997893293
+    z: 0.85
+    rx: 0
+    rz: 0
+    ry: 0
+  size:
+    radius: 0.06
+    height: 0.20
+  collisions: true
+  type: cylinder
+  robot_base_collisions: false
+
+Connector:
+  pose:
+    x: 0.43520395193183264
+    y: -0.015475821997893293
+    z: 0.71
+    rx: 0
+    rz: 0
+    ry: 0
+  size:
+    radius: 0.02
+    height: 0.08
+  collisions: true
+  type: cylinder
+  robot_base_collisions: false
