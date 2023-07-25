@@ -49,11 +49,12 @@ int main(int argc, char **argv)
     std::cin >> objectSize;
 
     //Save reference pose
-    std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/AcquisitionParameters.yaml";
+    std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/CalibrationParameters.yaml";
     YAML::Node config;
     try
     {
         config = YAML::LoadFile(yamlFile);
+        ROS_WARN("config/CalibrationParameters.yaml already exists, its contents will be overwritten !");
     }
     catch(const std::exception& e)
     {
@@ -90,6 +91,7 @@ int main(int argc, char **argv)
     try
     {
         config = YAML::LoadFile(yamlFile);
+        ROS_WARN("config/environments/StudiedObject.yaml already exists, its contents will be overwritten !");
     }
     catch(const std::exception& e)
     {
@@ -110,15 +112,21 @@ int main(int argc, char **argv)
     //Get reference pose orientation as matrix
     tf2::Matrix3x3 matrix(quaternion);
 
-    configObjectPose["x"] = referencePose.position.x + (distanceToObject+objectSize)*matrix[0][2];
-    configObjectPose["y"] = referencePose.position.y + (distanceToObject+objectSize)*matrix[1][2];
-    configObjectPose["z"] = referencePose.position.z + (distanceToObject+objectSize)*matrix[2][2];
+    geometry_msgs::Pose objectPose;
+    objectPose.position.x = referencePose.position.x + (distanceToObject+objectSize/2)*matrix[0][2];
+    objectPose.position.y = referencePose.position.y + (distanceToObject+objectSize/2)*matrix[1][2];
+    objectPose.position.z = referencePose.position.z + (distanceToObject+objectSize/2)*matrix[2][2];
+    objectPose.orientation.w = 1.0;
+
+    configObjectPose["x"] = objectPose.position.x;
+    configObjectPose["y"] = objectPose.position.y;
+    configObjectPose["z"] = objectPose.position.z;
     configObjectPose["rx"] = 0.0;
     configObjectPose["ry"] = 0.0;
     configObjectPose["rz"] = 0.0;
 
     YAML::Node configObjectSize = configObject["size"];
-    configObjectSize["radius"] = objectSize;
+    configObjectSize["radius"] = objectSize/2;
 
     configObject["collisions"] = true;
     configObject["robot_base_collisions"] = false;
@@ -129,9 +137,9 @@ int main(int argc, char **argv)
         config.remove("objectPose");
     }
     //config["objectPose"] = distanceToObject;
-    config["objectPose"].push_back(referencePose.position.x + (distanceToObject+objectSize)*matrix[0][2]);
-    config["objectPose"].push_back(referencePose.position.y + (distanceToObject+objectSize)*matrix[1][2]);
-    config["objectPose"].push_back(referencePose.position.z + (distanceToObject+objectSize)*matrix[2][2]);
+    config["objectPose"].push_back(objectPose.position.x);
+    config["objectPose"].push_back(objectPose.position.y);
+    config["objectPose"].push_back(objectPose.position.z);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);

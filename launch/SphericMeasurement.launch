@@ -6,7 +6,7 @@
 	<arg name="tool_name" default="microGRAS"/>
 	<arg name="simulation" default="false"/>
 	<arg name="calibration" default="true"/>
-	<arg name="safety_distance" default="0.01"/>
+	<arg name="safety_distance" default="0.03"/>
 
 	<!-- ROBOT SETUP -->
 	<include file="$(find robot_arm_tools)/launch/Setup_$(arg robot_name).launch">
@@ -14,7 +14,7 @@
 		<arg name="simulation" value="$(arg simulation)"/>
 		<arg name="calibration" value="$(arg calibration)"/>
 		<arg name="safety_distance" value="$(arg safety_distance)"/>
-		<arg name="planner_name" default="RRTConnect"/>
+		<arg name="planner_name" default="RRTstar"/>
 	</include>
 
 	<!-- MEASUREMENT SERVER -->
@@ -22,13 +22,13 @@
 	
 	<!-- STUDIED OBJECT -->
 	<node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node_object" output="screen">
-		<param name="environmentFileName" value=""/>
+		<param name="environmentFileName" value="FILL HERE"/>
 	</node>
 
 	<!-- MAIN NODE -->
 	<param name="measurementServerName" value="/sound_measurement_server"/>
 	<param name="measurementServerStorageFolder" value="/tmp/SoundMeasurements/"/>
-	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 
