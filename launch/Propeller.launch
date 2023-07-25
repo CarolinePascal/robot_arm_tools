@@ -6,7 +6,7 @@
 	<arg name="tool_name" default="microGRAS"/>
 	<arg name="simulation" default="false"/>
 	<arg name="calibration" default="true"/>
-	<arg name="safety_distance" default="0.01"/>
+	<arg name="safety_distance" default="0.03"/>
 
 	<!-- ROBOT SETUP -->
 	<include file="$(find robot_arm_tools)/launch/Setup_$(arg robot_name).launch">
@@ -14,7 +14,7 @@
 		<arg name="simulation" value="$(arg simulation)"/>
 		<arg name="calibration" value="$(arg calibration)"/>
 		<arg name="safety_distance" value="$(arg safety_distance)"/>
-		<arg name="planner_name" default="RRTConnect"/>
+		<arg name="planner_name" default="RRTstar"/>
 	</include>
 	
 	<!-- MEASUREMENT SERVER -->
@@ -22,8 +22,11 @@
 
 	<!-- MAIN NODE -->
 	<param name="measurementServerName" value="/propeller_measurement_server"/>
-	<param name="measurementServerStorageFolder" value="/tmp/PropellerMeasurements/"/>
+	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/AcousticMeasurements/Propeller/"/>
+	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
+
 	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
+
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 
