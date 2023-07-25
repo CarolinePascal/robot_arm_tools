@@ -1,0 +1,84 @@
+objectPose:
+- 0.4419291797546691
+- -0.012440529880238332
+- 0.5316684442730065
+- 0.0
+- 0.0
+- 0.0
+objectSize: 0.2832163856003811
+object1:
+  collisions: true
+  pose:
+    rx: -1.6388
+    ry: 1.4279
+    rz: -0.1088
+    x: 0.4462
+    y: -0.0603
+    z: 0.5193
+  robot_base_collisions: true
+  size:
+    dx: 0.0792
+    dy: 0.0882
+    dz: 0.0977
+  type: box
+object2:
+  collisions: true
+  pose:
+    rx: 2.915
+    ry: 0.1354
+    rz: 0.6737
+    x: 0.4468
+    y: -0.007
+    z: 0.6009
+  robot_base_collisions: true
+  size:
+    dx: 0.0715
+    dy: 0.0731
+    dz: 0.1366
+  type: box
+object3:
+  collisions: true
+  pose:
+    rx: 1.633
+    ry: -0.7516
+    rz: -0.0778
+    x: 0.4459
+    y: 0.0297
+    z: 0.5229
+  robot_base_collisions: true
+  size:
+    dx: 0.0787
+    dy: 0.0849
+    dz: 0.0917
+  type: box
+
+beam:
+  collisions: true
+  robot_base_collisions: true
+  type: cylinder
+  pose:
+    x: 0.4419291797546691
+    y: -0.012440529880238332052
+    z: 1.0316684442730065
+    rx: 0
+    ry: 0
+    rz: 0
+  size:
+    radius: 0.02
+    height: 1.0
+
+nut:
+  collisions: true
+  robot_base_collisions: true
+  type: box
+  pose:
+    x: 0.4419291797546691
+    y: -0.012440529880238332052
+    z: 0.7316684442730065
+    rx: 0
+    ry: 0
+    rz: 0
+  size:
+    dx: 0.02
+    dy: 0.12
+    dz: 0.05
