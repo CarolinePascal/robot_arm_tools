@@ -43,18 +43,18 @@ int main(int argc, char **argv)
     ROS_INFO("Reference pose : \n X : %f \n Y : %f \n Z : %f \n RX : %f \n RY : %f \n RZ : %f",referencePose.position.x,referencePose.position.y,referencePose.position.z,roll,pitch,yaw);
 
     double objectSize, distanceToObject;
-    std::cout << "Distance between reference pose and the studied object : " << std::endl;
+    std::cout << "Distance between the microphone and the propeller center (m) : " << std::endl;
     std::cin >> distanceToObject;
-    std::cout << "Characteristic size of the studied object : " << std::endl;
+    std::cout << "Characteristic size of the propeller : " << std::endl;
     std::cin >> objectSize;
 
     //Save reference pose
-    std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/CalibrationParameters.yaml";
+    std::string yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/PropellerCalibrationParameters.yaml";
     YAML::Node config;
     try
     {
         config = YAML::LoadFile(yamlFile);
-        ROS_WARN("config/CalibrationParameters.yaml already exists, its contents will be overwritten !");
+        ROS_WARN("%s already exists, its contents will be overwritten !",yamlFile.c_str());
     }
     catch(const std::exception& e)
     {
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
         config = YAML::LoadFile(yamlFile);
     }
 
-    if (config["referencePose"]) 
+    if(config["referencePose"]) 
     {
         config.remove("referencePose");
     }
@@ -73,12 +73,12 @@ int main(int argc, char **argv)
     config["referencePose"].push_back(pitch);
     config["referencePose"].push_back(yaw);
 
-    if (config["jointsValues"]) 
+    if(config["jointsValues"]) 
     {
         config.remove("jointsValues");
     }
     std::vector<double> jointsValues = robot.getCurrentJointsValues();
-    for (std::vector<double>::iterator it = jointsValues.begin(); it != jointsValues.end(); it++)
+    for(std::vector<double>::iterator it = jointsValues.begin(); it != jointsValues.end(); it++)
     {
         config["jointsValues"].push_back(*it);
     }
@@ -87,11 +87,11 @@ int main(int argc, char **argv)
     fout << config;
 
     //Create a dedicated environment file for the studied object
-    yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/environments/StudiedObject.yaml";
+    yamlFile = ros::package::getPath("robot_arm_acoustic")+"/config/environments/Propeller.yaml";
     try
     {
         config = YAML::LoadFile(yamlFile);
-        ROS_WARN("config/environments/StudiedObject.yaml already exists, its contents will be overwritten !");
+        ROS_WARN("%s already exists, its contents will be overwritten !",yamlFile.c_str());
     }
     catch(const std::exception& e)
     {
@@ -100,12 +100,12 @@ int main(int argc, char **argv)
     }
 
     //Studied object
-    if (config["studiedObject"]) 
+    if(config["propeller"]) 
     {
-        config.remove("studiedObject");
+        config.remove("propeller");
     }
-    YAML::Node configObject = config["studiedObject"];
-    configObject["type"] = "sphere";
+    YAML::Node configObject = config["propeller"];
+    configObject["type"] = "cylinder";
     
     YAML::Node configObjectPose = configObject["pose"];
 
@@ -113,9 +113,9 @@ int main(int argc, char **argv)
     tf2::Matrix3x3 matrix(quaternion);
 
     geometry_msgs::Pose objectPose;
-    objectPose.position.x = referencePose.position.x + (distanceToObject+objectSize/2)*matrix[0][2];
-    objectPose.position.y = referencePose.position.y + (distanceToObject+objectSize/2)*matrix[1][2];
-    objectPose.position.z = referencePose.position.z + (distanceToObject+objectSize/2)*matrix[2][2];
+    objectPose.position.x = referencePose.position.x + distanceToObject*matrix[0][2];
+    objectPose.position.y = referencePose.position.y + distanceToObject*matrix[1][2];
+    objectPose.position.z = referencePose.position.z + distanceToObject*matrix[2][2];
     objectPose.orientation.w = 1.0;
 
     configObjectPose["x"] = objectPose.position.x;
@@ -127,12 +127,13 @@ int main(int argc, char **argv)
 
     YAML::Node configObjectSize = configObject["size"];
     configObjectSize["radius"] = objectSize/2;
+    configObjectSize["height"] = distanceToObject*2;
 
     configObject["collisions"] = true;
     configObject["robot_base_collisions"] = false;
 
     //Studied object global parameters
-    if (config["objectPose"]) 
+    if(config["objectPose"]) 
     {
         config.remove("objectPose");
     }
@@ -144,16 +145,46 @@ int main(int argc, char **argv)
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
 
-    if (config["objectSize"]) 
+    if(config["objectSize"]) 
     {
         config.remove("objectSize");
     }
     config["objectSize"] = objectSize;
 
+    //Studied object base
+    if(config["propeller_base"]) 
+    {
+        config.remove("propeller_base");
+    }
+    YAML::Node configObjectBase = config["propeller_base"];
+    configObjectBase["type"] = "cylinder";
+    
+    YAML::Node configObjectBasePose = configObjectBase["pose"];
+
+    objectPose.position.x = referencePose.position.x + (2*distanceToObject + 0.5)*matrix[0][2];
+    objectPose.position.y = referencePose.position.y + (2*distanceToObject + 0.5)*matrix[1][2];
+    objectPose.position.z = referencePose.position.z + (2*distanceToObject + 0.5)*matrix[2][2];
+    objectPose.orientation.w = 1.0;
+
+    configObjectBasePose["x"] = objectPose.position.x;
+    configObjectBasePose["y"] = objectPose.position.y;
+    configObjectBasePose["z"] = objectPose.position.z;
+    configObjectBasePose["rx"] = 0.0;
+    configObjectBasePose["ry"] = 0.0;
+    configObjectBasePose["rz"] = 0.0;
+
+    YAML::Node configObjectBaseSize = configObjectBase["size"];
+    configObjectBaseSize["radius"] = 0.1;
+    configObjectBaseSize["height"] = 1.0;
+
+    configObjectBase["collisions"] = true;
+    configObjectBase["robot_base_collisions"] = false;
+
+
     fout = std::ofstream(yamlFile);   
     fout << config;
 
-    robot.runMeasurementRoutine(std::vector<geometry_msgs::Pose>(),true,true);
+    //robot.runMeasurementRoutine(std::vector<geometry_msgs::Pose>(),true,true);
 
     //Shutdown node
     ros::shutdown();

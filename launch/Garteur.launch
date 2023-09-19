@@ -22,10 +22,11 @@
 	</node>
 
 	<!-- MEASUREMENT SERVER -->
+	<param name="measurementServerName" value="/ok_server"/>
+	<param name="measurementServerStorageFolder" value="$(env HOME)/Desktop/Garteur/"/>
 	<node pkg="robot_arm_tools" type="OKMeasurementServer" name="ok_server" output="screen"/>
 	
 	<!-- MAIN NODE -->
-	<param name="measurementServerName" value="/ok_server"/>
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_garteur_node" name="robot_arm_acoustic_garteur_node" output="screen" required="true">
 		<param name="trajectoryFilePath" value="$(find robot_arm_acoustic)/config/GarteurPoses.yaml"/>
 	</node>

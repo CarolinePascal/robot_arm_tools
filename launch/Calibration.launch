@@ -16,14 +16,6 @@
 		<arg name="safety_distance" value="$(arg safety_distance)"/>
 		<arg name="planner_name" default="RRTstar"/>
 	</include>
-    <!-- MEASUREMENT (CALIBRATION) SERVER -->
-	<arg name="storage_folder_name" default=""/>
-	<arg name="measurement_server_name" default="microphone_calibration_server"/>
-
-	<param name="measurementServerName" value="/$(arg measurement_server_name)"/>
-	<param name="measurementServerStorageFolder" value="$(arg storage_folder_name)"/>
-
-	<node pkg="robot_arm_acoustic" type="MicrophoneCalibrationServer.py" name="microphone_calibration_server" output="screen"/>
 
 	<!-- MAIN NODE -->
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_calibration_node" name="robot_arm_acoustic_calibration_node" output="screen" required="true"/>
