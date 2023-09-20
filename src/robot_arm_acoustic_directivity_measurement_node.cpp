@@ -41,12 +41,10 @@ int main(int argc, char **argv)
     }
 
     geometry_msgs::Pose centerPose;
-    tf2::Quaternion quaternion;
-    quaternion.setRPY(centerPoseArray[3],centerPoseArray[4],centerPoseArray[5]);
     centerPose.position.x = centerPoseArray[0];
     centerPose.position.y = centerPoseArray[1];
     centerPose.position.z = centerPoseArray[2];
-    centerPose.orientation =  tf2::toMsg(quaternion);
+    centerPose.orientation.w = 1.0;
 
     //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
