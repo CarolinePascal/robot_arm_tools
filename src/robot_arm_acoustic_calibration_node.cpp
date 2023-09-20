@@ -113,9 +113,12 @@ int main(int argc, char **argv)
     tf2::Matrix3x3 matrix(quaternion);
 
     geometry_msgs::Pose objectPose;
-    objectPose.position.x = referencePose.position.x + distanceToObject*matrix[0][2];
-    objectPose.position.y = referencePose.position.y + distanceToObject*matrix[1][2];
-    objectPose.position.z = referencePose.position.z + distanceToObject*matrix[2][2];
+    //objectPose.position.x = referencePose.position.x + distanceToObject*matrix[0][2];
+    //objectPose.position.y = referencePose.position.y + distanceToObject*matrix[1][2];
+    //objectPose.position.z = referencePose.position.z + distanceToObject*matrix[2][2];
+    objectPose.position.x = referencePose.position.x;
+    objectPose.position.y = referencePose.position.y;
+    objectPose.position.z = referencePose.position.z - distanceToObject;
     objectPose.orientation.w = 1.0;
 
     configObjectPose["x"] = objectPose.position.x;
@@ -161,9 +164,12 @@ int main(int argc, char **argv)
     
     YAML::Node configObjectBasePose = configObjectBase["pose"];
 
-    objectPose.position.x = referencePose.position.x + (2*distanceToObject + 0.5)*matrix[0][2];
-    objectPose.position.y = referencePose.position.y + (2*distanceToObject + 0.5)*matrix[1][2];
-    objectPose.position.z = referencePose.position.z + (2*distanceToObject + 0.5)*matrix[2][2];
+    //objectPose.position.x = referencePose.position.x + (2*distanceToObject + 0.5)*matrix[0][2];
+    //objectPose.position.y = referencePose.position.y + (2*distanceToObject + 0.5)*matrix[1][2];
+    //objectPose.position.z = referencePose.position.z + (2*distanceToObject + 0.5)*matrix[2][2];
+    objectPose.position.x = referencePose.position.x;
+    objectPose.position.y = referencePose.position.y;
+    objectPose.position.z = referencePose.position.z - (2*distanceToObject + 0.5);
     objectPose.orientation.w = 1.0;
 
     configObjectBasePose["x"] = objectPose.position.x;
@@ -171,7 +177,7 @@ int main(int argc, char **argv)
     configObjectBasePose["z"] = objectPose.position.z;
     configObjectBasePose["rx"] = 0.0;
     configObjectBasePose["ry"] = 0.0;
-    configObjectBasePose["rz"] = 0.0;
+    configObjectBasePose["rz"] = 1.5708;    //To set the trajectory orientation regarding to the robot
 
     YAML::Node configObjectBaseSize = configObjectBase["size"];
     configObjectBaseSize["radius"] = 0.05;
