@@ -14,6 +14,7 @@
 		<arg name="simulation" value="$(arg simulation)"/>
 		<arg name="calibration" value="$(arg calibration)"/>
 		<arg name="safety_distance" value="$(arg safety_distance)"/>
+		<arg name="planner_name" default="RRTstar"/>
 	</include>
 
 	<!-- STUDIED OBJECT -->

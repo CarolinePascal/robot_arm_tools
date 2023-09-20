@@ -3,7 +3,7 @@
 
 	<!-- GENERAL ARGUMENTS -->
 	<arg name="robot_name" default="panda"/>
-	<arg name="tool_name" default="microGRAS"/>
+	<arg name="tool_name" default="microGRAS_alternate"/>
 	<arg name="simulation" default="false"/>
 	<arg name="calibration" default="true"/>
 	<arg name="safety_distance" default="0.03"/>

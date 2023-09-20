@@ -3,7 +3,7 @@
 
 	<!-- GENERAL ARGUMENTS -->
 	<arg name="robot_name" default="panda"/>
-	<arg name="tool_name" default="microGRAS"/>
+	<arg name="tool_name" default="microGRAS_alternate"/>
 	<arg name="simulation" default="false"/>
 	<arg name="calibration" default="true"/>
 	<arg name="safety_distance" default="0.03"/>
@@ -17,29 +17,18 @@
 		<arg name="planner_name" default="RRTstar"/>
 	</include>
 
-	<!-- MEASUREMENT SERVER -->
-	<node pkg="robot_arm_acoustic" type="SoundMeasurementServer.py" name="sound_measurement_server" output="screen"/>
-
 	<!-- STUDIED OBJECT -->
 	<node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node_object" output="screen">
-		<param name="environmentFileName" value="FILL HERE"/>
+		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/Propeller.yaml"/>
 	</node>
 
 	<!-- MAIN NODE -->
 	<arg name="trajectory_radius" default="0.5"/>
 	<arg name="trajectory_steps_number" default="10"/>
-	<arg name="trajectory_axis" default="[0,0,1]"/>
-	<arg name="trajectory_center_pose" default="[0,0,0,0,0,0]"/>
 	
 	<param name="trajectoryRadius" value="$(arg trajectory_radius)"/>
 	<param name="trajectoryStepsNumber" value="$(arg trajectory_steps_number)"/>
-	<param name="trajectoryAxis" type="yaml" value="$(arg trajectory_axis)"/>
-	<param name="trajectoryCenterPose" type="yaml" value="$(arg trajectory_center_pose)"/>
 
-	<param name="measurementServerName" value="/sound_measurement_server"/>
-	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/AcousticMeasurements/Directivity/"/>
-	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
-	
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_directivity_measurement_node" name="robot_arm_acoustic_directivity_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 
