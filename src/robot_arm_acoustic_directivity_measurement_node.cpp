@@ -34,13 +34,7 @@ int main(int argc, char **argv)
         throw std::runtime_error("MISSING PARAMETER");
     }
 
-    if(!n.getParam("trajectoryAxis",trajectoryAxis))
-    {
-        ROS_ERROR("Unable to retrieve trajectory axis !");
-        throw std::runtime_error("MISSING PARAMETER");
-    }
-
-    if(!n.getParam("trajectoryCenterPose",centerPoseArray))
+    if(!n.getParam("objectPose",centerPoseArray))
     {
         ROS_ERROR("Unable to retrieve trajectory center pose !");
         throw std::runtime_error("MISSING PARAMETER");
@@ -58,7 +52,8 @@ int main(int argc, char **argv)
     std::vector<geometry_msgs::Pose> waypoints;
 
     //Default z=1 trajectory
-    sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
+    //sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
+    sphericAzimuthTrajectory(centerPose, trajectoryRadius, 0, 0, 2*M_PI, trajectoryStepsNumber, waypoints);
 
     //TODO FIX
     //Eigen::Vector3d RPY = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(trajectoryAxis.data()), Eigen::Vector3d(0,0,1)).toRotationMatrix().eulerAngles(0, 1, 2);

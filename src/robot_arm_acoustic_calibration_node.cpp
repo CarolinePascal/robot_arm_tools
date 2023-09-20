@@ -143,7 +143,7 @@ int main(int argc, char **argv)
     config["objectPose"].push_back(objectPose.position.z);
     config["objectPose"].push_back(0.0);
     config["objectPose"].push_back(0.0);
-    config["objectPose"].push_back(0.0);
+    config["objectPose"].push_back(1.5708); //For trajectory orientation !
 
     if(config["objectSize"]) 
     {
@@ -174,7 +174,7 @@ int main(int argc, char **argv)
     configObjectBasePose["rz"] = 0.0;
 
     YAML::Node configObjectBaseSize = configObjectBase["size"];
-    configObjectBaseSize["radius"] = 0.1;
+    configObjectBaseSize["radius"] = 0.05;
     configObjectBaseSize["height"] = 1.0;
 
     configObjectBase["collisions"] = true;
