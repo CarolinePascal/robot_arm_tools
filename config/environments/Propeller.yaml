@@ -1,38 +1,36 @@
-studiedObject:
+propeller:
   type: cylinder
   pose:
-    x: 0.6805995914134531
-    y: -0.09554961542017248
-    z: 0.2389202638528596
+    x: 0.6754573329167104
+    y: -0.09391417402333557
+    z: 0.2267432887064388
     rx: 0
     ry: 0
     rz: 0
   size:
-    height: 0.05
     radius: 0.1651
+    height: 0.02
   collisions: true
   robot_base_collisions: false
-
-supportPropeller:
-  type: cylinder
-  pose:
-    x: 0.6805995914134531
-    y: -0.09554961542017248
-    z: -0.25
-    rx: 0
-    ry: 0
-    rz: 0
-  size:
-    radius: 0.1
-    height: 1.0
-  collisions: true
-  robot_base_collisions: false
-
 objectPose:
-  - 0.6805995914134531
-  - -0.09554961542017248
-  - 0.2389202638528596
+  - 0.6754573329167104
+  - -0.09391417402333557
+  - 0.2267432887064388
   - 0
   - 0
   - 1.5708
 objectSize: 0.3302
+propeller_base:
+  type: cylinder
+  pose:
+    x: 0.6614210971339306
+    y: -0.0663877157535058
+    z: -0.2823198490084908
+    rx: 0
+    ry: 0
+    rz: 0
+  size:
+    radius: 0.05
+    height: 1
+  collisions: true
+  robot_base_collisions: false

@@ -19,3 +19,9 @@ ceiling:
   axis: z
   offset: 1.0
   collisions: true
+
+artificial_wall:
+  type: border
+  axis: x
+  offset: -0.5
+  collisions: true
