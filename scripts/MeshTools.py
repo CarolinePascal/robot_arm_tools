@@ -18,7 +18,16 @@ import yaml
 #  @param elementType Type of element for triangular faces
 #  @param saveMesh Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
 def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False):
+
+    try:
+        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/")
+    except:
+        pass
+
+    if(elementType != "P0" and elementType != "P1"):
+        raise NotImplementedError
 
     #Sphere radius 
     radius = size/2
@@ -69,7 +78,7 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
     faces = hull.simplices
 
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -103,7 +112,7 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
 
         sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesInclination[np.where(sortedMeshPoses[:,4] == inclinationRange[-1])[0]]))
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -137,7 +146,13 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
 #  @param elementType Type of element for triangular faces
 #  @param saveMesh Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
 def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False):
+
+    try:
+        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/")
+    except:
+        pass
 
     if(elementType != "P0"):
         raise NotImplementedError
@@ -151,7 +166,7 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
     faces = hull.simplices
 
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/dual_" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -185,7 +200,7 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
 
         sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesInclination[np.where(sortedMeshPoses[:,4] == inclinationRange[-1])[0]]))
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/dual_" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -212,6 +227,40 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
         """
 
     return(points, faces)
+
+## Function creating a circular mesh
+#  @param size Size of the circle as its diameter
+#  @param resolution Target resolution of the mesh
+#  @param elementType Type of element for lines
+#  @param saveMesh Wether to save mesh file or not
+#  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @return points, faces Generated mesh points (vertices) and lines (cells)
+def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False, saveYAML = False):
+
+    try:
+        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/")
+    except:
+        pass
+
+    if(elementType != "P1"):
+        raise NotImplemented
+
+    pointsNumber = int(np.round(np.pi*size/resolution))
+    X = (size/2)*np.cos(np.linspace(0,2*np.pi,pointsNumber,endpoint=False))
+    Y = (size/2)*np.sin(np.linspace(0,2*np.pi,pointsNumber,endpoint=False))
+    Z = np.zeros(pointsNumber)
+    points = np.array([X,Y,Z]).T
+    lines = np.vstack((np.arange(pointsNumber),np.roll(np.arange(pointsNumber),-1))).T
+
+    if(saveMesh):
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
+        print("Saving mesh at " + meshPath)
+        meshio.write_points_cells(meshPath, list(points), [("line",lines)])
+
+    if(saveYAML):
+        raise NotImplemented
+
+    return(points, lines)
 
 ## Function plotting a wire representation of a mesh
 #  @param vertices Mesh vertices
@@ -267,8 +316,12 @@ def getMeshInfo(vertices,faces,elementType="P0"):
         except:
             mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
             lines = np.array(mesh.vertices[mesh.edges_unique])
-        h = np.linalg.norm(lines[:,1] - lines[:,0],axis=1)
-
+            
+            if(len(lines) == 0):
+                h = np.linalg.norm(vertices[faces[:,1]] - vertices[faces[:,0]],axis=1)
+            else:
+                h = np.linalg.norm(lines[:,1] - lines[:,0],axis=1)
+        
         return(np.min(h),np.max(h),np.average(h),np.std(h))
 
     def getMeshAreas(mesh):
@@ -277,6 +330,9 @@ def getMeshInfo(vertices,faces,elementType="P0"):
         except:
             mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
             areas = np.array(mesh.area_faces)
+
+            if(len(areas) == 0):
+                areas = np.zeros(1)
 
         return(np.min(areas),np.max(areas),np.average(areas),np.std(areas))
 
@@ -341,6 +397,13 @@ if __name__ == "__main__":
                 getMeshInfo(vertices,faces,elementType)
                 plotMesh(vertices,faces,elementType)
                 #generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML)
+
+    elif(meshType == "circle"):
+        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or info):
+            vertices,faces = generateCircularMesh(size, resolution, elementType, saveMesh, saveYAML)
+            if(info):
+                getMeshInfo(vertices,faces,elementType)
+                plotMesh(vertices,faces,elementType)
 
     else:
         print("Invalid mesh type !")

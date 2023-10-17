@@ -1,5 +1,20 @@
 #!/usr/bin/python3
 
+#TODO
+# DATA PROCESSING
+#-> Mesures moyennées sur tous les points de controle, sur plusieurs acquisitions
+#-> Bonne métrique pour le calcul des erreurs (relative, absolue)
+#-> Simuler une mesure avec résolution plus faible (échantillonnage des points mesurés)
+#-> Haute fréquences : regarder longueure d'onde, taille de la sphère, résolution, etc.
+
+# UNCERTAINTIES
+#-> Moyenne ecart type => Tracer les deux en même temps ?
+#-> Plus de sigmas, explosion quand sigma = resolution => A voir sur les prochains tracés
+#-> Trace en fonction des valeurs normalisées r1/lambda, r2/lambda, resolution/lambda
+#-> Sigma sur la mesure => Estimer des valeurs de sigma, peut-être en fonction de la fréquence ?
+#-> Introduire distance caractéristique source avec dipole
+
+
 #System packages
 import sys
 import os
@@ -59,7 +74,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     parameterValues = np.unique(P[:,0])
 
     #Any fixed values for the studied parameter ?
-    fixedParameterValues = list(input("Abscissa parameter values ? (default : *) " + str(parameterValues) + " (" + parametersUnits[0] + ") ").split(' '))
+    fixedParameterValues = list(input("Abscissa parameter values ? (default : *) " + str(np.sort(parameterValues)) + " (" + parametersUnits[0] + ") ").split(' '))
     try:
         fixedParameterValues = [float(item) for item in fixedParameterValues]
     except:
@@ -111,17 +126,17 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     #Fixed parameter ? 
     flag = input("Any fixed parameter ? y/n")
-    tmpParametersList = parametersList[1:]
+    variableParametersList = parametersList[1:]
 
     while(flag == "y"):
-        tmpParameter = input("What parameter ? " + str(tmpParametersList))
-        tmpParameterIndex = np.where(parametersList[1:] == tmpParameter)[0][0]
-        tmpValue = list(input("what values ? " + str(np.unique(interestConfigurations[:,tmpParameterIndex])) + " (" + parametersUnits[1:][tmpParameterIndex] + ") ").split(' '))
+        fixedParameter = input("What parameter ? " + str(variableParametersList))
+        fixedParameterIndex = np.where(parametersList[1:] == fixedParameter)[0][0]
+        tmpValue = list(input("what values ? " + str(np.unique(interestConfigurations[:,fixedParameterIndex])) + " (" + parametersUnits[1:][fixedParameterIndex] + ") ").split(' '))
         tmpValue = [float(item) for item in tmpValue]
 
         #Select only the parameters configurations containing the fixed parameters
-        interestConfigurations = interestConfigurations[np.where(np.isin(interestConfigurations[:,tmpParameterIndex], tmpValue))[0]]
-        tmpParametersList = np.delete(tmpParametersList,np.where(tmpParametersList == tmpParameter)[0][0])
+        interestConfigurations = interestConfigurations[np.where(np.isin(interestConfigurations[:,fixedParameterIndex], tmpValue))[0]]
+        variableParametersList = np.delete(variableParametersList,np.where(variableParametersList == fixedParameter)[0][0])
         flag = input("Any fixed parameter ? y/n")
 
     #Get interest files, scaling factors and complete configurations (i.e. with the studied parameter)
@@ -130,14 +145,29 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     scalingFactors = scalingFactors[interestConfigurationsIndices]
     P = P[interestConfigurationsIndices]
 
+    interestConfigurationsNumber = len(interestConfigurations)
+    if("iteration" in variableParametersList):
+        iterationIndex = np.where(parametersList == "iteration")[0][0]
+        iterationNumber = len(np.unique(interestConfigurations[:,iterationIndex-1]))
+        interestConfigurationsNumber = len(np.unique(np.delete(interestConfigurations,iterationIndex-1,1),axis=0))
+        
+
     #Create the interest configurations / plot values matrix
     if(postProcessingID == "re/im"):
-        plotListA = np.zeros((2,len(interestConfigurations),len(parameterValues)))
-        plotListN = np.zeros((2,len(interestConfigurations),len(parameterValues)))
+        if("iteration" in variableParametersList):
+            plotListA = np.zeros((2,iterationNumber,interestConfigurationsNumber,len(parameterValues)))
+            plotListN = np.zeros((2,iterationNumber,interestConfigurationsNumber,len(parameterValues)))
+        else:
+            plotListA = np.zeros((2,interestConfigurationsNumber,len(parameterValues)))
+            plotListN = np.zeros((2,interestConfigurationsNumber,len(parameterValues)))
     else:
-        plotListA = np.zeros((1,len(interestConfigurations),len(parameterValues)))
-        plotListN = np.zeros((1,len(interestConfigurations),len(parameterValues)))
-    plotListP = np.zeros((len(interestConfigurations),len(parameterValues)))
+        if("iteration" in variableParametersList):
+            plotListA = np.zeros((1,iterationNumber,interestConfigurationsNumber,len(parameterValues)))
+            plotListN = np.zeros((1,iterationNumber,interestConfigurationsNumber,len(parameterValues)))
+        else:
+            plotListA = np.zeros((1,interestConfigurationsNumber,len(parameterValues)))
+            plotListN = np.zeros((1,interestConfigurationsNumber,len(parameterValues)))
+    plotListP = np.zeros((interestConfigurationsNumber,len(parameterValues)))
 
     #Get indices frequency (mandatory parameter !) and dipole distance (optional parameter, default is 0)
     frequencyIndex = np.where(parametersList=="frequency")[0][0]
@@ -152,82 +182,108 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     if(relativeError == "y"):
         errorType = "relative"
 
-    currentPlot = 0
+    for interestConfigurationIndex, interestConfiguration in enumerate(np.unique(np.delete(interestConfigurations,iterationIndex-1,1),axis=0)):
 
-    for i,configuration in enumerate(P):
+        print("Plot : " + str(interestConfigurationIndex+1) + " on " + str(interestConfigurationsNumber))
 
-        if(i//len(parameterValues) + 1 != currentPlot):
-            currentPlot = i//len(parameterValues) + 1
-            print("Plot : " + str(currentPlot) + " on " + str(len(interestConfigurations)))
-        
-        #Get studied parameter value and configuration indices
-        parameterValueIndex = np.where(parameterValues == configuration[0])[0][0]
-        configurationIndex = np.where((interestConfigurations == configuration[1:]).all(axis=1))[0][0]
+        for parameterValueIndex,parameterValue in enumerate(parameterValues):
+                    
+            configuration = np.concatenate(([parameterValue],interestConfiguration))
 
-        #Get configuration frequency and dipole distance parameters
-        f = configuration[frequencyIndex]
-        k = 2*np.pi*f/c
-        demid = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
+            if("iteration" in variableParametersList):
+                fileIndices = np.where((np.delete(P,iterationIndex,1) == configuration).all(axis=1))[0]
+            else:
+                fileIndices = np.where(P == configuration)[0]
 
-        #Create empty arrays
-        numericValuesA = []
-        numericValuesN = []
-        analyticalValues = []
+            #Get configuration frequency and dipole distance parameters
+            f = configuration[frequencyIndex]
+            k = 2*np.pi*f/c
+            demid = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
 
-        R = []
-        Theta = []
-        Phi = []
+            #Create empty arrays
+            numericValuesA = []
+            numericValuesN = []
+            analyticalValues = []
 
-        #Fill arrays from output file and analytical function
-        with open(fileList[i], newline='') as csvfile:
-            reader = csv.reader(csvfile, delimiter=';', quotechar='|')
+            for k,fileIndex in enumerate(fileIndices):
 
-            for row in reader:
-                x = float(row[0])
-                y = float(row[1])
-                z = float(row[2])
+                #Create empty arrays
+                numericValuesA.append([])
+                numericValuesN.append([])
+                analyticalValues.append([])
+                R = []
+                Theta = []
+                Phi = []
 
-                R.append(np.sqrt(x*x + y*y + z*z))
-                Theta.append(np.arctan2(np.sqrt(x*x + y*y),z))
-                Phi.append(np.arctan2(y,x))
+                #Fill arrays from output file and analytical function
+                with open(fileList[fileIndex], newline='') as csvfile:
+                    reader = csv.reader(csvfile, delimiter=';', quotechar='|')
 
-                analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),demid))
-                numericValuesA.append(complex(float(row[3]),float(row[4])))
-                numericValuesN.append(complex(float(row[5]),float(row[6])))               
+                    for row in reader:
+                        x = float(row[0])
+                        y = float(row[1])
+                        z = float(row[2])
 
-        R = np.array(R)
-        Theta = np.array(Theta)
-        Phi = np.array(Phi)
+                        R.append(np.sqrt(x*x + y*y + z*z))
+                        Theta.append(np.arctan2(np.sqrt(x*x + y*y),z))
+                        Phi.append(np.arctan2(y,x))
 
-        #Remove outliers
-        outliers = np.concatenate((np.where(np.isinf(np.abs(analyticalValues)))[0],np.where(np.abs(analyticalValues) < np.mean(np.abs(analyticalValues)) - 2*np.std(np.abs(analyticalValues)))[0]))
+                        analyticalValues[k].append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),demid))
+                        numericValuesA[k].append(complex(float(row[3]),float(row[4])))
+                        numericValuesN[k].append(complex(float(row[5]),float(row[6])))               
 
-        R = np.delete(R,outliers)
-        Theta = np.delete(Theta,outliers)
-        Phi = np.delete(Phi,outliers)
-        analyticalValues = postProcessingFunction(np.delete(analyticalValues,outliers))
-        numericValuesN = postProcessingFunction(np.delete(numericValuesN,outliers))
-        numericValuesA = postProcessingFunction(np.delete(numericValuesA,outliers))
+                R = np.array(R)
+                Theta = np.array(Theta)
+                Phi = np.array(Phi)
 
-        #Compute error over the z=0 plane
-        if(verticesNumber):
-            #TODO Non spheric mesh ?
-            radiusIndex = np.where(parametersList=="radius")[0][0]
-            try:
-                mesh = meshio.read(os.path.dirname(os.path.abspath(__file__)) + "/config/meshes/sphere/" + str(np.round(configuration[radiusIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
-                plotListP[configurationIndex][parameterValueIndex] = len(mesh.points)*scalingFactors[i]
-            except:
-                points,_ = generateSphericMesh(np.round(configuration[radiusIndex],4),np.round(configuration[0],4))
-                plotListP[configurationIndex][parameterValueIndex] = len(points)*scalingFactors[i]
-        else:
-            plotListP[configurationIndex][parameterValueIndex] = configuration[0]*scalingFactors[i]
+                #Remove outliers
+                outliers = np.concatenate((np.where(np.isinf(np.abs(analyticalValues[k])))[0],np.where(np.abs(analyticalValues[k]) < np.mean(np.abs(analyticalValues[k])) - 2*np.std(np.abs(analyticalValues[k])))[0]))
 
-        if(relativeError == "y"):
-            plotListA[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)/errorFunction(analyticalValues)
-            plotListN[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)/errorFunction(analyticalValues)
-        else:
-            plotListA[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)
-            plotListN[:,configurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)
+                R = np.delete(R,outliers)
+                Theta = np.delete(Theta,outliers)
+                Phi = np.delete(Phi,outliers)
+                analyticalValues[k] = postProcessingFunction(np.delete(analyticalValues[k],outliers))
+                numericValuesN[k] = postProcessingFunction(np.delete(numericValuesN[k],outliers))
+                numericValuesA[k] = postProcessingFunction(np.delete(numericValuesA[k],outliers))
+
+            #Compute error over the z=0 plane
+            if(verticesNumber):
+                #TODO Non spheric mesh ?
+                sizeIndex = np.where(parametersList=="size")[0][0]
+                try:
+                    mesh = meshio.read(os.path.dirname(os.path.abspath(__file__)) + "/config/meshes/sphere/" + str(np.round(configuration[sizeIndex],4)) + "_" + str(np.round(configuration[0],4)) + ".mesh")
+                    plotListP[interestConfigurationIndex][parameterValueIndex] = len(mesh.points)*scalingFactors[interestConfigurationIndex]
+                except:
+                    points,_ = generateSphericMesh(np.round(configuration[sizeIndex],4),np.round(configuration[0],4))
+                    plotListP[interestConfigurationIndex][parameterValueIndex] = len(points)*scalingFactors[interestConfigurationIndex]
+            else:
+                plotListP[interestConfigurationIndex][parameterValueIndex] = configuration[0]*scalingFactors[interestConfigurationIndex]
+
+            numericValuesA = np.array(numericValuesA)
+            numericValuesN = np.array(numericValuesN)
+            analyticalValues = np.array(analyticalValues)
+
+            #OPTION 1
+            #numericValuesA = np.mean(numericValuesA,axis=1)
+            #numericValuesN = np.mean(numericValuesN,axis=1)
+            #analyticalValues = np.mean(analyticalValues,axis=1)
+
+            #OPTION 2 
+            if("iteration" in variableParametersList):
+                for l,(analytical, numA, numN) in enumerate(zip(analyticalValues,numericValuesA,numericValuesN)):
+                    if(relativeError == "y"):
+                        plotListA[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numA - analytical)/errorFunction(analytical)
+                        plotListN[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numN - analytical)/errorFunction(analytical)
+                    else:
+                        plotListA[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numA - analytical)
+                        plotListN[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numN - analytical)
+            else:
+                if(relativeError == "y"):
+                    plotListA[:,interestConfigurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)/errorFunction(analyticalValues)
+                    plotListN[:,interestConfigurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)/errorFunction(analyticalValues)
+                else:
+                    plotListA[:,interestConfigurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)
+                    plotListN[:,interestConfigurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)
 
     #Create plots
     if(postProcessingID == "re/im"):
@@ -247,6 +303,9 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     title = errorType + " error computed with : \n" 
 
     for j,name in enumerate(parametersList[1:]): 
+        if(name == "iteration"):
+            continue
+
         if(len(np.unique(interestConfigurations[:,j])) == 1):
             title += name + " = " + str(interestConfigurations[0,j]) 
             if(parametersUnits[1:][j] != " "):
@@ -267,10 +326,13 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     linearRegression = input("Linear regression ? y/n")
 
-    for i,configuration in enumerate(interestConfigurations):
+    for i,configuration in enumerate(np.unique(np.delete(interestConfigurations,iterationIndex-1,1),axis=0)):
 
         label = ""
         for j,name in enumerate(parametersList[1:]):
+            if(name == "iteration"):
+                continue
+
             if(len(np.unique(interestConfigurations[:,j])) > 1):
                 label += name + " = " + str(configuration[j]) 
                 if(parametersUnits[1:][j] != " "):
@@ -279,18 +341,44 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
         label = label[:-1]
 
         for axAi,axNi,plotN,plotA in zip(axA,axN,plotListN,plotListA):
-            #Avoid issues with 0 and log scaling function
-            plotIndex = np.arange(len(plotA[i]))
-            if(log == "y"):
-                plotIndex = np.where(plotA[i] != 0)[0]
-            axAi.plot(plotListP[i][plotIndex],scalingFunction(plotA[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
-            
-            plotIndex = np.arange(len(plotN[i]))
-            if(log == "y"):
-                plotIndex = np.where(plotN[i] != 0)[0]
-            axNi.plot(plotListP[i][plotIndex],scalingFunction(plotN[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
 
-            if(linearRegression == "y"):
+            print(np.shape(plotA))
+
+            if(len(np.shape(plotA)) >= 3):
+                minSpace, maxSpace = np.ones(len(plotA[0,i]))*10**10, np.ones(len(plotA[0,i]))*10**-10
+                for k,subPlotA in enumerate(plotA[:,i]):
+                    if(k==0):
+                        axAi.plot(plotListP[i],scalingFunction(subPlotA),label=label,color=cmap(i),marker="+",linestyle = 'None')
+                    else:
+                        axAi.plot(plotListP[i],scalingFunction(subPlotA),color=cmap(i),marker="+",linestyle = 'None')
+                    maxSpace = np.maximum(maxSpace,scalingFunction(subPlotA))
+                    minSpace = np.minimum(minSpace,scalingFunction(subPlotA))
+                axAi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.1)
+
+            else:
+                plotIndex = np.arange(len(plotA[i]))
+                if(log == "y"):
+                    plotIndex = np.where(plotA[i] != 0)[0]
+                axAi.plot(plotListP[i][plotIndex],scalingFunction(plotA[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
+
+            if(len(np.shape(plotN)) >= 3):
+                minSpace, maxSpace = np.ones(len(plotN[0,i]))*10**10, np.ones(len(plotN[0,i]))*10**-10
+                for k,subPlotN in enumerate(plotN[:,i]):
+                    if(k==0):
+                        axNi.plot(plotListP[i],scalingFunction(subPlotN),label=label,color=cmap(i),marker="+",linestyle = 'None')
+                    else:
+                        axNi.plot(plotListP[i],scalingFunction(subPlotN),color=cmap(i),marker="+",linestyle = 'None')
+                    maxSpace = np.maximum(maxSpace,scalingFunction(subPlotN))
+                    minSpace = np.minimum(minSpace,scalingFunction(subPlotN))
+                axNi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.1)
+
+            else:
+                plotIndex = np.arange(len(plotN[i]))
+                if(log == "y"):
+                    plotIndex = np.where(plotN[i] != 0)[0]
+                axNi.plot(plotListP[i][plotIndex],scalingFunction(plotN[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
+
+            if(linearRegression == "y" and np.shape(plotN[i])[0] == 1):
                 M = np.vstack((scalingFunction(plotListP[i][plotIndex]),np.ones(len(parameterValues[plotIndex])))).T
                 #VA = np.dot(np.linalg.pinv(M),scalingFunction(plotA[i][plotIndex]))
                 VN = np.dot(np.linalg.pinv(M),scalingFunction(plotN[i][plotIndex]))
@@ -321,7 +409,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
               
         else:
             if(errorType == "relative"):
-                tmpUnit = "(%)"
+                tmpUnit = r"(\%)"
             else:
                 if(postProcessingID == "phase"):
                     tmpUnit = "(rad)"
@@ -351,12 +439,17 @@ if __name__ == "__main__":
     if(postProcessing not in list((postProcessingFunctions.keys()))):
         postProcessing = "id"
 
-    if(os.path.basename(os.getcwd()).split("_")[1] in list((analyticalFunctions.keys()))):
-        analytical = os.path.basename(os.getcwd()).split("_")[1]
+    try:
+        flagFunction = os.path.basename(os.getcwd()).split("_")[0] in list((analyticalFunctions.keys()))
+    except:
+        flagFunction = False
+
+    if(flagFunction):
+        analytical = os.path.basename(os.getcwd()).split("_")[0]
     else:
-        analytical = input("Analytical function ? (default : monopole) " + str(list((analyticalFunctions.keys()))))
+        analytical = input("Analytical function ? (default : infinitesimalDipole) " + str(list((analyticalFunctions.keys()))))
         if(analytical not in list((analyticalFunctions.keys()))):
-            analytical = "monopole"
+            analytical = "infinitesimalDipole"
 
     error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
     if(error not in list((errorFunctions.keys()))):

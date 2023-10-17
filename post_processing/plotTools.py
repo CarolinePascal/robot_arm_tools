@@ -9,8 +9,10 @@ import numpy as np
 
 #Fancy plot parameter
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
 plt.rc('font', **{'size': 12, 'family': 'serif', 'serif': ['Computer Modern']})
 plt.rc('text', usetex=True)
+cmap = cm.get_cmap('tab10')
 
 
 #Post-processing functions
