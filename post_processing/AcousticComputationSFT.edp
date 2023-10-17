@@ -6,13 +6,11 @@ load "msh3"
 
 include "computationTools.edp"
 include "acousticTools.edp"
+include "measurementsTools.edp"
+
 include "getARGV.idp"
 
-int LMAX = 10;
-
 verbosity = 0;
-
-int cutSize = 100;
 
 //Whole range associated legendre polynomials with spherical harmonics normalization
 func complex Plm(int l, int m, real x)
@@ -36,8 +34,9 @@ func complex Ylm(int l, int m, real theta, real phi)
 //General spherical Helmholtz equation solution 
 func complex sphericalHelmholtzSolution(complex[int] Alm, real frequency)
 {
+    int lMax = sqrt(Alm.n) - 1;
     complex output = 0;
-    for(int l = 0; l <= LMAX; l++)
+    for(int l = 0; l <= lMax; l++)
     {
         for(int m = -l; m <= l; m++)
         {
@@ -47,52 +46,23 @@ func complex sphericalHelmholtzSolution(complex[int] Alm, real frequency)
     return(output);
 }
 
-func meshS getSphericMesh(real size, real resolution)
+//Element type macro must be defined here for compilation purposes 
+
+IFMACRO(!elementType)
+func Pk = P0;
+string elementTypeName = "P0";
+ENDIFMACRO
+IFMACRO(elementType)
+func Pk = elementType;
+string elementTypeName = Stringification(elementType);
+ENDIFMACRO
+
+func int AcousticSFT(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName)
 {
-    //Solve rounding issues...
-    string sizeWithDecimal;
-    if(size - floor(size) > 0)
-    {
-        sizeWithDecimal = size;
-    }
-    else
-    {
-        sizeWithDecimal = size + ".0";
-    }
-
-    string resolutionWithDecimal;
-    if(resolution - floor(resolution) > 0)
-    {
-        resolutionWithDecimal = resolution;
-    }
-    else
-    {
-        resolutionWithDecimal = resolution + ".0";
-    }
-
-    //Load mesh
-    meshS ThS("../config/meshes/sphere/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
-    ThS = OrientNormal(ThS,unbounded=1);
-
-    /*DEBUG
-    fespace Dummy(ThS,P0);
-    Dummy meshSize = hTriangle;
-    cout << "MESH SIZE" << " expected : " << resolution << " real : " << meshSize[].max << endl;
-    cout << "VERTICES NUMBER " << ThS.nv << endl;
-    plot(ThS); 
-    */   
-
-    return(ThS);
-}
-
-func int AcousticSFT(real frequency, real size, real resolution, real cutRadius, string studiedFunction)
-{
-    //Load mesh
-    meshS ThS = getSphericMesh(size,resolution);
-    fespace Uh(ThS,P0);
-
-    //Retrieve the "measurements"
-    Uh<complex> measurements = inputFunction(frequency,studiedFunction);
+    //Retrieve measurements
+    fespace Uh(measurementsMesh,Pk);
+    Uh<complex> measurements;
+    measurements[] = measurementsData;
 
     //Compute general solution coefficients
     complex[int] Alm((LMAX+1)*(LMAX+1)); 
@@ -104,28 +74,17 @@ func int AcousticSFT(real frequency, real size, real resolution, real cutRadius,
         }
     }
 
+    //Evaluate the solution on the verification points
+    fespace UhOut(verificationMesh,P1);
 
     //Compute the numerical solution
-    border circleN(t = 0, 2*pi){x=cutRadius*cos(t); y=cutRadius*sin(t);}
-    meshL ThOutN = buildmeshL(circleN(cutSize));
-    fespace UhOutN(ThOutN,P1);
-    UhOutN<complex> uN = sphericalHelmholtzSolution(Alm,frequency);
-
+    UhOut<complex> uN = sphericalHelmholtzSolution(Alm,frequency);
+    
     //Compute the analytical solution
-    border circleA(t = 0, 2*pi){x=cutRadius*cos(t); y=cutRadius*sin(t);}
-    meshL ThOutA = buildmeshL(circleA(cutSize));
-    fespace UhOutA(ThOutA,P1);
-    UhOutA<complex> uA = inputFunction(frequency,studiedFunction);
+    UhOut<complex> uA;
+    uA[] = verificationData;
 
-    /*DEBUG
-    UhOut u = abs(uTh);
-    cout << u[].max << endl;
-    int[int] Order = [0];
-    string DataName = "u";
-    savevtk("out.vtu", ThOut, u, dataname=DataName, order=Order);
-    */
-
-    /*DEBUG*/
+    //DEBUG
     real[int] error(uA.n);
     for(int i = 0; i < uA.n; i++)
     {
@@ -134,18 +93,13 @@ func int AcousticSFT(real frequency, real size, real resolution, real cutRadius,
     cout << "LINF ERROR SL : " << error.max << endl;
 
     //Fill output file
-    string dirName = "SFT_" + studiedFunction + "_P0_SL";
-    if(isdir("./" + dirName) == -1)
-    {
-        mkdir("./" + dirName);
-    }
-    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + size + ".txt";
+    string outputFilePath = "./SFT/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
-    for (int i = 0; i < cutSize; i++)
+    for (int i = 0; i < verificationMesh.nv; i++)
     {
-        file << ThOutA(i).x << ";" << ThOutA(i).y << ";" << ThOutA(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
+        file << verificationMesh(i).x << ";" << verificationMesh(i).y << ";" << verificationMesh(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
     }
 
     return(0);
@@ -153,16 +107,113 @@ func int AcousticSFT(real frequency, real size, real resolution, real cutRadius,
 
 //MAIN
 
+//Global parameters
+int realMeasurements = getARGV("-realMeasurements",0);
 real frequency = getARGV("-frequency",100); 
-real size = getARGV("-size",0.1); 
-real resolution = getARGV("-resolution",0.05);
-real cutRadius = getARGV("-cutRadius",0.5);
 
-string studiedFunction = getARGV("-studiedFunction", "monopole");
+string fileID = getARGV("-fileID","");
+if(fileID != "")
+{
+    fileID = "_" + fileID;
+}
 
-real tmp = getARGV("-dipoleDistance",0.001);
-demid = tmp;
+if(isdir("./SFT") == -1)
+{
+    mkdir("./SFT");
+}
 
-AcousticSFT(frequency,size,resolution,cutRadius,studiedFunction);
+//TODO Gradient
+
+//Real measurements
+if(realMeasurements == 1)
+{
+    string outputFileName = "output_" + frequency + fileID + ".csv";
+
+    meshS measurementsMesh = getMeasurementsMesh();
+    measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    meshL verificationMesh = getVerificationMesh();
+    verificationMesh = OrientNormal(verificationMesh,unbounded=0);
+
+    complex[int] verificationData = getVerificationData(frequency);
+    complex[int] measurementsData = getMeasurementsData(frequency);
+
+    AcousticSFT(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName);
+}
+
+//Simulation
+else
+{
+    //Simulation parameters
+    real size = getARGV("-size",0.1); 
+    real resolution = getARGV("-resolution",0.05);
+    real sigmaPosition = getARGV("-sigmaPosition",0.0);
+    real sigmaMeasure = getARGV("-sigmaMeasure",0.0);
+
+    real verificationSize = getARGV("-verificationSize",0.5);
+    real verificationResolution = getARGV("-verificationResolution",0.1);
+
+    string studiedFunction = getARGV("-studiedFunction", "monopole");
+    real tmp = getARGV("-dipoleDistance",0.001);
+    demid = tmp;
+
+    string outputFileName = studiedFunction + "/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+
+    if(isdir("./SFT/" + studiedFunction) == -1)
+    {
+        mkdir("./SFT/" + studiedFunction);
+    }
+
+    //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
+    meshS measurementsMesh = getSphericMesh(size,resolution,0.0,elementTypeName);
+    measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    
+    //Create simulated measurements
+    fespace Uh(measurementsMesh,Pk);
+    Uh<complex> measurementsData;
+    
+    //Noiseless position measurements
+    if(sigmaPosition == 0)
+    {	
+	    //Equivalent to Uh<complex> measurementsData = inputFunction(frequency,studiedFunction);
+        Uh<complex> noisyMeasurementsData = inputFunction(frequency,studiedFunction);
+        measurementsData[] = noisyMeasurementsData[];
+    }    
+
+    //Noisy position measurements
+    else
+    {
+	    //Retrieve noisy simulation mesh (random position noise)
+        meshS noisyMeasurementsMesh = getSphericMesh(size,resolution,sigmaPosition,elementTypeName);
+        noisyMeasurementsMesh = OrientNormal(noisyMeasurementsMesh,unbounded=1);
+
+        //Retrieve noisy simulated measurements
+        fespace UhNoise(noisyMeasurementsMesh,Pk);
+        UhNoise<complex> noisyMeasurementsData = inputFunction(frequency,studiedFunction);
+        measurementsData[] = noisyMeasurementsData[];
+    }
+
+    /*if(mpirank == 0)
+    {
+        medit("Measurements",measurementsMesh,abs(measurementsData));
+    }*/
+
+    if(sigmaMeasure != 0.0)
+    {
+        for(int i = 0; i < measurementsData.n; i++)
+        {
+            measurementsData[][i] = real(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure) + 1i*(imag(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure));
+        }
+    }
+
+    //Create the verification mesh
+    meshL verificationMesh = getCircularMesh(verificationSize,verificationResolution,0.0,"P1");
+    verificationMesh = OrientNormal(verificationMesh,unbounded=0);
+
+    //Compute the analytical solution
+    fespace UhOut(verificationMesh,P1); //Verification data is computed on the mesh vertices !
+    UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
+
+    AcousticSFT(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName);
+}
 
 

@@ -4,127 +4,67 @@ load "iovtk"
 load "medit"
 load "msh3"
 
+load "gsl"
+gslrng ffrng;
+
 include "computationTools.edp"
 include "acousticTools.edp"
+include "measurementsTools.edp"
+
 include "getARGV.idp"
 
 verbosity = 0;
+
 htoolEpsilon = 1e-6;
 htoolEta = 1;
 htoolMinclustersize = 100;
 htoolMaxblocksize = 1000000;
 
-int cutSize = 100;
+//Element type macro must be defined here for compilation purposes 
 
-func meshS getSphericMesh(real size, real resolution)
+IFMACRO(!elementType)
+func Pk = P0;
+string elementTypeName = "P0";
+ENDIFMACRO
+IFMACRO(elementType)
+func Pk = elementType;
+string elementTypeName = Stringification(elementType);
+ENDIFMACRO
+
+func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName)
 {
-    //Solve rounding issues...
-    string sizeWithDecimal;
-    if(size - floor(size) > 0)
-    {
-        sizeWithDecimal = size;
-    }
-    else
-    {
-        sizeWithDecimal = size + ".0";
-    }
-
-    string resolutionWithDecimal;
-    if(resolution - floor(resolution) > 0)
-    {
-        resolutionWithDecimal = resolution;
-    }
-    else
-    {
-        resolutionWithDecimal = resolution + ".0";
-    }
-
-    //Load mesh
-    meshS ThS("../config/meshes/sphere/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
-    ThS = OrientNormal(ThS,unbounded=1);
-
-    //DEBUG
-    //if(mpirank==0)
-    //{
-    //    fespace Dummy(ThS,P0);
-    //    Dummy meshSize = hTriangle;
-    //    cout << "MESH SIZE" << " expected : " << resolution << " real : " << meshSize[].max << endl;
-    //    cout << "VERTICES NUMBER " << ThS.nv << endl;
-    //    plot(ThS);    
-    //}
-
-    return(ThS);
-}
-
-func int AcousticSL(real frequency, real size, real resolution, real cutRadius, string studiedFunction)
-{
-
-
-    //Add resolution value check : For small resolutions, the final error tends to explode due to very small surfaces. We solve this issue by increasing all dimensions by a ten-fold factor.
-    real scalingFactor = 1.;
-    if(resolution < 0.01)
-    {
-        scalingFactor = 2.;
-    }
-
-    //Load mesh
-    meshS ThS = getSphericMesh(size*scalingFactor,resolution*scalingFactor);
-
     //Define the variational problem
-    BemKernel ker("SL",k=(k(frequency)/scalingFactor));
-    varf vbem(u,v) = int2dx2d(ThS)(ThS)(BEM(ker,u,v)) ;  
+    BemKernel ker("SL",k=k(frequency));
+    varf vbem(u,v) = int2dx2d(measurementsMesh)(measurementsMesh)(BEM(ker,u,v)) ;  
 
     //Assemble the H-Matrix
-    fespace Uh(ThS,P0);
+    fespace Uh(measurementsMesh,Pk);
     HMatrix<complex> H = vbem(Uh,Uh);
 
-    //Retrieve the "measurements"
-    Uh<complex> measurements = inputFunction(frequency,studiedFunction);
-
-    //When a scaling factor is used, we must simulate measurements on the original mesh !    
-    if(scalingFactor != 1.)
-    {
-        meshS ThSInit = getSphericMesh(size,resolution);
-        fespace UhInit(ThSInit,P0);
-        UhInit<complex> measurementsInit = inputFunction(frequency,studiedFunction);
-        measurements[] = measurementsInit[];
-    }
+    //Retrieve measurements
+    Uh<complex> measurements;
+    measurements[] = measurementsData;
 
     //Solve the linear system
     Uh<complex> p, b;
-    varf vrhs(u,v) = int2d(ThS)(measurements*v);
+    varf vrhs(u,v) = int2d(measurementsMesh)(measurements*v);
     b[] = vrhs(0,Uh);
     p[] = H^-1*b[];
 
     //Compute the numerical solution
-    BemPotential Pot("SL",k=(k(frequency)/scalingFactor));
-    varf vpot(u,v) = int2d(ThS)(POT(Pot,u,v));
+    BemPotential Pot("SL",k=k(frequency));
+    varf vpot(u,v) = int2d(measurementsMesh)(POT(Pot,u,v));
 
-    border circleN(t = 0, 2*pi){x=scalingFactor*cutRadius*cos(t); y=scalingFactor*cutRadius*sin(t);}
-    meshL ThOutN = buildmeshL(circleN(cutSize));
+    //Evaluate the solution on the verification points
+    fespace UhOut(verificationMesh,P1);
 
-    fespace UhOutN(ThOutN,P1);
-
-    HMatrix<complex> HP = vpot(Uh,UhOutN);
-    UhOutN<complex> uN;
+    HMatrix<complex> HP = vpot(Uh,UhOut);
+    UhOut<complex> uN;
     uN[] = HP*p[];
 
     //Compute the analytical solution
-    border circleA(t = 0, 2*pi){x=cutRadius*cos(t); y=cutRadius*sin(t);}
-    meshL ThOutA = buildmeshL(circleA(cutSize));
-
-    fespace UhOutA(ThOutA,P1);
-
-    UhOutA<complex> uA = inputFunction(frequency,studiedFunction);
-
-    /*if(mpirank == 0)
-    {
-        UhOut u = abs(uTh);
-        cout << u[].max << endl;
-        int[int] Order = [0];
-        string DataName = "u";
-        savevtk("out.vtu", ThOut, u, dataname=DataName, order=Order);
-    }*/
+    UhOut<complex> uA;
+    uA[] = verificationData;
 
     //DEBUG
     if(mpirank == 0)
@@ -138,88 +78,59 @@ func int AcousticSL(real frequency, real size, real resolution, real cutRadius, 
     }
 
     //Fill output file
-    string dirName = "BEM_" + studiedFunction + "_P0_SL";
-    if(isdir("./" + dirName) == -1)
-    {
-        mkdir("./" + dirName);
-    }
-    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + size + ".txt";
+    string outputFilePath = "./BEM_SL/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
-    for (int i = 0; i < cutSize; i++)
+    for (int i = 0; i < verificationMesh.nv; i++)
     {
-        file << ThOutA(i).x << ";" << ThOutA(i).y << ";" << ThOutA(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
+        file << verificationMesh(i).x << ";" << verificationMesh(i).y << ";" << verificationMesh(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
     }
 
     return(0);
 }
 
-func int AcousticCL(real frequency, real size, real resolution, real cutRadius, string studiedFunction)
+func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName)
 {
-    //Add resolution value check : For small resolutions, the final error tends to explode due to very small surfaces. We solve this issue by increasing all dimensions by a ten-fold factor.
-    real scalingFactor = 1.;
-    if(resolution < 0.01)
-    {
-        scalingFactor = 2.;
-    }
-
-    //Load mesh
-    meshS ThS = getSphericMesh(size*scalingFactor,resolution*scalingFactor);
-
     //Define the variational problem
-    BemKernel kerSL("SL",k=(k(frequency)/scalingFactor));
-    BemKernel kerDL("DL",k=(k(frequency)/scalingFactor));
-    BemKernel ker=(-(k(frequency)/scalingFactor)*1i)*kerSL+kerDL;
-    varf vbem(u,v)=int2dx2d(ThS)(ThS)(BEM(ker,u,v)) + int2d(ThS)(0.5*u*v); 
+    BemKernel kerSL("SL",k=k(frequency));
+    BemKernel kerDL("DL",k=k(frequency));
+    BemKernel ker=(-k(frequency)*1i)*kerSL+kerDL;
+    varf vbem(u,v)=int2dx2d(measurementsMesh)(measurementsMesh)(BEM(ker,u,v)) + int2d(measurementsMesh)(0.5*u*v); 
 
     //Assemble the H-Matrix
-    fespace Uh(ThS,P0);
+    fespace Uh(measurementsMesh,Pk);
     HMatrix<complex> H = vbem(Uh,Uh);
 
-    //Retrieve the "measurements"
-    Uh<complex> measurements = inputFunction(frequency,studiedFunction);
-
-    //When a scaling factor is used, we must simulate measurements on the original mesh !    
-    if(scalingFactor != 1.)
-    {
-        meshS ThSInit = getSphericMesh(size,resolution);
-        fespace UhInit(ThSInit,P0);
-        UhInit<complex> measurementsInit = inputFunction(frequency,studiedFunction);
-        measurements[] = measurementsInit[];
-    }
+    //Retrieve measurements
+    Uh<complex> measurements;
+    measurements[] = measurementsData;
 
     //Solve the linear system
     Uh<complex> p, b;
-    varf vrhs(u,v) = int2d(ThS)(measurements*v);
+    varf vrhs(u,v) = int2d(measurementsMesh)(measurements*v);
     b[] = vrhs(0,Uh);
     p[] = H^-1*b[];
 
     //Compute the numerical solution
-    BemPotential PotSL("SL",k=(k(frequency)/scalingFactor));
-    varf vpotSL(u,v) = int2d(ThS)(POT(PotSL,u,v));
-    BemPotential PotDL("DL",k=(k(frequency)/scalingFactor));
-    varf vpotDL(u,v) = int2d(ThS)(POT(PotDL,u,v));
+    BemPotential PotSL("SL",k=k(frequency));
+    varf vpotSL(u,v) = int2d(measurementsMesh)(POT(PotSL,u,v));
+    BemPotential PotDL("DL",k=k(frequency));
+    varf vpotDL(u,v) = int2d(measurementsMesh)(POT(PotDL,u,v));
 
-    border circleN(t = 0, 2*pi){x=scalingFactor*cutRadius*cos(t); y=scalingFactor*cutRadius*sin(t);}
-    meshL ThOutN = buildmeshL(circleN(cutSize));
+    //Evaluate the solution on the verification points
+    fespace UhOut(verificationMesh,P1);
 
-    fespace UhOutN(ThOutN,P1);
-
-    HMatrix<complex> HPSL = vpotSL(Uh,UhOutN);
-    HMatrix<complex> HPDL = vpotDL(Uh,UhOutN);
-    UhOutN<complex> uN,uSL,uDL;
+    HMatrix<complex> HPSL = vpotSL(Uh,UhOut);
+    HMatrix<complex> HPDL = vpotDL(Uh,UhOut);
+    UhOut<complex> uN,uSL,uDL;
     uSL[] = HPSL*p[];
     uDL[] = HPDL*p[];
-    uN = (-(k(frequency)/scalingFactor)*1i)*uSL + uDL;
+    uN = (-k(frequency)*1i)*uSL + uDL;
 
     //Compute the analytical solution
-    border circleA(t = 0, 2*pi){x=cutRadius*cos(t); y=cutRadius*sin(t);}
-    meshL ThOutA = buildmeshL(circleA(cutSize));
-
-    fespace UhOutA(ThOutA,P1);
-
-    UhOutA<complex> uA = inputFunction(frequency,studiedFunction);
+    UhOut<complex> uA;
+    uA[] = verificationData;
 
     //DEBUG
     if(mpirank == 0)
@@ -233,18 +144,13 @@ func int AcousticCL(real frequency, real size, real resolution, real cutRadius, 
     }
 
     //Fill output file
-    string dirName = "BEM_" + studiedFunction + "_P0_CL";
-    if(isdir("./" + dirName) == -1)
-    {
-        mkdir("./" + dirName);
-    }
-    string outputFilePath = "./" + dirName + "/output_" + frequency + "_" + resolution + "_" + size + ".txt";
+    string outputFilePath = "./BEM_CL/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
-    for (int i = 0; i < cutSize; i++)
+    for (int i = 0; i < verificationMesh.nv; i++)
     {
-        file << ThOutA(i).x << ";" << ThOutA(i).y << ";" << ThOutA(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
+        file << verificationMesh(i).x << ";" << verificationMesh(i).y << ";" << verificationMesh(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
     }
 
     return(0);
@@ -252,17 +158,132 @@ func int AcousticCL(real frequency, real size, real resolution, real cutRadius, 
 
 //MAIN
 
+//Global parameters
+int realMeasurements = getARGV("-realMeasurements",0);
 real frequency = getARGV("-frequency",100); 
-real size = getARGV("-size",0.1); 
-real resolution = getARGV("-resolution",0.05);
-real cutRadius = getARGV("-cutRadius",0.5);
 
-string studiedFunction = getARGV("-studiedFunction", "monopole");
+string fileID = getARGV("-fileID","");
+if(fileID != "")
+{
+    fileID = "_" + fileID;
+}
 
-real tmp = getARGV("-dipoleDistance",0.001);
-demid = tmp;
+if(isdir("./BEM_SL") == -1)
+{
+    mkdir("./BEM_SL");
+}
+if(isdir("./BEM_CL") == -1)
+{
+    mkdir("./BEM_CL");
+}
 
-AcousticSL(frequency,size,resolution,cutRadius,studiedFunction);
-AcousticCL(frequency,size,resolution,cutRadius,studiedFunction);
+//TODO Gradient
+
+//Real measurements
+if(realMeasurements == 1)
+{
+    string outputFileName = elementTypeName + "/output_" + frequency + fileID + ".csv";
+
+    if(isdir("./BEM_SL/" + elementTypeName) == -1)
+    {
+        mkdir("./BEM_SL/" + elementTypeName);
+    }
+    if(isdir("./BEM_CL/" + elementTypeName) == -1)
+    {
+        mkdir("./BEM_CL/" + elementTypeName);
+    }
+
+    meshS measurementsMesh = getMeasurementsMesh();
+    measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    meshL verificationMesh = getVerificationMesh();
+    verificationMesh = OrientNormal(verificationMesh,unbounded=0);
+
+    complex[int] verificationData = getVerificationData(frequency);
+    complex[int] measurementsData = getMeasurementsData(frequency);
+
+    AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName);
+    AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName);
+}
+
+//Simulation
+else
+{
+    //Simulation parameters
+    real size = getARGV("-size",0.1); 
+    real resolution = getARGV("-resolution",0.05);
+    real sigmaPosition = getARGV("-sigmaPosition",0.0);
+    real sigmaMeasure = getARGV("-sigmaMeasure",0.0);
+
+    real verificationSize = getARGV("-verificationSize",0.5);
+    real verificationResolution = getARGV("-verificationResolution",0.1);
+
+    string studiedFunction = getARGV("-studiedFunction", "monopole");
+    real tmp = getARGV("-dipoleDistance",0.001);
+    demid = tmp;
+
+    string outputFileName = studiedFunction + "_" + elementTypeName + "/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+
+    if(isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
+    {
+        mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName);
+    }
+    if(isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName) == -1)
+    {
+        mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName);
+    }
+
+    //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
+    meshS measurementsMesh = getSphericMesh(size,resolution,0.0,elementTypeName);
+    measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    
+    //Create simulated measurements
+    fespace Uh(measurementsMesh,Pk);
+    Uh<complex> measurementsData;
+    
+    //Noiseless position measurements
+    if(sigmaPosition == 0)
+    {	
+	    //Equivalent to Uh<complex> measurementsData = inputFunction(frequency,studiedFunction);
+        Uh<complex> noisyMeasurementsData = inputFunction(frequency,studiedFunction);
+        measurementsData[] = noisyMeasurementsData[];
+    }    
+
+    //Noisy position measurements
+    else
+    {
+	    //Retrieve noisy simulation mesh (random position noise)
+        meshS noisyMeasurementsMesh = getSphericMesh(size,resolution,sigmaPosition,elementTypeName);
+        noisyMeasurementsMesh = OrientNormal(noisyMeasurementsMesh,unbounded=1);
+
+        //Retrieve noisy simulated measurements
+        fespace UhNoise(noisyMeasurementsMesh,Pk);
+        UhNoise<complex> noisyMeasurementsData = inputFunction(frequency,studiedFunction);
+        measurementsData[] = noisyMeasurementsData[];
+    }
+
+    /*if(mpirank == 0)
+    {
+        medit("Measurements",measurementsMesh,abs(measurementsData));
+    }*/
+
+    if(sigmaMeasure != 0.0)
+    {
+        for(int i = 0; i < measurementsData.n; i++)
+        {
+            measurementsData[][i] = real(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure) + 1i*(imag(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure));
+        }
+    }
+
+    //Create the verification mesh
+    meshL verificationMesh = getCircularMesh(verificationSize,verificationResolution,0.0,"P1");
+    verificationMesh = OrientNormal(verificationMesh,unbounded=0);
+
+    //Compute the analytical solution
+    fespace UhOut(verificationMesh,P1); //Verification data is computed on the mesh vertices !
+    UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
+
+    AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName);
+    AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName);
+}
 
 

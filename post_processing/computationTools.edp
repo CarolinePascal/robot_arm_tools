@@ -32,3 +32,99 @@ func real[int] linspace(real min, real max, int itemNumber)
 
     return(output);
 }
+
+func meshS getSphericMesh(real size, real resolution, real sigma, string elementType)
+{
+    //Solve rounding issues...
+    string sizeWithDecimal;
+    if(size - floor(size) > 0)
+    {
+        sizeWithDecimal = size;
+    }
+    else
+    {
+        sizeWithDecimal = size + ".0";
+    }
+
+    string resolutionWithDecimal;
+    if(resolution - floor(resolution) > 0)
+    {
+        resolutionWithDecimal = resolution;
+    }
+    else
+    {
+        resolutionWithDecimal = resolution + ".0";
+    }
+
+    string sigmaWithDecimal;
+    if(resolution - floor(resolution) > 0)
+    {
+        sigmaWithDecimal = sigma;
+    }
+    else
+    {
+        sigmaWithDecimal = sigma + ".0";
+    }
+
+    //Load mesh
+    if(sigma == 0.0)
+    {
+        meshS ThS("../config/meshes/sphere/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+        ThS = OrientNormal(ThS,unbounded=1);
+        return(ThS);
+    }
+    else
+    {
+        meshS ThS("../config/meshes/sphere_uncertainty/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + "_" + sigmaWithDecimal + ".mesh");
+        ThS = OrientNormal(ThS,unbounded=1);
+        return(ThS); 
+    }
+
+}
+
+func meshL getCircularMesh(real size, real resolution, real sigma, string elementType)
+{
+    //Solve rounding issues...
+    string sizeWithDecimal;
+    if(size - floor(size) > 0)
+    {
+        sizeWithDecimal = size;
+    }
+    else
+    {
+        sizeWithDecimal = size + ".0";
+    }
+
+    string resolutionWithDecimal;
+    if(resolution - floor(resolution) > 0)
+    {
+        resolutionWithDecimal = resolution;
+    }
+    else
+    {
+        resolutionWithDecimal = resolution + ".0";
+    }
+
+    string sigmaWithDecimal;
+    if(resolution - floor(resolution) > 0)
+    {
+        sigmaWithDecimal = sigma;
+    }
+    else
+    {
+        sigmaWithDecimal = sigma + ".0";
+    }
+
+    //Load mesh
+    if(sigma == 0.0)
+    {
+        meshL ThL("../config/meshes/circle/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+        return(ThL);
+    }
+    else
+    {
+        meshL ThL("../config/meshes/circle_uncertainty/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + "_" + sigmaWithDecimal + ".mesh");
+        return(ThL); 
+    }
+
+}

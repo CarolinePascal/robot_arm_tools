@@ -22,13 +22,17 @@ func complex Gplus(real frequency){return exp(1i*k(frequency)*rplus)/(4*pi*rplus
 func complex Gminus(real frequency){return exp(1i*k(frequency)*rminus)/(4*pi*rminus);}
 
 //Monopole 
-func complex monopolePressure(real frequency){return (-1i*omega(frequency)*Q*rho)*G(frequency);}
+func complex monopolePressure(real frequency){return 1i*omega(frequency)*Q*rho*G(frequency);}
+
+func complex dxmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)*x/(r*r);}
+func complex dymonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)*y/(r*r);}
+func complex dzmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)*z/(r*r);}
 
 //Infinitesimal dipole
-func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*omega(frequency)*rho*k(frequency)*sin(theta)*cos(phi)*G(frequency)*(1/(1i*k(frequency)*r) - 1);}
+func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*omega(frequency)*rho*k(frequency)*sin(theta)*cos(phi)*G(frequency)*(1 - 1/(1i*k(frequency)*r));}
 
 //Dipole
-func complex dipolePressure(real frequency){return -1i*omega(frequency)*Q*rho*(Gplus(frequency) - Gminus(frequency));}
+func complex dipolePressure(real frequency){return 1i*omega(frequency)*Q*rho*(Gplus(frequency) - Gminus(frequency));}
 
 //Test
 func complex test(real frequency){return G(frequency);}
