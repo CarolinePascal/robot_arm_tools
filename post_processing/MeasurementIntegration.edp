@@ -1,0 +1,235 @@
+load "gmsh"
+load "msh3"
+load "medit"
+
+include "SphericMeshTools.edp"
+
+real Pref = 20e-6;
+
+mesh3 M("measurementsMesh.mesh");
+int NbBoundaryElements = M.nbe;
+int NbElements = M.nt;
+
+fespace sphere(M,P1);
+
+real Xavg=0, Yavg=0, Zavg=0;
+for (int i = 0; i < M.nv; i++)
+{
+    Xavg += M(i).x/M.nv;
+    Yavg += M(i).y/M.nv;
+    Zavg += M(i).z/M.nv;
+}
+
+//func innerLabel = (sqrt((x-Xavg)*(x-Xavg)+(y-Yavg)*(y-Yavg)+(z-Zavg)*(z-Zavg)) < 0.2) && label==1 ? 0 : 2;
+//M = change(M,fregion=innerLabel);
+
+sphere Label =  label;
+medit("Label",M,Label);
+
+sphere<complex> pressure;
+
+ifstream file("17062021_S-/Positions.csv");
+ifstream fileP("17062021_S-/Pressure_1000_complex.csv");
+for(int i = 0; i < pressure.n/3; i++)
+{
+    string line, lineP;
+    real[int] coordinates(3);
+    real localPressure;
+
+    file >> line;
+    fileP >> lineP; 
+    for (int j = 0; j < 3; j++)
+    {
+        string double = line(0:line.find(",")-1);
+        coordinates[j] = atof(double);
+        line = line(line.find(",")+1:line.length);
+    }
+
+    localPressure = atof(lineP(0:lineP.find(",")-1));
+    lineP = lineP(lineP.find(",")+1:lineP.length);
+
+    pressure[][i] = localPressure;
+
+    localPressure = atof(lineP);
+
+    pressure[][i] += 1i*localPressure;
+}
+
+ifstream file1("17062021_S0/Positions.csv");
+ifstream fileP1("17062021_S0/Pressure_1000_complex.csv");
+for(int i = pressure.n/3; i < 2*pressure.n/3; i++)
+{
+    string line, lineP;
+    real[int] coordinates(3);
+    real localPressure;
+
+    file1 >> line;
+    fileP1 >> lineP;
+    for (int j = 0; j < 3; j++)
+    {
+        string double = line(0:line.find(",")-1);
+        coordinates[j] = atof(double);
+        line = line(line.find(",")+1:line.length);
+    } 
+
+    localPressure = atof(lineP(0:lineP.find(",")-1));
+    lineP = lineP(lineP.find(",")+1:lineP.length);
+
+    pressure[][i] = localPressure;
+
+    localPressure = atof(lineP);
+
+    pressure[][i] += 1i*localPressure;
+}
+
+ifstream file2("17062021_S+/Positions.csv");
+ifstream fileP2("17062021_S+/Pressure_1000_complex.csv");
+for(int i = 2*pressure.n/3; i < pressure.n; i++)
+{
+    string line, lineP;
+    real[int] coordinates(3);
+    real localPressure;
+
+    file2 >> line;
+    fileP2 >> lineP;
+    for (int j = 0; j < 3; j++)
+    {
+        string double = line(0:line.find(",")-1);
+        coordinates[j] = atof(double);
+        line = line(line.find(",")+1:line.length);
+    }
+
+    localPressure = atof(lineP(0:lineP.find(",")-1));
+    lineP = lineP(lineP.find(",")+1:lineP.length);
+
+    pressure[][i] = localPressure;
+
+    localPressure = atof(lineP);
+
+    pressure[][i] += 1i*localPressure;
+}
+
+medit("Pressure",M,20*log10(abs(pressure/Pref)));
+
+//Sound parameters
+real rho = 1.225;
+real c = 340;
+real f = 1000;
+real k = 2*pi*f/c;
+real omega =  c*k;
+
+//Acoustic dipole parameters
+real d = k/1000;
+real Q = 1;
+
+//Thin sphere parameters
+real R = 0.4;
+
+//Building functions for spherical coordinates and normal vectors 
+
+func r = sqrt(x*x + y*y + z*z);
+func theta = atan2(sqrt(x*x + y*y),z);
+func phi = atan2(y,x);
+
+sphere normalx = sin(theta)*cos(phi);
+sphere normaly = sin(theta)*sin(phi);
+sphere normalz = cos(theta);
+
+func G = exp(-1i*k*r)/(4*pi*r);
+
+sphere<complex> dpressurex = dx(pressure);
+sphere<complex> dpressurey = dy(pressure);
+sphere<complex> dpressurez = dz(pressure);
+
+sphere<complex> dpressuren = dpressurex*normalx + dpressurey*normaly + dpressurez*normalz;
+
+medit("dPn",M,abs(dpressuren));
+
+/*
+int N = 10;
+
+real[int] Errors(N);
+real[int] Resolutions(N);
+real[int] Vertices(N);
+
+for (int j = 0; j < N; j++)
+{
+    Resolutions[j] = R/(j+2);
+    meshS ThFar = meshSphere(R,R/(j+2));
+
+    //medit("Sphere",ThFar);
+
+    Vertices[j] = ThFar.nv;
+
+    fespace sphereFar(ThFar,P1);
+
+    sphereFar<complex> pressureSomme;
+
+    for (int i = 0; i < ThFar.nv; i++)
+    {
+        real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
+
+        func Gxyz = exp(-1i*k*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)))/(4*pi*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)));
+
+        sphere<complex> green = Gxyz;
+        sphere<complex> dgreenx = dx(green);
+        sphere<complex> dgreeny = dy(green);
+        sphere<complex> dgreenz = dz(green);
+
+        sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
+
+        int[int] lab = [0];
+        complex Psomme = int2d(M,lab) (pressure*dgreenn-green*dpressuren);
+
+        pressureSomme[][i] = Psomme;
+    }
+
+    medit("result",ThFar,abs(pressureSomme));
+}
+*/
+
+meshS ThFar = meshSphere(R,0.1);
+
+medit("Sphere",ThFar);
+
+fespace sphereFar(ThFar,P1);
+
+sphereFar<complex> pressureSomme;
+
+for (int i = 0; i < ThFar.nv; i++)
+{
+    real X = ThFar(i).x, Y = ThFar(i).y, Z = ThFar(i).z;
+
+    func Gxyz = exp(-1i*k*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)))/(4*pi*sqrt((x-X)*(x-X) + (y-Y)*(y-Y) + (z-Z)*(z-Z)));
+
+    sphere<complex> green = Gxyz;
+    sphere<complex> dgreenx = dx(green);
+    sphere<complex> dgreeny = dy(green);
+    sphere<complex> dgreenz = dz(green);
+
+    sphere<complex> dgreenn = dgreenx*normalx + dgreeny*normaly + dgreenz*normalz;
+
+    int[int] lab = [2];
+    complex Psomme = int2d(M,lab) (pressure*dgreenn-green*dpressuren);
+    pressureSomme[][i] = Psomme;
+}
+
+medit("result",ThFar,20*log10(abs(pressureSomme/Pref)));
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
