@@ -12,9 +12,9 @@ func real k(real frequency){return 2*pi*frequency/c;}
 func real omega(real frequency){return 2*pi*frequency;}
 
 //Geometrical parameters
-real demid = 0.0; //m -> To be defined as global variable !
-func rplus = sqrt(r*r + demid*demid - 2*r*demid*sin(theta)*cos(phi));
-func rminus = sqrt(r*r + demid*demid + 2*r*demid*sin(theta)*cos(phi));
+real halfDipoleDistance = 0.0; //m -> To be defined as global variable !
+func rplus = sqrt(r*r + halfDipoleDistance*halfDipoleDistance - 2*r*halfDipoleDistance*sin(theta)*cos(phi));
+func rminus = sqrt(r*r + halfDipoleDistance*halfDipoleDistance + 2*r*halfDipoleDistance*sin(theta)*cos(phi));
 
 //Acoustic field functions
 func complex G(real frequency){return exp(1i*k(frequency)*r)/(4*pi*r);}
@@ -33,9 +33,6 @@ func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*o
 
 //Dipole
 func complex dipolePressure(real frequency){return 1i*omega(frequency)*Q*rho*(Gplus(frequency) - Gminus(frequency));}
-
-//Test
-func complex test(real frequency){return G(frequency);}
 
 func complex inputFunction(real frequency, string input)
 {

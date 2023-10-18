@@ -85,7 +85,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
         #Get configuration frequency and dipole distance parameters
         f = configuration[frequencyIndex]
         k = 2*np.pi*f/c
-        demid = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
+        halfDipoleDistance = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
 
         #Create empty arrays
         numericValuesA = []
@@ -112,7 +112,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
                 Phi.append(np.arctan2(y,x))
 
                 if(analyticalFunction is not None):
-                    analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),demid))
+                    analyticalValues.append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),halfDipoleDistance))
                 numericValuesA.append(complex(float(row[3]),float(row[4])))
                 numericValuesN.append(complex(float(row[5]),float(row[6])))
 

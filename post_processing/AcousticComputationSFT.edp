@@ -154,7 +154,7 @@ else
 
     string studiedFunction = getARGV("-studiedFunction", "monopole");
     real tmp = getARGV("-dipoleDistance",0.001);
-    demid = tmp;
+    halfDipoleDistance = tmp;
 
     string outputFileName = studiedFunction + "/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
 

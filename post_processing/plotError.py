@@ -198,7 +198,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
             #Get configuration frequency and dipole distance parameters
             f = configuration[frequencyIndex]
             k = 2*np.pi*f/c
-            demid = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
+            halfDipoleDistance = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
 
             #Create empty arrays
             numericValuesA = []
@@ -228,7 +228,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
                         Theta.append(np.arctan2(np.sqrt(x*x + y*y),z))
                         Phi.append(np.arctan2(y,x))
 
-                        analyticalValues[k].append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),demid))
+                        analyticalValues[k].append(analyticalFunction(f,np.sqrt(x*x + y*y + z*z),np.arctan2(np.sqrt(x*x + y*y),z),np.arctan2(y,x),halfDipoleDistance))
                         numericValuesA[k].append(complex(float(row[3]),float(row[4])))
                         numericValuesN[k].append(complex(float(row[5]),float(row[6])))               
 

@@ -12,21 +12,21 @@ dipoleMomentum = 1
 Pref = 2e-5
 
 ###Acoustic dipole functions
-rplus = lambda demid,r,theta,phi : np.sqrt(r**2 + demid**2 - 2*r*demid*np.sin(theta)*np.cos(phi))
-rminus = lambda demid,r,theta,phi : np.sqrt(r**2 + demid**2 + 2*r*demid*np.sin(theta)*np.cos(phi))
+rplus = lambda halfDipoleDistance,r,theta,phi : np.sqrt(r**2 + halfDipoleDistance**2 - 2*r*halfDipoleDistance*np.sin(theta)*np.cos(phi))
+rminus = lambda halfDipoleDistance,r,theta,phi : np.sqrt(r**2 + halfDipoleDistance**2 + 2*r*halfDipoleDistance*np.sin(theta)*np.cos(phi))
 
 k = lambda f: 2*np.pi*f/c
 omega = lambda f: 2*np.pi*f
 
 G = lambda f,r : np.exp(1j*k(f)*r)/(4*np.pi*r)
 
-def monopolePressure(f,r,theta=0,phi=0,demid=0):
+def monopolePressure(f,r,theta=0,phi=0,halfDipoleDistance=0):
     return(1j*omega(f)*Q*rho*G(f,r))
 
-def dipolePressure(f,r,theta,phi,demid):
-    return(monopolePressure(f,rplus(demid,r,theta,phi)) - monopolePressure(f,rminus(demid,r,theta,phi)))
+def dipolePressure(f,r,theta,phi,halfDipoleDistance):
+    return(monopolePressure(f,rplus(halfDipoleDistance,r,theta,phi)) - monopolePressure(f,rminus(halfDipoleDistance,r,theta,phi)))
 
-def infinitesimalDipolePressure(f,r,theta,phi,demid=0):
+def infinitesimalDipolePressure(f,r,theta,phi,halfDipoleDistance=0):
     return((dipoleMomentum*omega(f)*rho*k(f))*np.sin(theta)*np.cos(phi)*G(f,r)*(1 - 1/(1j*k(f)*r)))
 
 ###Analytical acoutic functions
