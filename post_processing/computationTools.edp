@@ -128,3 +128,18 @@ func meshL getCircularMesh(real size, real resolution, real sigma, string elemen
     }
 
 }
+
+func mesh getPrettyMesh(real radius, real resolution)
+{
+    int n = ceil(3*radius/resolution);
+
+    border b0(t = 0, 2*pi){x=radius*cos(t); y=radius*sin(t); z=0;}
+    border b1(t=-3*radius, 3*radius){x=t; y=-3*radius; z=0;}
+    border b2(t=-3*radius, 3*radius){x=3*radius; y=t; z=0;}
+    border b3(t=-3*radius, 3*radius){x=-t; y=3*radius; z=0;}
+    border b4(t=-3*radius, 3*radius){x=-3*radius; y=-t; z=0;}
+
+    mesh outputMesh = buildmesh(b1(n)+b2(n)+b3(n)+b4(n)+b0(-n));
+
+    return(outputMesh);
+}
