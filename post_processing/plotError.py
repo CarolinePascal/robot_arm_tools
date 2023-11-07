@@ -151,7 +151,6 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
         iterationNumber = len(np.unique(interestConfigurations[:,iterationIndex-1]))
         interestConfigurationsNumber = len(np.unique(np.delete(interestConfigurations,iterationIndex-1,1),axis=0))
         
-
     #Create the interest configurations / plot values matrix
     if(postProcessingID == "re/im"):
         if("iteration" in variableParametersList):
@@ -342,10 +341,9 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
 
         for axAi,axNi,plotN,plotA in zip(axA,axN,plotListN,plotListA):
 
-            print(np.shape(plotA))
-
-            if(len(np.shape(plotA)) >= 3):
-                minSpace, maxSpace = np.ones(len(plotA[0,i]))*10**10, np.ones(len(plotA[0,i]))*10**-10
+            shapeA = np.shape(plotA)
+            if(len(shapeA) >= 3 and shapeA[0] > 1):
+                minSpace, maxSpace = np.ones(len(plotA[0,i]))*10**15, np.ones(len(plotA[0,i]))*10**-15
                 for k,subPlotA in enumerate(plotA[:,i]):
                     if(k==0):
                         axAi.plot(plotListP[i],scalingFunction(subPlotA),label=label,color=cmap(i),marker="+",linestyle = 'None')
@@ -353,15 +351,18 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
                         axAi.plot(plotListP[i],scalingFunction(subPlotA),color=cmap(i),marker="+",linestyle = 'None')
                     maxSpace = np.maximum(maxSpace,scalingFunction(subPlotA))
                     minSpace = np.minimum(minSpace,scalingFunction(subPlotA))
-                axAi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.1)
+                axAi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.2)
 
             else:
+                if(len(shapeA) >= 3):
+                    plotA = plotA[0]
                 plotIndex = np.arange(len(plotA[i]))
                 if(log == "y"):
                     plotIndex = np.where(plotA[i] != 0)[0]
                 axAi.plot(plotListP[i][plotIndex],scalingFunction(plotA[i][plotIndex]),label=label,color=cmap(i),marker="+",linestyle = 'None')
 
-            if(len(np.shape(plotN)) >= 3):
+            shapeN = np.shape(plotN)
+            if(len(shapeN) >= 3 and shapeN[0] > 1):
                 minSpace, maxSpace = np.ones(len(plotN[0,i]))*10**10, np.ones(len(plotN[0,i]))*10**-10
                 for k,subPlotN in enumerate(plotN[:,i]):
                     if(k==0):
@@ -370,9 +371,11 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
                         axNi.plot(plotListP[i],scalingFunction(subPlotN),color=cmap(i),marker="+",linestyle = 'None')
                     maxSpace = np.maximum(maxSpace,scalingFunction(subPlotN))
                     minSpace = np.minimum(minSpace,scalingFunction(subPlotN))
-                axNi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.1)
+                axNi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.2)
 
             else:
+                if(len(shapeN) >= 3):
+                    plotN = plotN[0]
                 plotIndex = np.arange(len(plotN[i]))
                 if(log == "y"):
                     plotIndex = np.where(plotN[i] != 0)[0]
