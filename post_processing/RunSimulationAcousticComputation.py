@@ -38,6 +38,7 @@ verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 Frequencies = [100,250,500,750,1000,2500,5000] 
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
 Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius] 
+DipoleDistances = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius]
 
 SigmasPosition = [0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius]
 SigmasMeasure = [0.0]
