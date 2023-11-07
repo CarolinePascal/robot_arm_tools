@@ -27,6 +27,7 @@ func complex monopolePressure(real frequency){return 1i*omega(frequency)*Q*rho*G
 func complex dxmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)*x/(r*r);}
 func complex dymonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)*y/(r*r);}
 func complex dzmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)*z/(r*r);}
+func complex drmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*k(frequency)*r - 1)/r;}
 
 //Infinitesimal dipole
 func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*omega(frequency)*rho*k(frequency)*sin(theta)*cos(phi)*G(frequency)*(1 - 1/(1i*k(frequency)*r));}
@@ -47,5 +48,17 @@ func complex inputFunction(real frequency, string input)
     else if(input == "infinitesimalDipole")
     {
         return infinitesimalDipolePressure(frequency);
+    }
+}
+
+func complex inputFunctionGradient(real frequency, string input)
+{
+    if(input == "monopole")
+    {
+        return drmonopolePressure(frequency);
+    }
+    else
+    {
+        return 0;
     }
 }
