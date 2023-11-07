@@ -270,7 +270,9 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
 #  @param plotControlPoints Wether to plot the control points or not
 #  @param axes Matplotlib axes
 #  @param show Wether to display the plot or not
-def plotMesh(vertices, faces, elementType = "P0", plotVertices = True, plotControlPoints = True, axes = None, show = True):
+#  @param dataControlPoints Eventual data to plot on the control points
+#  @param dataControlPointsUnit Eventual data unit for the control points data
+def plotMesh(vertices, faces, elementType = "P0", plotVertices = True, plotControlPoints = True, axes = None, show = True, dataControlPoints = [], dataControlPointsUnit = ""):
 
     if(axes is None):
         axes = plt.figure().add_subplot(projection='3d')
@@ -284,9 +286,21 @@ def plotMesh(vertices, faces, elementType = "P0", plotVertices = True, plotContr
     if(plotControlPoints):
         if (elementType == "P0"):
             centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
-            axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2],marker='o',color='r')
+            if(len(dataControlPoints) == 0):
+                axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2],marker='o',color='r')
+            else:
+                sc = axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2],marker='o',c=dataControlPoints, cmap=plt.get_cmap('jet'))
+                if(dataControlPointsUnit != ""):
+                    cbar = plt.colorbar(sc)
+                    cbar.set_label(dataControlPointsUnit)
         elif (elementType == "P1"):
-            axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2],marker='o',color='r')
+            if(len(dataControlPoints) == 0):
+                axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2],marker='o',color='r')
+            else:
+                sc = axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2],marker='o',c=dataControlPoints, cmap=plt.get_cmap('jet'))
+                if(dataControlPointsUnit != ""):
+                    cbar = plt.colorbar(sc)
+                    cbar.set_label(dataControlPointsUnit)
         else:
             raise NameError("INVALID ELEMENT TYPE")
 
@@ -317,10 +331,10 @@ def getMeshInfo(vertices,faces,elementType="P0"):
             mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
             lines = np.array(mesh.vertices[mesh.edges_unique])
             
-            if(len(lines) == 0):
-                h = np.linalg.norm(vertices[faces[:,1]] - vertices[faces[:,0]],axis=1)
-            else:
-                h = np.linalg.norm(lines[:,1] - lines[:,0],axis=1)
+        if(len(lines) == 0):
+            h = np.linalg.norm(vertices[faces[:,1]] - vertices[faces[:,0]],axis=1)
+        else:
+            h = np.linalg.norm(lines[:,1] - lines[:,0],axis=1)
         
         return(np.min(h),np.max(h),np.average(h),np.std(h))
 
