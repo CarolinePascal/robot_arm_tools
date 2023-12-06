@@ -463,7 +463,6 @@ else
     {
         outputFileName = studiedFunction + "_" + elementTypeName + "/output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
         outputFileNameGradient = studiedFunction + "_" + elementTypeName + "/output_gradient_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        cout << outputFileName << endl;
     }
     else
     {
