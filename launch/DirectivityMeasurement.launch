@@ -22,13 +22,19 @@
 		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/Propeller.yaml"/>
 	</node>
 
+	<!-- MEASUREMENT SERVER -->
+	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/Desktop/Directivity/"/>
+	<param name="measurementServerName" value="/ok_server"/>
+	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
+	<node pkg="robot_arm_tools" type="OKMeasurementServer" name="ok_server" output="screen"/>
+
 	<!-- MAIN NODE -->
 	<arg name="trajectory_radius" default="0.5"/>
 	<arg name="trajectory_steps_number" default="10"/>
 	
 	<param name="trajectoryRadius" value="$(arg trajectory_radius)"/>
 	<param name="trajectoryStepsNumber" value="$(arg trajectory_steps_number)"/>
-
+	
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_directivity_measurement_node" name="robot_arm_acoustic_directivity_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 
