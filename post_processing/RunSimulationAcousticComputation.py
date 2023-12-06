@@ -26,7 +26,7 @@ elif(method == "SFT"):
     command = "FreeFem++ AcousticComputationSFT.edp"
 
 ### Studied function
-function = "monopole"
+function = "dipole"
 
 ### Studied parameters
 elementType = "P0"
@@ -38,13 +38,15 @@ verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 Frequencies = [100,250,500,750,1000,2500,5000] 
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
 Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius] 
-DipoleDistances = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius]
+DipoleDistances = [0.9*verificationRadius] if function == "dipole" else [0.0]
+#0.15*verificationRadius,0.1*verificationRadius,0.05*verificationRadius
 
-SigmasPosition = [0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius]
+#SigmasPosition = [0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius]
+SigmasPosition = [0.0]
 SigmasMeasure = [0.0]
 Nsigma = 10
 
-parametersCombinations = len(Frequencies)*len(Radius)*len(Resolutions)*max(1,Nsigma*len(np.nonzero(SigmasPosition)[0]))*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0]))
+parametersCombinations = len(Frequencies)*len(Radius)*len(Resolutions)*len(DipoleDistances)*max(1,Nsigma*len(np.nonzero(SigmasPosition)[0]))*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0]))
 
 if(__name__ == "__main__"):
     counter = 1
@@ -75,29 +77,37 @@ if(__name__ == "__main__"):
 
                             for frequency in Frequencies:
 
-                                print("Combination : " + str(counter) + "/" + str(parametersCombinations))
-                                print("Sigma position : " + str(sigmaPosition) + " m")
-                                print("Sigma measure : " + str(sigmaMeasure) + " Pa")
-                                print("Frequency : " + str(frequency) + " Hz")
-                                print("Size : " + str(size) + " m")
-                                print("Resolution : " + str(resolution) + " m")
-                                counter += 1
+                                for dipoleDistance in DipoleDistances:
 
-                                ### Run computation
+                                    if(dipoleDistance >= size):
+                                        break
 
-                                tmpFileID = " -fileID " + str(i*Nsigma + j + 1)
+                                    print("Combination : " + str(counter) + "/" + str(parametersCombinations))
+                                    print("Sigma position : " + str(sigmaPosition) + " m")
+                                    print("Sigma measure : " + str(sigmaMeasure) + " Pa")
+                                    print("Frequency : " + str(frequency) + " Hz")
+                                    print("Size : " + str(size) + " m")
+                                    print("Resolution : " + str(resolution) + " m")
+                                    if(function == "dipole"):
+                                        print("Dipole distance : " + str(dipoleDistance) + " m")
 
-                                bashCommand = command + " -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -ns"
-                                print(bashCommand)
-                                process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-                                output, error = process.communicate()
+                                    counter += 1
 
-                                #DEBUG
-                                print(output.decode())
+                                    ### Run computation
 
-                                killProcess = "killall FreeFem++-mpi"
-                                process = subprocess.Popen(killProcess.split(), stdout=subprocess.PIPE)
-                                output, error = process.communicate()
+                                    tmpFileID = " -fileID " + str(i*Nsigma + j + 1)
 
-                                #DEBUG
-                                print(output.decode())
+                                    bashCommand = command + " -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -ns"
+                                    print(bashCommand)
+                                    process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
+                                    output, error = process.communicate()
+
+                                    #DEBUG
+                                    print(output.decode())
+
+                                    killProcess = "killall FreeFem++-mpi"
+                                    process = subprocess.Popen(killProcess.split(), stdout=subprocess.PIPE)
+                                    output, error = process.communicate()
+
+                                    #DEBUG
+                                    print(output.decode())
