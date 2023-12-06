@@ -135,13 +135,13 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
         #Compute error over the z=0 plane
         tmpUnit = "Pa" if postProcessingID != "phase" else "rad"
         if(analyticalFunction is not None):
-            print("Absolute error FreeFem analytical solution = " + str(np.round(errorFunction(numericValuesA - analyticalValues),3)) + " (" + tmpUnit + ")")
-            print("Absolute error FreeFem numerical solution = " +  str(np.round(errorFunction(numericValuesN - analyticalValues),3)) + " (" + tmpUnit + ")")
-            print("Relative error FreeFem analytical solution = " + str(np.round(100*errorFunction((numericValuesA - analyticalValues)/analyticalValues),3)) + " %")
-            print("Relative error FreeFem numerical solution = " +  str(np.round(100*errorFunction((numericValuesN - analyticalValues)/analyticalValues),3)) + " %")
+            print("Absolute error FreeFem analytical solution = " + str(np.round(errorFunction(numericValuesA - analyticalValues),6)) + " (" + tmpUnit + ")")
+            print("Absolute error FreeFem numerical solution = " +  str(np.round(errorFunction(numericValuesN - analyticalValues),6)) + " (" + tmpUnit + ")")
+            print("Relative error FreeFem analytical solution = " + str(np.round(100*errorFunction((numericValuesA - analyticalValues)/analyticalValues),6)) + " %")
+            print("Relative error FreeFem numerical solution = " +  str(np.round(100*errorFunction((numericValuesN - analyticalValues)/analyticalValues),6)) + " %")
         else:
-            print("Absolute error = " +  str(np.round(errorFunction(numericValuesN - numericValuesA),3)) + " (" + tmpUnit + ")")
-            print("Relative error = " + str(np.round(100*errorFunction((numericValuesN - numericValuesA)/numericValuesA),3)) + " %")
+            print("Absolute error = " +  str(np.round(errorFunction(numericValuesN - numericValuesA),6)) + " (" + tmpUnit + ")")
+            print("Relative error = " + str(np.round(100*errorFunction((numericValuesN - numericValuesA)/numericValuesA),6)) + " %")
 
         #Create plot
         Phi = np.append(Phi,Phi[0])
@@ -182,9 +182,9 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
                 if(addLegend): 
                     ax.plot(Phi,function(analyticalValues),label="Analytical solution - " + functionName + " (" + unit + ")" + legend,color='r')
                     ax.plot(Phi,function(numericValuesA),label="FreeFem analytical solution - " + functionName + " (" + unit + ")" + legend,color='b')
-                    ax.plot(Phi,function(numericValuesN),label="FreeFem numerical solution - " + functionName + " (" + unit + ")" + legend,color='g',alpha=0.25)
+                    ax.plot(Phi,function(numericValuesN),label="FreeFem numerical solution - " + functionName + " (" + unit + ")" + legend,color='g',alpha=1)
                 else:
-                    ax.plot(Phi,function(numericValuesN),color='g',alpha=0.25)
+                    ax.plot(Phi,function(numericValuesN),color='g',alpha=1)
             else:
                 if(addLegend):
                     ax.plot(Phi,function(numericValuesA),label="Measured data - " + functionName + " (" + unit + ")" + legend, color=cmap(i), linestyle="dashed")
@@ -193,7 +193,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID):
                     ax.plot(Phi,function(numericValuesA), color=cmap(i), linestyle="dashed")
                     ax.plot(Phi,function(numericValuesN), color=cmap(i))
 
-        legendFlag = True if(len(configurations) > 1 and i == 0) else False
+        legendFlag = True if(len(configurations) >= 1 and i == 0) else False
         if(postProcessingID == "re/im"):
             plotSphericFunction(lambda x : x[0],"real part","Pa",ax[0],legendFlag)
             plotSphericFunction(lambda x : x[1],"imaginary part","Pa",ax[1],legendFlag)
@@ -233,12 +233,18 @@ if __name__ == "__main__":
     postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
     if(postProcessing not in list((postProcessingFunctions.keys()))):
         postProcessing = "id"
-    analytical = input("Analytical function ? (default : infinitesimalDipole) " + str(list((analyticalFunctions.keys()))))
-    if(analytical not in list((analyticalFunctions.keys()))):
-        analytical = "infinitesimalDipole"
+
     error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
     if(error not in list((errorFunctions.keys()))):
         error = "l2"
+
+    analytical = "infinitesimalDipole"
+    try:
+        analytical = os.getcwd().split("/")[-1].split("_")[0]
+    except:
+        analytical = input("Analytical function ? (default : infinitesimalDipole) " + str(list((analyticalFunctions.keys()))))
+    if(analytical not in list((analyticalFunctions.keys()))):
+        analytical = "infinitesimalDipole"
 
     plotSphericCut(postProcessing,analytical,error)
 
