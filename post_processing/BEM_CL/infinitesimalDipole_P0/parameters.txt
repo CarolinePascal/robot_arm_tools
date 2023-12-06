@@ -1,0 +1,6 @@
+frequency Hz
+resolution m
+size m
+sigmaPosition m
+sigmaMeasure Pa
+iteration
