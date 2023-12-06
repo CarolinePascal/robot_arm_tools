@@ -18,15 +18,13 @@
 	</include>
 	
 	<!-- MEASUREMENT SERVER -->
+	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/AcousticMeasurements/PropellerMeasurements/"/>
+	<param name="measurementServerName" value="/propeller_measurement_server"/>
+	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
 	<node pkg="robot_arm_acoustic" type="PropellerMeasurementServer.py" name="propeller_measurement_server" output="screen"/>
 
 	<!-- MAIN NODE -->
-	<param name="measurementServerName" value="/propeller_measurement_server"/>
-	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/AcousticMeasurements/Propeller/"/>
-	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
-
 	<rosparam command="load" file="$(find robot_arm_acoustic)/config/AcquisitionParameters.yaml"/>
-
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" required="true"/>
 
 	<!-- Run Rviz --> 

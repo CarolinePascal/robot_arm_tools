@@ -18,6 +18,9 @@
 	</include>
 
 	<!-- MEASUREMENT SERVER -->
+	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/AcousticMeasurements/SphericMeasurements/"/>
+	<param name="measurementServerName" value="/sound_measurement_server"/>
+	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
 	<node pkg="robot_arm_acoustic" type="SoundMeasurementServer.py" name="sound_measurement_server" output="screen"/>
 	
 	<!-- STUDIED OBJECT -->
@@ -26,8 +29,11 @@
 	</node>
 
 	<!-- MAIN NODE -->
-	<param name="measurementServerName" value="/sound_measurement_server"/>
-	<param name="measurementServerStorageFolder" value="/tmp/SoundMeasurements/"/>
+	<arg name="trajectory_radius" default="0.5"/>
+	<arg name="trajectory_steps_number" default="10"/>
+
+	<param name="trajectoryRadius" value="$(arg trajectory_radius)"/>
+	<param name="trajectoryStepsNumber" value="$(arg trajectory_steps_number)"/>
 
 	<node pkg="robot_arm_acoustic" type="robot_arm_acoustic_spheric_measurement_node" name="robot_arm_acoustic_spheric_measurement_node" output="screen" required="true"/>
 
