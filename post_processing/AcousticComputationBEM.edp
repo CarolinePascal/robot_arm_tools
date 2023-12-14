@@ -31,7 +31,23 @@ func Pk = elementType;
 string elementTypeName = Stringification(elementType);
 ENDIFMACRO
 
-func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, int gradient, complex[int] verificationDataGradient, string outputFileNameGradient)
+IFMACRO(!gradient)
+bool computeGradient = false;
+func PkVerification = P1;
+string elementTypeNameVerification = "P1";
+ENDIFMACRO
+IFMACRO(gradient,0)
+bool computeGradient = false;
+func PkVerification = P1;
+string elementTypeNameVerification = "P1";
+ENDIFMACRO
+IFMACRO(gradient,1)
+bool computeGradient = true;
+func PkVerification = Pk;
+string elementTypeNameVerification = elementTypeName;
+ENDIFMACRO
+
+func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient)
 {
     //Define the variational problem
     BemKernel ker("SL",k=k(frequency));
@@ -56,7 +72,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     varf vpot(u,v) = int2d(measurementsMesh)(POT(Pot,u,v));
 
     //Evaluate the solution on the verification points
-    fespace UhOut(verificationMesh,Pk);
+    fespace UhOut(verificationMesh,PkVerification);
 
     HMatrix<complex> HP = vpot(Uh,UhOut);
     UhOut<complex> uN;
@@ -86,7 +102,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
         file << verificationMesh(i).x << ";" << verificationMesh(i).y << ";" << verificationMesh(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
     }
 
-    if(gradient == 1)
+    if(computeGradient)
     {
         //Define the gradient variational problem
         BemKernel kerGradient("TDL",k=k(frequency));
@@ -131,7 +147,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     return(0);
 }
 
-func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, int gradient, complex[int] verificationDataGradient, string outputFileNameGradient)
+func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient)
 {
     //Define the variational problem
     BemKernel kerSL("SL",k=k(frequency));
@@ -160,7 +176,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     varf vpotDL(u,v) = int2d(measurementsMesh)(POT(PotDL,u,v));
 
     //Evaluate the solution on the verification points
-    fespace UhOut(verificationMesh,Pk);
+    fespace UhOut(verificationMesh,PkVerification);
 
     HMatrix<complex> HPSL = vpotSL(Uh,UhOut);
     HMatrix<complex> HPDL = vpotDL(Uh,UhOut);
@@ -193,7 +209,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
         file << verificationMesh(i).x << ";" << verificationMesh(i).y << ";" << verificationMesh(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
     }
 
-    if(gradient == 1)
+    if(computeGradient)
     {
         if(elementTypeName == "P0")
         {
@@ -271,7 +287,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     varf vpot(u,v) = int2d(measurementsMesh)(POT(Pot,u,v));
 
     //Evaluate the solution on the verification points
-    fespace UhOut(verificationMesh,Pk);
+    fespace UhOut(verificationMesh,P1);
 
     HMatrix<complex> HP = vpot(Uh,UhOut);
     UhOut<complex> uN;
@@ -333,7 +349,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     varf vpotDL(u,v) = int2d(measurementsMesh)(POT(PotDL,u,v));
 
     //Evaluate the solution on the verification points
-    fespace UhOut(verificationMesh,Pk);
+    fespace UhOut(verificationMesh,P1);
 
     HMatrix<complex> HPSL = vpotSL(Uh,UhOut);
     HMatrix<complex> HPDL = vpotDL(Uh,UhOut);
@@ -373,7 +389,6 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
 
 //Global parameters
 int realMeasurements = getARGV("-realMeasurements",0);
-int gradient = getARGV("-gradient",0);
 real frequency = getARGV("-frequency",100); 
 
 string fileID = getARGV("-fileID","");
@@ -400,7 +415,7 @@ if(realMeasurements == 1)
     if(isdir("./BEM_SL/" + elementTypeName) == -1)
     {
         mkdir("./BEM_SL/" + elementTypeName);
-        if(gradient == 1)
+        if(computeGradient)
         {
             mkdir("./BEM_SL/" + elementTypeName + "/gradient");
         }
@@ -408,7 +423,7 @@ if(realMeasurements == 1)
     if(isdir("./BEM_CL/" + elementTypeName) == -1)
     {
         mkdir("./BEM_CL/" + elementTypeName);
-        if(gradient == 1)
+        if(computeGradient)
         {
             mkdir("./BEM_CL/" + elementTypeName + "/gradient");
         }
@@ -418,7 +433,7 @@ if(realMeasurements == 1)
     measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
     complex[int] measurementsData = getMeasurementsData(frequency);
 
-    if(gradient == 1)
+    if(computeGradient)
     {
         cout << "Gradient computation for real measured data : not implemented yet !" << endl;
         //TODO
@@ -427,8 +442,8 @@ if(realMeasurements == 1)
         //complex[int] verificationData = getVerificationData(frequency);  
         //complex[int] verificationDataGradient = getVerificationDataGradient(frequency);
 
-        //AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, gradient, verificationDataGradient, outputFileNameGradient);
-        //AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, gradient, verificationDataGradient, outputFileNameGradient);
+        //AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, verificationDataGradient, outputFileNameGradient);
+        //AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, verificationDataGradient, outputFileNameGradient);
     }
     else
     {
@@ -458,33 +473,44 @@ else
     halfDipoleDistance = dipoleDistance/2;
 
     string outputFileName, outputFileNameGradient;
+    string outputFolder = studiedFunction + "_" + elementTypeName + "/";
 
-    if(studiedFunction == "dipole")
+    if(computeGradient)
     {
-        outputFileName = studiedFunction + "_" + elementTypeName + "/output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        outputFileNameGradient = studiedFunction + "_" + elementTypeName + "/output_gradient_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFolder = studiedFunction + "_" + elementTypeName + "/gradient/";
     }
     else
     {
-        outputFileName = studiedFunction + "_" + elementTypeName + "/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        outputFileNameGradient = studiedFunction + "_" + elementTypeName + "/gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFolder = studiedFunction + "_" + elementTypeName + "/";
+    }
+
+    if(studiedFunction == "dipole")
+    {
+        outputFileName = outputFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFileNameGradient = outputFolder + "output_gradient_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+    }
+    else
+    {
+        outputFileName = outputFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFileNameGradient = outputFolder + "output_gradient_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
     }
 
     if(isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
     {
         mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName);
-        if(gradient == 1)
-        {
-            mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient");
-        }
     }
+    if(computeGradient && isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    {
+        mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient");
+    }
+
     if(isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName) == -1)
     {
         mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName);
-        if(gradient == 1)
-        {
-            mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient");
-        }
+    }
+    if(computeGradient && isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    {
+        mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient");
     }
 
     //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
@@ -499,8 +525,8 @@ else
     if(sigmaPosition == 0)
     {	
 	    //Equivalent to Uh<complex> measurementsData = inputFunction(frequency,studiedFunction);
-        Uh<complex> noisyMeasurementsData = inputFunction(frequency,studiedFunction);
-        measurementsData[] = noisyMeasurementsData[];
+        Uh<complex> noiselessMeasurementsData = inputFunction(frequency,studiedFunction);
+        measurementsData[] = noiselessMeasurementsData[];
     }    
 
     //Noisy position measurements
@@ -529,33 +555,31 @@ else
         }
     }
 
-    if(gradient == 1)
+    if(computeGradient)
     {
         //Create the verification mesh
-        meshS verificationMesh = getSphericMesh(verificationSize,verificationResolution,0.0,elementTypeName);
+        meshS verificationMesh = getSphericMesh(verificationSize,verificationResolution,0.0,elementTypeNameVerification);
         verificationMesh = OrientNormal(verificationMesh,unbounded=0);
 
         //Compute the analytical solution
-        fespace UhOut(verificationMesh,Pk); //Verification data is computed on the mesh vertices !
+        fespace UhOut(verificationMesh,PkVerification); //Verification data is computed on the mesh vertices !
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
         UhOut<complex> verificationDataGradient = inputFunctionGradient(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, gradient, verificationDataGradient[], outputFileNameGradient);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName,gradient, verificationDataGradient[], outputFileNameGradient);
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient);
     }
     else
     {
        //Create the verification mesh
-        meshL verificationMesh = getCircularMesh(verificationSize,verificationResolution,0.0,"P1");
+        meshL verificationMesh = getCircularMesh(verificationSize,verificationResolution,0.0,elementTypeNameVerification);
         verificationMesh = OrientNormal(verificationMesh,unbounded=0);
 
         //Compute the analytical solution
-        fespace UhOut(verificationMesh,P1); //Verification data is computed on the mesh vertices !
+        fespace UhOut(verificationMesh,PkVerification); //Verification data is computed on the mesh vertices !
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
 
         AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName);
         AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName); 
     }
 }
-
-

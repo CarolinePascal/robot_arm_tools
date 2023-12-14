@@ -18,7 +18,7 @@ method = "BEM"
 try:
     method = sys.argv[1]
 except:
-    print("Invalid size and resolution, switching to default : " + method)
+    print("Invalid resolution method, switching to default : " + method)
 
 if(method == "BEM"):
     command = "ff-mpirun -np 4 AcousticComputationBEM.edp -wg"
@@ -26,7 +26,8 @@ elif(method == "SFT"):
     command = "FreeFem++ AcousticComputationSFT.edp"
 
 ### Studied function
-function = "dipole"
+function = "monopole"
+gradient = 0
 
 ### Studied parameters
 elementType = "P0"
@@ -37,12 +38,12 @@ verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 
 Frequencies = [100,250,500,750,1000,2500,5000] 
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
-Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius] 
-DipoleDistances = [0.9*verificationRadius] if function == "dipole" else [0.0]
-#0.15*verificationRadius,0.1*verificationRadius,0.05*verificationRadius
+#Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius] 
+Resolutions = [0.1*verificationRadius] 
 
-#SigmasPosition = [0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius]
-SigmasPosition = [0.0]
+DipoleDistances = [0.05*verificationRadius,0.1*verificationRadius,0.15*verificationRadius,0.25*verificationRadius,0.5*verificationRadius,0.75*verificationRadius,0.9*verificationRadius] if function == "dipole" else [0.0]
+
+SigmasPosition = [0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius]
 SigmasMeasure = [0.0]
 Nsigma = 10
 
@@ -52,8 +53,12 @@ if(__name__ == "__main__"):
     counter = 1
 
     #Generate verification mesh
-    if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/circle/P1/" + str(verificationSize) + "_" + str(verificationResolution) + ".mesh")):
-            generateCircularMesh(verificationSize,verificationResolution,elementType="P1",saveMesh=True)
+    if(gradient == 0):
+        if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/circle/P1/" + str(verificationSize) + "_" + str(verificationResolution) + ".mesh")):
+                generateCircularMesh(verificationSize,verificationResolution,elementType="P1",saveMesh=True)
+    elif(gradient == 1):
+        if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/" + elementType + "/" + str(verificationSize) + "_" + str(verificationResolution) + ".mesh")):
+                generateSphericMesh(verificationSize,verificationResolution,elementType=elementType,saveMesh=True)
 
     for sigmaMeasure in SigmasMeasure:
         for i in range(Nsigma):
@@ -97,7 +102,7 @@ if(__name__ == "__main__"):
 
                                     tmpFileID = " -fileID " + str(i*Nsigma + j + 1)
 
-                                    bashCommand = command + " -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -ns"
+                                    bashCommand = command + " -realMeasurements 0 -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
                                     print(bashCommand)
                                     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
                                     output, error = process.communicate()
