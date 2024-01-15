@@ -1,60 +1,9 @@
-load "msh3"
-load "medit"
-
 int MAXSIZE = 10000;
 
-func meshS getMeasurementsMesh()
-{
-    meshS ThS("./mesh.mesh");
-    ThS = OrientNormal(ThS,unbounded=1);
-    return ThS;
-}
-
-func meshL getVerificationMesh()
-{
-    meshL ThL("../../Verification/Verification/mesh.mesh");
-    ThL = OrientNormal(ThL,unbounded=1);
-    return ThL;
-}
-
-func complex[int] getMeasurementsData(real frequency)
+func complex[int] getData(string dataPath)
 {
     complex[int] data(MAXSIZE);
-    ifstream file("./data_" + frequency + ".csv");
-
-    string line;
-    real tmp;
-    int i = 0;
-    while(1)
-    {
-        try
-        {
-            file >> line;
-        }
-        catch(...)
-        {
-            break;
-        }
-
-        tmp = atof(line(0:line.find(",")-1));
-        line = line(line.find(",")+1:line.length);
-
-        data[i] = tmp;
-
-        tmp = atof(line);
-
-        data[i] += 1i*tmp;
-        i++;
-    }
-    
-    data.resize(i);
-    return data;
-}
-
-func complex[int] getVerificationData(real frequency)
-{
-    complex[int] data(MAXSIZE);
-    ifstream file("../../Verification/Verification/data_" + frequency + ".csv");
+    ifstream file(dataPath);
 
     string line;
     real tmp;

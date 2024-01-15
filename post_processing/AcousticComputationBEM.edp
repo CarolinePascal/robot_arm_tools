@@ -47,10 +47,10 @@ func PkVerification = Pk;
 string elementTypeNameVerification = elementTypeName;
 ENDIFMACRO
 
-func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient)
+func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient, string outputFolder, real physicsFactor)
 {
     //Define the variational problem
-    BemKernel ker("SL",k=k(frequency));
+    BemKernel ker("SL",k=physicsFactor*k(frequency));
     varf vbem(u,v) = int2dx2d(measurementsMesh)(measurementsMesh)(BEM(ker,u,v)) ;  
 
     //Assemble the H-Matrix
@@ -68,7 +68,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     p[] = H^-1*b[];
 
     //Compute the numerical solution
-    BemPotential Pot("SL",k=k(frequency));
+    BemPotential Pot("SL",k=physicsFactor*k(frequency));
     varf vpot(u,v) = int2d(measurementsMesh)(POT(Pot,u,v));
 
     //Evaluate the solution on the verification points
@@ -93,7 +93,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     }
 
     //Fill output file
-    string outputFilePath = "./BEM_SL/" + outputFileName;
+    string outputFilePath = outputFolder + "BEM_SL/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -105,7 +105,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     if(computeGradient)
     {
         //Define the gradient variational problem
-        BemKernel kerGradient("TDL",k=k(frequency));
+        BemKernel kerGradient("TDL",k=physicsFactor*k(frequency));
         varf vbemGradient(u,v) = int2dx2d(measurementsMesh)(verificationMesh)(BEM(kerGradient,u,v));
 
         //Assemble the H-Matrix
@@ -134,7 +134,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
         }
 
         //Fill output file
-        string outputFilePathGradient = "./BEM_SL/" + outputFileNameGradient;
+        string outputFilePathGradient = outputFolder + "BEM_SL/" + outputFileNameGradient;
         ofstream fileGradient(outputFilePathGradient);
         int npGradient = fileGradient.precision(20);
 
@@ -147,12 +147,12 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     return(0);
 }
 
-func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient)
+func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient, string outputFolder, real physicsFactor)
 {
     //Define the variational problem
-    BemKernel kerSL("SL",k=k(frequency));
-    BemKernel kerDL("DL",k=k(frequency));
-    BemKernel ker=(-k(frequency)*1i)*kerSL+kerDL;
+    BemKernel kerSL("SL",k=physicsFactor*k(frequency));
+    BemKernel kerDL("DL",k=physicsFactor*k(frequency));
+    BemKernel ker=(-physicsFactor*k(frequency)*1i)*kerSL+kerDL;
     varf vbem(u,v)=int2dx2d(measurementsMesh)(measurementsMesh)(BEM(ker,u,v)) + int2d(measurementsMesh)(0.5*u*v); 
 
     //Assemble the H-Matrix
@@ -170,9 +170,9 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     p[] = H^-1*b[];
 
     //Compute the numerical solution
-    BemPotential PotSL("SL",k=k(frequency));
+    BemPotential PotSL("SL",k=physicsFactor*k(frequency));
     varf vpotSL(u,v) = int2d(measurementsMesh)(POT(PotSL,u,v));
-    BemPotential PotDL("DL",k=k(frequency));
+    BemPotential PotDL("DL",k=physicsFactor*k(frequency));
     varf vpotDL(u,v) = int2d(measurementsMesh)(POT(PotDL,u,v));
 
     //Evaluate the solution on the verification points
@@ -183,7 +183,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     UhOut<complex> uN,uSL,uDL;
     uSL[] = HPSL*p[];
     uDL[] = HPDL*p[];
-    uN = (-k(frequency)*1i)*uSL + uDL;
+    uN = (-physicsFactor*k(frequency)*1i)*uSL + uDL;
 
     //Compute the analytical solution
     UhOut<complex> uA;
@@ -200,7 +200,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     }
 
     //Fill output file
-    string outputFilePath = "./BEM_CL/" + outputFileName;
+    string outputFilePath = outputFolder + "BEM_CL/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -218,9 +218,9 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
         }
 
         //Define the gradient variational problem
-        BemKernel kerGradientSL("TDL",k=k(frequency));
-        BemKernel kerGradientDL("HS",k=k(frequency));   //Does not work with P0 (becomes equivalent to SL) !
-        BemKernel kerGradient=(-k(frequency)*1i)*kerGradientSL+kerGradientDL;
+        BemKernel kerGradientSL("TDL",k=physicsFactor*k(frequency));
+        BemKernel kerGradientDL("HS",k=physicsFactor*k(frequency));   //Does not work with P0 (becomes equivalent to SL) !
+        BemKernel kerGradient=(-physicsFactor*k(frequency)*1i)*kerGradientSL+kerGradientDL;
         varf vbemGradient(u,v) = int2dx2d(measurementsMesh)(measurementsMesh)(BEM(kerGradient,u,v));
 
         //Assemble the H-Matrix
@@ -249,7 +249,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
         }
 
         //Fill output file
-        string outputFilePathGradient = "./BEM_CL/" + outputFileNameGradient;
+        string outputFilePathGradient = outputFolder + "BEM_CL/" + outputFileNameGradient;
         ofstream fileGradient(outputFilePathGradient);
         int npGradient = fileGradient.precision(20);
 
@@ -262,10 +262,10 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     return(0);
 }
 
-func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName)
+func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName, string outputFolder, real physicsFactor)
 {
     //Define the variational problem
-    BemKernel ker("SL",k=k(frequency));
+    BemKernel ker("SL",k=physicsFactor*k(frequency));
     varf vbem(u,v) = int2dx2d(measurementsMesh)(measurementsMesh)(BEM(ker,u,v)) ;  
 
     //Assemble the H-Matrix
@@ -283,7 +283,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     p[] = H^-1*b[];
 
     //Compute the numerical solution
-    BemPotential Pot("SL",k=k(frequency));
+    BemPotential Pot("SL",k=physicsFactor*k(frequency));
     varf vpot(u,v) = int2d(measurementsMesh)(POT(Pot,u,v));
 
     //Evaluate the solution on the verification points
@@ -308,7 +308,7 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     }
 
     //Fill output file
-    string outputFilePath = "./BEM_SL/" + outputFileName;
+    string outputFilePath = outputFolder + "BEM_SL/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -320,12 +320,12 @@ func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measur
     return(0);
 }
 
-func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName)
+func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName, string outputFolder, real physicsFactor)
 {
     //Define the variational problem
-    BemKernel kerSL("SL",k=k(frequency));
-    BemKernel kerDL("DL",k=k(frequency));
-    BemKernel ker=(-k(frequency)*1i)*kerSL+kerDL;
+    BemKernel kerSL("SL",k=physicsFactor*k(frequency));
+    BemKernel kerDL("DL",k=physicsFactor*k(frequency));
+    BemKernel ker=(-physicsFactor*k(frequency)*1i)*kerSL+kerDL;
     varf vbem(u,v)=int2dx2d(measurementsMesh)(measurementsMesh)(BEM(ker,u,v)) + int2d(measurementsMesh)(0.5*u*v); 
 
     //Assemble the H-Matrix
@@ -343,9 +343,9 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     p[] = H^-1*b[];
 
     //Compute the numerical solution
-    BemPotential PotSL("SL",k=k(frequency));
+    BemPotential PotSL("SL",k=physicsFactor*k(frequency));
     varf vpotSL(u,v) = int2d(measurementsMesh)(POT(PotSL,u,v));
-    BemPotential PotDL("DL",k=k(frequency));
+    BemPotential PotDL("DL",k=physicsFactor*k(frequency));
     varf vpotDL(u,v) = int2d(measurementsMesh)(POT(PotDL,u,v));
 
     //Evaluate the solution on the verification points
@@ -356,7 +356,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     UhOut<complex> uN,uSL,uDL;
     uSL[] = HPSL*p[];
     uDL[] = HPDL*p[];
-    uN = (-k(frequency)*1i)*uSL + uDL;
+    uN = (-physicsFactor*k(frequency)*1i)*uSL + uDL;
 
     //Compute the analytical solution
     UhOut<complex> uA;
@@ -373,7 +373,7 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
     }
 
     //Fill output file
-    string outputFilePath = "./BEM_CL/" + outputFileName;
+    string outputFilePath = outputFolder + "BEM_CL/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -389,6 +389,14 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
 
 //Global parameters
 int realMeasurements = getARGV("-realMeasurements",0);
+
+//Because the physics convention is different from the mathematical one...
+real physicsFactor = 1.0;
+if(realMeasurements == 1)
+{
+    physicsFactor = -1.0;
+}
+
 real frequency = getARGV("-frequency",100); 
 
 string fileID = getARGV("-fileID","");
@@ -397,68 +405,96 @@ if(fileID != "")
     fileID = "_" + fileID;
 }
 
-if(isdir("./BEM_SL") == -1)
-{
-    mkdir("./BEM_SL");
-}
-if(isdir("./BEM_CL") == -1)
-{
-    mkdir("./BEM_CL");
-}
-
 //Real measurements
 if(realMeasurements == 1)
 {
+    //Real measurements parameters
+    string measurementsMeshPath = getARGV("-measurementsMeshPath","");
+    string measurementsDataPath = getARGV("-measurementsDataPath",""); 
+    string verificationMeshPath = getARGV("-verificationMeshPath","");
+    string verificationDataPath = getARGV("-verificationDataPath",""); 
+
+    string outputFolder = dirname(measurementsDataPath) + "/";
+
+    if(isdir(outputFolder + "BEM_SL") == -1)
+    {
+        mkdir(outputFolder + "BEM_SL");
+    }
+    if(isdir(outputFolder + "BEM_CL") == -1)
+    {
+        mkdir(outputFolder + "BEM_CL");
+    }
+
+    //TODO
+    //if(computeGradient == 1)
+    //{
+        
+        //string verificationGradientDataPath = getARGV("-verificationGradientDataPath"); 
+    //}
+
+    //TODO interolate/extrapolate P0/P1 elements
     string outputFileName = elementTypeName + "/output_" + frequency + fileID + ".csv";
     string outputFileNameGradient = elementTypeName + "/gradient/output_" + frequency + fileID + ".csv";
 
-    if(isdir("./BEM_SL/" + elementTypeName) == -1)
+    if(isdir(outputFolder + "BEM_SL/" + elementTypeName) == -1)
     {
-        mkdir("./BEM_SL/" + elementTypeName);
-        if(computeGradient)
+        mkdir(outputFolder + "BEM_SL/" + elementTypeName);
+        if(computeGradient && isdir(outputFolder + "BEM_SL/" + elementTypeName + "/gradient") == -1)
         {
-            mkdir("./BEM_SL/" + elementTypeName + "/gradient");
+            mkdir(outputFolder + "BEM_SL/" + elementTypeName + "/gradient");
         }
     }
-    if(isdir("./BEM_CL/" + elementTypeName) == -1)
+    if(isdir(outputFolder + "BEM_CL/" + elementTypeName) == -1)
     {
-        mkdir("./BEM_CL/" + elementTypeName);
-        if(computeGradient)
+        mkdir(outputFolder + "BEM_CL/" + elementTypeName);
+        if(computeGradient && isdir(outputFolder + "BEM_CL/" + elementTypeName + "/gradient") == -1)
         {
-            mkdir("./BEM_CL/" + elementTypeName + "/gradient");
+            mkdir(outputFolder + "BEM_CL/" + elementTypeName + "/gradient");
         }
     }
 
-    meshS measurementsMesh = getMeasurementsMesh();
+    meshS measurementsMesh(measurementsMeshPath);
     measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
-    complex[int] measurementsData = getMeasurementsData(frequency);
+    complex[int] measurementsData = getData(measurementsDataPath);
 
     if(computeGradient)
     {
-        cout << "Gradient computation for real measured data : not implemented yet !" << endl;
-        //TODO
-        //meshS verificationMesh = getVerificationMesh(); 
-        //verificationMesh = OrientNormal(verificationMesh,unbounded=0);
-        //complex[int] verificationData = getVerificationData(frequency);  
-        //complex[int] verificationDataGradient = getVerificationDataGradient(frequency);
+        cout << "Gradient computation for real measured data : not implemented yet, will not return a valid error value !" << endl;
 
-        //AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, verificationDataGradient, outputFileNameGradient);
-        //AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, verificationDataGradient, outputFileNameGradient);
+        meshS verificationMesh(verificationMeshPath);
+        verificationMesh = OrientNormal(verificationMesh,unbounded=0);
+        complex[int] verificationData = getData(verificationDataPath);  
+
+        //TODO !
+        //complex[int] verificationDataGradient = getData(verificationGradientDataPath);  
+        complex[int] verificationDataGradient(verificationData.n);
+
+        AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, verificationDataGradient, outputFileNameGradient, outputFolder, physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, verificationDataGradient, outputFileNameGradient, outputFolder, physicsFactor);
     }
     else
     {
-        meshL verificationMesh = getVerificationMesh();
+        meshL verificationMesh(verificationMeshPath);
         verificationMesh = OrientNormal(verificationMesh,unbounded=0);
-        complex[int] verificationData = getVerificationData(frequency);  
+        complex[int] verificationData = getData(verificationDataPath);  
 
-        AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName);
-        AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName);
+        AcousticSL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, outputFolder, physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, outputFolder, physicsFactor);
     }
 }
 
 //Simulation
 else
 {
+    if(isdir("./BEM_SL") == -1)
+    {
+        mkdir("./BEM_SL");
+    }
+    if(isdir("./BEM_CL") == -1)
+    {
+        mkdir("./BEM_CL");
+    }
+
     //Simulation parameters
     real size = getARGV("-size",0.1); 
     real resolution = getARGV("-resolution",0.01);
@@ -473,26 +509,17 @@ else
     halfDipoleDistance = dipoleDistance/2;
 
     string outputFileName, outputFileNameGradient;
-    string outputFolder = studiedFunction + "_" + elementTypeName + "/";
-
-    if(computeGradient)
-    {
-        outputFolder = studiedFunction + "_" + elementTypeName + "/gradient/";
-    }
-    else
-    {
-        outputFolder = studiedFunction + "_" + elementTypeName + "/";
-    }
+    string intermediateFolder = studiedFunction + "_" + elementTypeName + "/";
 
     if(studiedFunction == "dipole")
     {
-        outputFileName = outputFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        outputFileNameGradient = outputFolder + "output_gradient_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
     }
     else
     {
-        outputFileName = outputFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        outputFileNameGradient = outputFolder + "output_gradient_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
     }
 
     if(isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
@@ -549,9 +576,20 @@ else
 
     if(sigmaMeasure != 0.0)
     {
+        real modulus, phase;
         for(int i = 0; i < measurementsData.n; i++)
         {
-            measurementsData[][i] = real(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure) + 1i*(imag(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure));
+            modulus = abs(measurementsData[][i]);
+            phase = arg(measurementsData[][i]);
+
+            cout << modulus << " " << phase << endl;
+
+            measurementsData[][i] = (modulus + gslrangaussian(ffrng, sigmaMeasure*modulus))*exp(1i*(phase + gslrangaussian(ffrng, sigmaMeasure*phase)));
+
+            modulus = abs(measurementsData[][i]);
+            phase = arg(measurementsData[][i]);
+
+            cout << modulus << " " << phase << endl;
         }
     }
 
@@ -566,8 +604,8 @@ else
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
         UhOut<complex> verificationDataGradient = inputFunctionGradient(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient);
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./", physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./", physicsFactor);
     }
     else
     {
@@ -579,7 +617,7 @@ else
         fespace UhOut(verificationMesh,PkVerification); //Verification data is computed on the mesh vertices !
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName); 
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./", physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./", physicsFactor); 
     }
 }
