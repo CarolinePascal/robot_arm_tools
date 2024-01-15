@@ -9,10 +9,13 @@ import numpy as np
 
 #Fancy plot parameter
 import matplotlib.pyplot as plt
-import matplotlib.cm as cm
+
 plt.rc('font', **{'size': 12, 'family': 'serif', 'serif': ['Computer Modern']})
 plt.rc('text', usetex=True)
-cmap = cm.get_cmap('tab10')
+cmap = plt.get_cmap("tab10")
+cmap2 = plt.get_cmap("tab20c")
+markers = ["^","s","o","v","D","x","*","+"]
+figsize = (8,8*3/4)
 
 
 #Post-processing functions
@@ -49,12 +52,12 @@ def getParametersConfigurations():
             for line in lines:
                 try:
                     name,unit = line.split(' ')
-                except:
+                except ValueError:
                     name = line
                     unit=""
                 parametersList.append(name)
                 parametersUnits.append(unit)
-    except:
+    except FileNotFoundError:
         for i in range(len(fileList[0].split("_")) - 1):
             parametersList.append("parameter"+str(i+1))
             parametersUnits.append("")
