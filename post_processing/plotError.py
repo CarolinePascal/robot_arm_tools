@@ -39,7 +39,7 @@ from matplotlib.ticker import MaxNLocator
 #  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
 #  @param analyticalFunctionID ID of the analytical function (c.f. acousticTools.py)
 #  @param errorID ID of the error function (c.f. plotTools.py)
-def plotError(postProcessingID,analyticalFunctionID,errorID):
+def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
 
     #Get post-processing and analytical functions
     postProcessingFunction = postProcessingFunctions[postProcessingID]
@@ -50,9 +50,12 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     P,parametersList,parametersUnits,fileList = getParametersConfigurations()
 
     #Studied parameter ?
-    parameter = input("Abscissa parameter ? (default : resolution)" + str(parametersList))
-    if(parameter not in parametersList):
-        parameter = "resolution"
+    if("abscissaParameter" in kwargs and kwargs["abscissaParameter"] in parametersList):
+        parameter = kwargs["abscissaParameter"]
+    else:
+        parameter = input("Abscissa parameter ? (default : resolution)" + str(parametersList))
+        if(parameter not in parametersList):
+            parameter = "resolution"
 
     try:
         parameterIndex = np.where(parametersList == parameter)[0][0]
@@ -63,10 +66,16 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     #Alternative for resolution parameter
     verticesNumber = False
     if(parameter == "resolution"):
-        flag = input("Number of vertices instead of resolution ? y/n")
-        if(flag == "y"):  
-            verticesNumber = True    
+        if("verticesNumber" in kwargs and kwargs["verticesNumber"] == True):
+            verticesNumber = True
             parameter = "vertices"
+        elif("verticesNumber" in kwargs and kwargs["verticesNumber"] == False):
+            verticesNumber = False
+        else:
+            flag = input("Number of vertices instead of resolution ? y/n")
+            if(flag == "y"):  
+                verticesNumber = True    
+                parameter = "vertices"
 
     #Put the studied parameter in the first position in each parameters configurations
     P[:,[0,parameterIndex]] = P[:,[parameterIndex,0]]
@@ -77,7 +86,11 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     parameterValues = np.unique(P[:,0])
 
     #Any fixed values for the studied parameter ?
-    fixedParameterValues = list(input("Abscissa parameter values ? (default : *) " + str(np.sort(parameterValues)) + " (" + parametersUnits[0] + ") ").split(' '))
+    if("abscissaValues" in kwargs):
+        fixedParameterValues = kwargs["abscissaValues"]
+    else:
+        fixedParameterValues = list(input("Abscissa parameter values ? (default : *) " + str(np.sort(parameterValues)) + " (" + parametersUnits[0] + ") ").split(' '))
+
     try:
         fixedParameterValues = [float(item) for item in fixedParameterValues]
     except ValueError:
@@ -92,12 +105,20 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     parameterValues = np.unique(P[:,0])
 
     #Get the scaling factors in case of normalisation
-    normalisation = "n"
+    normalisation = False
     if(parametersUnits[0] == "m"):
-        normalisation = input("Normalise abscissa according to wavelength ? y/n")
+        if("normalisation" in kwargs and kwargs["normalisation"] == True):
+            normalisation = True
+        elif("normalisation" in kwargs and kwargs["normalisation"] == False):
+            normalisation = False
+        else:
+            flag = input("Normalise abscissa according to wavelength ? y/n")
+            if(flag == "y"):  
+                normalisation = True    
+
     scalingFactors = np.ones(np.shape(P)[0])
 
-    if(normalisation == "y"):
+    if(normalisation):
         #scalingFactor = 1/lambda = f/c
         scalingFactors = P[:,np.where(parametersList=="frequency")[0][0]]/c
 
@@ -128,24 +149,69 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
         interestConfigurations = np.unique(P[:,1:],axis=0)
 
     #Fixed parameter ? 
-    flag = input("Any fixed parameter ? y/n")
+    fixedParameters = []
+    fixedValues = []
+
+    if("fixedParameters" in kwargs):
+        fixedParameters = kwargs["fixedParameters"]
+        if(not isinstance(fixedParameters, list)):
+            fixedParameters = [fixedParameters]
+
+        if("fixedValues" in kwargs):
+            if(not isinstance(kwargs["fixedValues"], list) and len(fixedParameters) == 1):
+                try:
+                    fixedValues = [float(kwargs["fixedValues"])]
+                except ValueError:
+                    fixedValues = [None]
+
+            elif(isinstance(kwargs["fixedValues"], list) and len(fixedParameters) == len(kwargs["fixedValues"])):
+                fixedValues = kwargs["fixedValues"]
+                for i,itemList in enumerate(fixedValues):
+                    try:
+                        fixedValues[i] = [float(item) for item in itemList]
+                    except ValueError:
+                        fixedValues[i] = None
+
+        else:
+            fixedParameters = []
+
     variableParametersList = parametersList[1:]
-
-    while(flag == "y"):
-        fixedParameter = input("What parameter ? " + str(variableParametersList))
-        fixedParameterIndex = np.where(parametersList[1:] == fixedParameter)[0][0]
-        tmpValue = list(input("what values ? " + str(np.unique(interestConfigurations[:,fixedParameterIndex])) + " (" + parametersUnits[1:][fixedParameterIndex] + ") ").split(' '))
-        tmpValue = [float(item) for item in tmpValue]
-
-        #Select only the parameters configurations containing the fixed parameters
-        interestConfigurations = interestConfigurations[np.where(np.isin(interestConfigurations[:,fixedParameterIndex], tmpValue))[0]]
-        variableParametersList = np.delete(variableParametersList,np.where(variableParametersList == fixedParameter)[0][0])
+    if(len(fixedParameters) == 0):
         flag = input("Any fixed parameter ? y/n")
+
+        while(flag == "y"):
+            fixedParameter = input("What parameter ? " + str(variableParametersList))
+            fixedParameterIndex = np.where(parametersList[1:] == fixedParameter)[0][0]
+            tmpValue = list(input("what values ? " + str(np.unique(interestConfigurations[:,fixedParameterIndex])) + " (" + parametersUnits[1:][fixedParameterIndex] + ") ").split(' '))
+            tmpValue = [float(item) for item in tmpValue]
+
+            #Select only the parameters configurations containing the fixed parameters
+            interestConfigurations = interestConfigurations[np.where(np.isin(interestConfigurations[:,fixedParameterIndex], tmpValue))[0]]
+            variableParametersList = np.delete(variableParametersList,np.where(variableParametersList == fixedParameter)[0][0])
+            flag = input("Any fixed parameter ? y/n")
+
+    else:
+        for fixedParameter,fixedValue in zip(fixedParameters,fixedValues):
+            print(fixedParameter,fixedValue)
+            print(parametersList[1:])
+
+            try:
+                fixedParameterIndex = np.where(parametersList[1:] == fixedParameter)[0][0]
+            except:
+                print("Skipping fixed parameter " + fixedParameter + " : invalid parameter")
+                continue
+
+            if(fixedValue is None):
+                fixedValue = np.unique(interestConfigurations[:,fixedParameterIndex])
+
+            interestConfigurations = interestConfigurations[np.where(np.isin(interestConfigurations[:,fixedParameterIndex],fixedValue))[0]]
+            variableParametersList = np.delete(variableParametersList,np.where(variableParametersList == fixedParameter)[0][0])
 
     #Get interest files, scaling factors and complete configurations (i.e. with the studied parameter)
     interestConfigurationsIndices = np.hstack([np.where((P[:,1:] == configuration).all(axis=1))[0] for configuration in interestConfigurations])
+
     fileList = fileList[interestConfigurationsIndices]
-    scalingFactors = scalingFactors[interestConfigurationsIndices]
+    scalingFactors = scalingFactors[interestConfigurationsIndices][::len(parameterValues)]
     P = P[interestConfigurationsIndices]
 
     interestConfigurationsNumber = len(interestConfigurations)
@@ -180,13 +246,18 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     #Relative or absolute error ?
     errorType = "absolute"
-    relativeError = input("Relative error ? y/n")
-    if(relativeError == "y"):
-        errorType = "relative"
+    if("errorType" in kwargs and kwargs["errorType"] in ["absolute","relative"]):
+        errorType = kwargs["errorType"]
+    else:
+        flag = input("Relative error ? y/n")
+        if(flag == "y"):
+            errorType = "relative"
 
     for interestConfigurationIndex, interestConfiguration in enumerate(np.unique(np.delete(interestConfigurations,iterationIndex-1,1),axis=0)):
 
         print("Plot : " + str(interestConfigurationIndex+1) + " on " + str(interestConfigurationsNumber))
+        
+        print("Scaling factor : " + str(scalingFactors[interestConfigurationIndex]))
 
         for parameterValueIndex,parameterValue in enumerate(parameterValues):
                     
@@ -274,14 +345,14 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
             #OPTION 2 
             if("iteration" in variableParametersList):
                 for l,(analytical, numN) in enumerate(zip(analyticalValues,numericValuesN)):
-                    if(relativeError == "y"):
+                    if(errorType == "relative"):
                         #plotListA[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numA - analytical)/errorFunction(analytical)
                         plotListN[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numN - analytical)/errorFunction(analytical)
                     else:
                         #plotListA[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numA - analytical)
                         plotListN[:,l,interestConfigurationIndex,parameterValueIndex] = errorFunction(numN - analytical)
             else:
-                if(relativeError == "y"):
+                if(errorType == "relative"):
                     #plotListA[:,interestConfigurationIndex,parameterValueIndex] = errorFunction(numericValuesA - analyticalValues)/errorFunction(analyticalValues)
                     plotListN[:,interestConfigurationIndex,parameterValueIndex] = errorFunction(numericValuesN - analyticalValues)/errorFunction(analyticalValues)
                 else:
@@ -328,17 +399,35 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     title = title[0].upper() + title[1:]
 
     scalingFunction = lambda x: x
-    log = input("Log scale ? y/n")
-    if(log == "y"):
+
+    logScale = False
+    if("logScale" in kwargs and kwargs["logScale"] == True):
+        logScale = True
+    elif("logScale" in kwargs and kwargs["logScale"] == False):
+        logScale = False
+    else:
+        flag = input("Log scale ? y/n")
+        if(flag):
+            logScale = True
+
+    if(logScale):
         if(errorType == "absolute" and (postProcessingID == "id" or postProcessingID == "mod")):
             scalingFunction = lambda x: 20*np.log10(x/Pref)
         else:
             scalingFunction = lambda x: np.log10(x)   
 
-    if(log != "y" and errorType == "relative"):
+    if(not logScale and errorType == "relative"):
         scalingFunction = lambda x: 100*x  
 
-    linearRegression = input("Linear regression ? y/n")
+    linearRegression = False
+    if("linearRegression" in kwargs and kwargs["linearRegression"] == True):
+        linearRegression = True
+    elif("linearRegression" in kwargs and kwargs["linearRegression"] == False):
+        linearRegression = False
+    else:
+        flag = input("Linear regression ? y/n")
+        if(flag):
+            linearRegression = True
 
     for i,configuration in enumerate(np.unique(np.delete(interestConfigurations,iterationIndex-1,1),axis=0)):
 
@@ -392,11 +481,11 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
                 if(len(shapeN) >= 3):
                     plotN = plotN[0]
                 plotIndex = np.arange(len(plotN[i]))
-                if(log == "y"):
+                if(logScale):
                     plotIndex = np.where(plotN[i] != 0)[0]
                 axNi.plot(plotListP[i][plotIndex],scalingFunction(plotN[i][plotIndex]),label=label,color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None')
 
-            if(linearRegression == "y"):
+            if(linearRegression):
                 M = np.vstack((scalingFunction(plotListP[i][plotIndex]),np.ones(len(parameterValues[plotIndex])))).T
                 #VA = np.dot(np.linalg.pinv(M),scalingFunction(plotA[i][plotIndex]))
                 VN = np.dot(np.linalg.pinv(M),scalingFunction(plotN[i][plotIndex]))
@@ -408,14 +497,14 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
 
     titleCounter = 0
     for axNi in axN:
-        if(normalisation == "y"):
+        if(normalisation):
             #axAi.set_xlabel(parameter + "/" + r"$\lambda$")
             axNi.set_xlabel(parameter + "/" + r"$\lambda$")
         else:
             #axAi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
             axNi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
 
-        if(log=="y"):
+        if(logScale):
             #axAi.set_xscale('log') 
             axNi.set_xscale('log')
             if(errorType == "absolute" and (postProcessingID == "id" or postProcessingID == "mod")):
@@ -457,7 +546,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID):
     axNi.grid(which="major")
     axNi.grid(linestyle = '--',which="minor")
     axNi.yaxis.set_major_locator(MaxNLocator(10))
-    axNi.yaxis.set_minor_locator(MaxNLocator(2))
+    axNi.yaxis.set_minor_locator(MaxNLocator(20))
 
     #figN.savefig(name, dpi = 300, bbox_inches = 'tight')
     plt.show()
@@ -480,4 +569,18 @@ if __name__ == "__main__":
     if(error not in list((errorFunctions.keys()))):
         error = "l2"
 
-    plotError(postProcessing,analytical,error)
+    kwargs = {}
+    kwargs["abscissaParameter"] = "resolution"
+    kwargs["abscissaValues"] = "*"
+
+    kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
+    kwargs["fixedValues"] = [[0.5],"*",[0.0],[0.0],[0.45]]
+
+    kwargs["normalisation"] = True
+    kwargs["verticesNumber"] = False
+
+    kwargs["errorType"] = "relative"
+    kwargs["linearRegression"] = True
+    kwargs["logScale"] = True
+
+    plotError(postProcessing,analytical,error,**kwargs)
