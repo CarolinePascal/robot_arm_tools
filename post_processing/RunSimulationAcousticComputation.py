@@ -13,18 +13,6 @@ sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + 
 from MeshTools import generateSphericMesh, generateCircularMesh
 from MeshToolsUncertainty import generateSphericMeshUncertainty
 
-### Studied method
-method = "BEM"
-try:
-    method = sys.argv[1]
-except:
-    print("Invalid resolution method, switching to default : " + method)
-
-if(method == "BEM"):
-    command = "ff-mpirun -np 4 AcousticComputationBEM.edp -wg"
-elif(method == "SFT"):
-    command = "FreeFem++ AcousticComputationSFT.edp"
-
 ### Studied function
 function = "monopole"
 gradient = 0
@@ -38,18 +26,34 @@ verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 
 Frequencies = [100,250,500,750,1000,2500,5000] 
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
-#Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius] 
-Resolutions = [0.1*verificationRadius] 
+Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius,0.1*verificationRadius] 
 
 DipoleDistances = [0.05*verificationRadius,0.1*verificationRadius,0.15*verificationRadius,0.25*verificationRadius,0.5*verificationRadius,0.75*verificationRadius,0.9*verificationRadius] if function == "dipole" else [0.0]
 
-SigmasPosition = [0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius]
-SigmasMeasure = [0.0]
-Nsigma = 10
+SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius,0.0075*verificationRadius]
+SigmasMeasure = [0.01,0.05,0.1]
+Nsigma = 20
 
 parametersCombinations = len(Frequencies)*len(Radius)*len(Resolutions)*len(DipoleDistances)*max(1,Nsigma*len(np.nonzero(SigmasPosition)[0]))*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0]))
 
 if(__name__ == "__main__"):
+
+    #Get computation method
+    method = "BEM"
+    try:
+        method = sys.argv[1]
+    except IndexError:
+        print("Invalid resolution method, switching to default : " + method)
+
+    if(method == "BEM"):
+        command = "ff-mpirun -np 4 " + os.path.dirname(os.path.abspath(__file__)) + "/AcousticComputationBEM.edp -wg"
+    elif(method == "SFT"):
+        command = "FreeFem++ " + os.path.dirname(os.path.abspath(__file__)) + "/AcousticComputationSFT.edp"
+    else:
+        method = "BEM"
+        command = "ff-mpirun -np 4 " + os.path.dirname(os.path.abspath(__file__)) + "/AcousticComputationBEM.edp -wg"
+        print("Invalid resolution method, switching to default : " + method)
+
     counter = 1
 
     #Generate verification mesh
