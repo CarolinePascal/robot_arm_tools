@@ -18,8 +18,9 @@ import yaml
 #  @param elementType Type of element for triangular faces
 #  @param saveMesh Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False):
+def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0):
 
     try:
         os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/")
@@ -92,14 +93,16 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
         elif(elementType == 'P1'):
             listPoints = points
 
+        #Build 3D poses (position + orientation) from mesh surfacic 3D points
         for point in listPoints:
             inclination, azimuth = np.arccos(point[2]/radius),np.arctan2(point[1],point[0])
             meshPoses = np.vstack((meshPoses,np.hstack((point,[np.pi,inclination,azimuth]))))
 
+        #Sort 3D poses accoirding to inclination: from top to bottom
         sortedMeshPoses = np.empty((0,6))
-
         sortedMeshPosesInclination = meshPoses[np.argsort(meshPoses[:,4])]
 
+        #Define a slicing range : we split the sphere vertically according to resolution, and add points by increasing azimuth
         inclinationRange = np.arange(0,np.pi,resolution/(2*radius))
 
         minBound = inclinationRange[0]
@@ -110,13 +113,24 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
             sortedMeshPoses = np.vstack((sortedMeshPoses,localSortedMeshPosesAzimuth))
             minBound = maxBound
 
+        #Because we opted for < maxBound, we have to ensure that no point was left behind for == maxBound
         sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesInclination[np.where(sortedMeshPoses[:,4] == inclinationRange[-1])[0]]))
+
+        #Adding normally offseted poses for gradient measurements/computation
+        if(gradientOffset != 0.0):
+            sortedMeshPosesGradient = sortedMeshPoses
+            for (gradientPose, meshPose) in zip(sortedMeshPosesGradient,sortedMeshPoses):
+                gradientPose[0] += gradientOffset*np.sin(meshPose[4])*np.cos(meshPose[5])
+                gradientPose[1] += gradientOffset*np.sin(meshPose[4])*np.sin(meshPose[5])
+                gradientPose[2] += gradientOffset*np.cos(meshPose[4])
+            np.insert(sortedMeshPoses,1+np.arange(len(sortedMeshPoses)),sortedMeshPosesGradient,axis=0)
 
         YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
             yaml.dump({"poses":sortedMeshPoses.tolist()},file)
+            yaml.dump({"gradientOffset":gradientOffset},file)
 
         """
         import matplotlib.pyplot as plt
@@ -146,8 +160,9 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
 #  @param elementType Type of element for triangular faces
 #  @param saveMesh Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False):
+def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0):
 
     try:
         os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/")
@@ -172,22 +187,18 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
 
     if(saveYAML):
         meshPoses = np.empty((0,6))
-        listPoints = None
+        listPoints = points #P1 elements
 
-        if(elementType == 'P0'):
-            listPoints = np.average(points[faces],axis=1)   #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
-            
-        elif(elementType == 'P1'):
-            listPoints = points
-
+        #Build 3D poses (position + orientation) from mesh surfacic 3D points
         for point in listPoints:
             inclination, azimuth = np.arccos(point[2]/radius),np.arctan2(point[1],point[0])
             meshPoses = np.vstack((meshPoses,np.hstack((point,[np.pi,inclination,azimuth]))))
 
+        #Sort 3D poses accoirding to inclination: from top to bottom
         sortedMeshPoses = np.empty((0,6))
-
         sortedMeshPosesInclination = meshPoses[np.argsort(meshPoses[:,4])]
 
+        #Define a slicing range : we split the sphere vertically according to resolution, and add points by increasing azimuth
         inclinationRange = np.arange(0,np.pi,resolution/(2*radius))
 
         minBound = inclinationRange[0]
@@ -198,13 +209,24 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
             sortedMeshPoses = np.vstack((sortedMeshPoses,localSortedMeshPosesAzimuth))
             minBound = maxBound
 
+        #Because we opted for < maxBound, we have to ensure that no point was left behind for == maxBound
         sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesInclination[np.where(sortedMeshPoses[:,4] == inclinationRange[-1])[0]]))
+
+        #Adding normally offseted poses for gradient measurements/computation
+        if(gradientOffset != 0.0):
+            sortedMeshPosesGradient = sortedMeshPoses
+            for (gradientPose, meshPose) in zip(sortedMeshPosesGradient,sortedMeshPoses):
+                gradientPose[0] += gradientOffset*np.sin(meshPose[4])*np.cos(meshPose[5])
+                gradientPose[1] += gradientOffset*np.sin(meshPose[4])*np.sin(meshPose[5])
+                gradientPose[2] += gradientOffset*np.cos(meshPose[4])
+            np.insert(sortedMeshPoses,1+np.arange(len(sortedMeshPoses)),sortedMeshPosesGradient,axis=0)
 
         YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".yaml"
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
             yaml.dump({"poses":sortedMeshPoses.tolist()},file)
+            yaml.dump({"gradientOffset":gradientOffset},file)
 
         """
         import matplotlib.pyplot as plt
@@ -234,8 +256,9 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
 #  @param elementType Type of element for lines
 #  @param saveMesh Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @return points, faces Generated mesh points (vertices) and lines (cells)
-def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False, saveYAML = False):
+def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False, saveYAML = False, gradientOffset = 0.0):
 
     try:
         os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/")
@@ -244,10 +267,13 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
 
     if(elementType != "P1"):
         raise NotImplemented
+    
+    #Circle radius 
+    radius = size/2
 
     pointsNumber = int(np.round(np.pi*size/resolution))
-    X = (size/2)*np.cos(np.linspace(0,2*np.pi,pointsNumber,endpoint=False))
-    Y = (size/2)*np.sin(np.linspace(0,2*np.pi,pointsNumber,endpoint=False))
+    X = radius*np.cos(np.linspace(0,2*np.pi,pointsNumber,endpoint=False))
+    Y = radius*np.sin(np.linspace(0,2*np.pi,pointsNumber,endpoint=False))
     Z = np.zeros(pointsNumber)
     points = np.array([X,Y,Z]).T
     lines = np.vstack((np.arange(pointsNumber),np.roll(np.arange(pointsNumber),-1))).T
@@ -258,7 +284,29 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
         meshio.write_points_cells(meshPath, list(points), [("line",lines)])
 
     if(saveYAML):
-        raise NotImplemented
+        meshPoses = np.empty((0,6))
+        listPoints = points #P1 elements
+
+        #Build 3D poses (position + orientation) from mesh surfacic 3D points
+        for point in listPoints:
+            inclination, azimuth = np.arccos(point[2]/radius),np.arctan2(point[1],point[0])
+            meshPoses = np.vstack((meshPoses,np.hstack((point,[np.pi,inclination,azimuth]))))
+
+        #Adding normally offseted poses for gradient measurements/computation
+        if(gradientOffset != 0.0):
+            meshPosesGradient = meshPoses
+            for (gradientPose, meshPose) in zip(meshPosesGradient,meshPoses):
+                gradientPose[0] += gradientOffset*np.sin(meshPose[4])*np.cos(meshPose[5])
+                gradientPose[1] += gradientOffset*np.sin(meshPose[4])*np.sin(meshPose[5])
+                gradientPose[2] += gradientOffset*np.cos(meshPose[4])
+            np.insert(meshPoses,1+np.arange(len(meshPoses)),meshPosesGradient,axis=0)
+
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        print("Saving mesh poses at " + YAMLPath)
+        with open(YAMLPath, mode="w+") as file:
+            yaml.dump({"elementType":elementType},file)
+            yaml.dump({"poses":meshPoses.tolist()},file)
+            yaml.dump({"gradientOffset":gradientOffset},file)
 
     return(points, lines)
 
@@ -387,6 +435,7 @@ if __name__ == "__main__":
     elementType = "P0"
     saveMesh = 0
     saveYAML = 0
+    gradientOffset = 0.0
     info = 0
 
     try:
@@ -396,7 +445,8 @@ if __name__ == "__main__":
         elementType = sys.argv[4]
         saveMesh = int(sys.argv[5])
         saveYAML = int(sys.argv[6])
-        info = int(sys.argv[7])
+        gradientOffset = float(sys.argv[7])
+        info = int(sys.argv[8])
     except:
         print("Invalid size and resolution, switching to default : ")
         print("mesh type = " + meshType)
@@ -406,15 +456,15 @@ if __name__ == "__main__":
 
     if(meshType == "sphere"):
         if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
-            vertices,faces = generateSphericMesh(size, resolution, elementType, saveMesh, saveYAML)
+            vertices,faces = generateSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
                 plotMesh(vertices,faces,elementType)
-                #generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML)
+                #generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
 
     elif(meshType == "circle"):
         if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or info):
-            vertices,faces = generateCircularMesh(size, resolution, elementType, saveMesh, saveYAML)
+            vertices,faces = generateCircularMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
                 plotMesh(vertices,faces,elementType)
