@@ -21,6 +21,9 @@ import matplotlib.pyplot as plt
 
 from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
 
+sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + "/scripts")
+from MeshTools import plotMesh, plotPointCloudFromPath
+
 if __name__ == "__main__":
 
 	#Get processing method 
@@ -144,8 +147,13 @@ if __name__ == "__main__":
 
 			figAmp,axAmp = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
-			plot_3d_data(np.abs(data), Points.T, axAmp, pointCloudPath, label = r"$|$H$|$ (Pa/V)")
-			plot_3d_data(wrap(np.angle(data)), Points.T, axPhase, pointCloudPath, label = "Phase (rad)")
+			plot_3d_data(np.abs(data), Points.T, axAmp, label = r"$|$H$|$ (Pa/V)")
+			plot_3d_data(wrap(np.angle(data)), Points.T, axPhase, label = "Phase (rad)")
+
+			if(pointCloudPath is not None):
+				plotPointCloudFromPath(pointCloudPath, axAmp)
+				plotPointCloudFromPath(pointCloudPath, axPhase)
+
 			set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 			set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
@@ -210,10 +218,13 @@ if __name__ == "__main__":
 			plot_3d_data(np.abs(data), MeasurementsPoints.T, axAmp, pointCloudPath, label = r"$|$H$|$ (Pa/V)")
 			plot_3d_data(wrap(np.angle(data)), MeasurementsPoints.T, axPhase, pointCloudPath, label = "Phase (rad)")
 
-			from mpl_toolkits.mplot3d import art3d
-			plotMesh = art3d.Poly3DCollection(MeasurementsVertices[Faces], facecolor=(0,0,0,0), edgecolor=(0,0,0,0.1))
-			axAmp.add_collection3d(copy(plotMesh))
-			axPhase.add_collection3d(copy(plotMesh))
+			if(pointCloudPath is not None):
+				plotPointCloudFromPath(pointCloudPath, axAmp)
+				plotPointCloudFromPath(pointCloudPath, axPhase)
+
+			if(meshPath is not None):
+				plotMesh(meshPath, axAmp)
+				plotMesh(meshPath, axPhase)
 
 			set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 			set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")

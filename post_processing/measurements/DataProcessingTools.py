@@ -350,6 +350,40 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
 
     return ax
 
+def plot_3d_data(data, points, ax=None, **kwargs):
+
+    if type(ax) == type(None):
+        _, ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+
+    sc = ax.scatter(*points, c = data, cmap = "jet")
+    ax.set_xlabel("x (m)")
+    ax.set_ylabel("y (m)")
+    ax.set_zlabel("z (m)")
+    cbar = plt.colorbar(sc, pad = 0.1) 
+    
+    if("label" in kwargs):
+        cbar.set_label(kwargs["label"])
+    
+    xlim = ax.get_xlim()
+    deltaX = xlim[1] - xlim[0]
+    meanX = np.mean(xlim)
+    ylim = ax.get_ylim()
+    deltaY = ylim[1] - ylim[0]
+    meanY = np.mean(ylim)
+    zlim = ax.get_zlim()
+    deltaZ = zlim[1] - zlim[0]
+    meanZ = np.mean(zlim)
+
+    delta = np.max([deltaX,deltaY,deltaZ])
+
+    ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
+    ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
+    ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+
+    ax.set_box_aspect((1,1,1))
+    
+    return(ax)
+
 #Data processing tools and parameters
 
 #TFE computation frequencies
@@ -435,40 +469,3 @@ def compute_l2_errors_spatial(dataExp, dataTh):
     errorRel = errorAbs/np.sqrt(np.sum(np.abs(dataTh)**2))
 
     return(errorAbs,errorRel)
-
-def plot_3d_data(data, points, ax, pointCloudPath = None, **kwargs):
-    
-    if(pointCloudPath is not None):
-        pointCloud = o3d.io.read_point_cloud(pointCloudPath) 
-        pointCloud = pointCloud.voxel_down_sample(voxel_size=0.005)
-        pointCloudPoints = np.asarray(pointCloud.points)
-        pointCloudColors = np.asarray(pointCloud.colors)
-
-        ax.scatter(*pointCloudPoints.T, c = pointCloudColors, s = 2)
-
-    sc = ax.scatter(*points, c = data, cmap = "jet")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    ax.set_zlabel("z (m)")
-    cbar = plt.colorbar(sc, pad = 0.1) 
-    
-    if("label" in kwargs):
-        cbar.set_label(kwargs["label"])
-    
-    xlim = ax.get_xlim()
-    deltaX = xlim[1] - xlim[0]
-    meanX = np.mean(xlim)
-    ylim = ax.get_ylim()
-    deltaY = ylim[1] - ylim[0]
-    meanY = np.mean(ylim)
-    zlim = ax.get_zlim()
-    deltaZ = zlim[1] - zlim[0]
-    meanZ = np.mean(zlim)
-
-    delta = np.max([deltaX,deltaY,deltaZ])
-
-    ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
-    ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
-    ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
-
-    ax.set_box_aspect((1,1,1))

@@ -1,16 +1,22 @@
 #!/usr/bin/env python3.8
 
+#Utility packages
 import numpy as np
-import matplotlib.pyplot as plt
 import os
-
 import subprocess
+import yaml
+from copy import copy, deepcopy
+
+#Mesh packages
 import anti_lib_progs as anti_lib_progs
 from scipy.spatial import ConvexHull
 import meshio
 import trimesh
 
-import yaml
+#Plotting packages
+import matplotlib.pyplot as plt
+from mpl_toolkits.mplot3d import art3d
+import open3d as o3d
 
 ## Function creating a spheric mesh using an icosahedric approximation
 #  @param size Size of the sphere as its diameter
@@ -310,59 +316,59 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
 
     return(points, lines)
 
-## Function plotting a wire representation of a mesh
+## Function plotting a mesh with P0/P1 elements
 #  @param vertices Mesh vertices
 #  @param faces Mesh faces
 #  @param elementType Type of element
-#  @param plotVertices Wether to plot the vertices or not
-#  @param plotControlPoints Wether to plot the control points or not
+#  @param plotEdges Wether to plot the edges or not
+#  @param plotNodes Wether to plot the elements nodes or not
 #  @param axes Matplotlib axes
-#  @param show Wether to display the plot or not
-#  @param dataControlPoints Eventual data to plot on the control points
-#  @param dataControlPointsUnit Eventual data unit for the control points data
-def plotMesh(vertices, faces, elementType = "P0", plotVertices = True, plotControlPoints = True, axes = None, show = True, dataControlPoints = [], dataControlPointsUnit = ""):
+def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = True, axes = None, **kwargs):
 
     if(axes is None):
-        axes = plt.figure().add_subplot(projection='3d')
+        _,axes = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-    if(plotVertices):
-        for face in faces:
-            facePoints = vertices[face]
-            facePoints = np.vstack((facePoints,facePoints[0,:]))
-            axes.plot(facePoints[:,0],facePoints[:,1],facePoints[:,2],'k',linewidth='1')
+    if(plotEdges):
+        kwargsEdges = deepcopy(kwargs)
+        kwargsEdges.facecolor = (0,0,0,0)
+        plotMesh = art3d.Poly3DCollection(vertices[faces], **kwargsEdges)
+        axes.add_collection3d(copy(plotMesh))
 
-    if(plotControlPoints):
+    if(plotNodes):
+        kwargsNodes = deepcopy(kwargs)
+        kwargsNodes.marker = "o"
         if (elementType == "P0"):
-            centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
-            if(len(dataControlPoints) == 0):
-                axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2],marker='o',color='r')
-            else:
-                sc = axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2],marker='o',c=dataControlPoints, cmap=plt.get_cmap('jet'))
-                if(dataControlPointsUnit != ""):
-                    cbar = plt.colorbar(sc)
-                    cbar.set_label(dataControlPointsUnit)
+            centroids = np.average(vertices[faces],axis=1)
+            axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2], **kwargsNodes)
         elif (elementType == "P1"):
-            if(len(dataControlPoints) == 0):
-                axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2],marker='o',color='r')
-            else:
-                sc = axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2],marker='o',c=dataControlPoints, cmap=plt.get_cmap('jet'))
-                if(dataControlPointsUnit != ""):
-                    cbar = plt.colorbar(sc)
-                    cbar.set_label(dataControlPointsUnit)
+            axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsNodes)
         else:
-            raise NameError("INVALID ELEMENT TYPE")
-
-    if(show):
-        extents = np.array([getattr(axes, 'get_{}lim'.format(dim))() for dim in 'xyz'])
-        sz = extents[:,1] - extents[:,0]
-        centers = np.mean(extents, axis=1)
-        maxsize = max(abs(sz))
-        r = maxsize/2
-        for ctr, dim in zip(centers, 'xyz'):
-            getattr(axes, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
-        plt.show()
+            print("Invalid element type, nodes will not be displayed")
 
     return(axes)
+
+def plotMeshFromPath(meshPath, elementType = "P0", plotEdges = True, plotNodes = True, axes = None, **kwargs):
+	mesh = meshio.read(meshPath)
+	vertices, faces = mesh.points, mesh.get_cells_type("triangle")
+	return(plotMesh(vertices, faces, elementType, plotEdges, plotNodes, axes, **kwargs))
+
+## Function plotting a colored point cloud
+#  @param points Point cloud points
+#  @param colors Point cloud points colors
+#  @param axes Matplotlib axes
+def plotPointCloud(points, colors = None, axes = None, **kwargs):
+    if(axes is None):
+        _,axes = plt.subplots(1,subplot_kw=dict(projection='3d'))
+        
+    axes.scatter(*points, c = colors, **kwargs)
+    return(axes)
+
+def plotPointCloudFromPath(pointCloudPath, axes = None, **kwargs):
+    pointCloud = o3d.io.read_point_cloud(pointCloudPath) 
+    pointCloud = pointCloud.voxel_down_sample(voxel_size=0.005)
+    points = np.array(pointCloud.points)
+    colors = np.array(pointCloud.colors)
+    return(plotPointCloud(points, colors, axes, **kwargs))
 
 ## Function displaying mesh information
 #  @param vertices Mesh vertices
