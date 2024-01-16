@@ -582,14 +582,10 @@ else
             modulus = abs(measurementsData[][i]);
             phase = arg(measurementsData[][i]);
 
-            cout << modulus << " " << phase << endl;
-
-            measurementsData[][i] = (modulus + gslrangaussian(ffrng, sigmaMeasure*modulus))*exp(1i*(phase + gslrangaussian(ffrng, sigmaMeasure*phase)));
+            measurementsData[][i] = (modulus + gslrangaussian(ffrng, sigmaMeasure*modulus))*exp(1i*(phase + gslrangaussian(ffrng, sigmaMeasure*2*pi)));
 
             modulus = abs(measurementsData[][i]);
             phase = arg(measurementsData[][i]);
-
-            cout << modulus << " " << phase << endl;
         }
     }
 
