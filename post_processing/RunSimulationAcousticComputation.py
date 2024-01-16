@@ -30,7 +30,8 @@ Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificatio
 
 DipoleDistances = [0.05*verificationRadius,0.1*verificationRadius,0.15*verificationRadius,0.25*verificationRadius,0.5*verificationRadius,0.75*verificationRadius,0.9*verificationRadius] if function == "dipole" else [0.0]
 
-SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius,0.0075*verificationRadius]
+#SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius,0.0075*verificationRadius]
+SigmasPosition = [0.0]
 SigmasMeasure = [0.01,0.05,0.1]
 Nsigma = 20
 
@@ -104,7 +105,7 @@ if(__name__ == "__main__"):
 
                                     ### Run computation
 
-                                    tmpFileID = " -fileID " + str(i*Nsigma + j + 1)
+                                    tmpFileID = " -fileID " + str(i*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0])) + j + 1)
 
                                     bashCommand = command + " -realMeasurements 0 -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
                                     print(bashCommand)
