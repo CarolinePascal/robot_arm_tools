@@ -469,7 +469,7 @@ if __name__ == "__main__":
         print("element type = " + elementType)
 
     if(meshType == "sphere"):
-        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
+        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
             vertices,faces = generateSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
@@ -477,7 +477,7 @@ if __name__ == "__main__":
                 #generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
 
     elif(meshType == "circle"):
-        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or info):
+        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or info):
             vertices,faces = generateCircularMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
