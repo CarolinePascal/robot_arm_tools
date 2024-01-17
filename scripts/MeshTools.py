@@ -322,53 +322,61 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
 #  @param elementType Type of element
 #  @param plotEdges Wether to plot the edges or not
 #  @param plotNodes Wether to plot the elements nodes or not
-#  @param axes Matplotlib axes
-def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = True, axes = None, **kwargs):
+#  @param ax Matplotlib axes
+def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, **kwargs):
 
-    if(axes is None):
-        _,axes = plt.subplots(1,subplot_kw=dict(projection='3d'))
+    if(ax is None):
+        _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
     if(plotEdges):
         kwargsEdges = deepcopy(kwargs)
-        kwargsEdges.facecolor = (0,0,0,0)
+        kwargsEdges["facecolor"] = (0,0,0,0)
+        if(not "edgecolor" in kwargsEdges):
+            kwargsEdges["edgecolor"] = (0,0,0,0.1)
         plotMesh = art3d.Poly3DCollection(vertices[faces], **kwargsEdges)
-        axes.add_collection3d(copy(plotMesh))
+        ax.add_collection3d(copy(plotMesh))
 
     if(plotNodes):
         kwargsNodes = deepcopy(kwargs)
-        kwargsNodes.marker = "o"
+        kwargsNodes["marker"] = "o"
         if (elementType == "P0"):
             centroids = np.average(vertices[faces],axis=1)
-            axes.scatter(centroids[:,0],centroids[:,1],centroids[:,2], **kwargsNodes)
+            ax.scatter(centroids[:,0],centroids[:,1],centroids[:,2], **kwargsNodes)
         elif (elementType == "P1"):
-            axes.scatter(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsNodes)
+            ax.scatter(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsNodes)
         else:
             print("Invalid element type, nodes will not be displayed")
 
-    return(axes)
+    return(ax)
 
-def plotMeshFromPath(meshPath, elementType = "P0", plotEdges = True, plotNodes = True, axes = None, **kwargs):
+def plotMeshFromPath(meshPath, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, **kwargs):
 	mesh = meshio.read(meshPath)
 	vertices, faces = mesh.points, mesh.get_cells_type("triangle")
-	return(plotMesh(vertices, faces, elementType, plotEdges, plotNodes, axes, **kwargs))
+	return(plotMesh(vertices, faces, elementType, plotEdges, plotNodes, ax, **kwargs))
 
 ## Function plotting a colored point cloud
 #  @param points Point cloud points
 #  @param colors Point cloud points colors
-#  @param axes Matplotlib axes
-def plotPointCloud(points, colors = None, axes = None, **kwargs):
-    if(axes is None):
-        _,axes = plt.subplots(1,subplot_kw=dict(projection='3d'))
-        
-    axes.scatter(*points, c = colors, **kwargs)
-    return(axes)
+#  @param ax Matplotlib axes
+def plotPointCloud(points, colors = None, ax = None, **kwargs):
+    if(ax is None):
+        _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-def plotPointCloudFromPath(pointCloudPath, axes = None, **kwargs):
+    kwargsPointCloud = deepcopy(kwargs)
+    kwargsPointCloud["c"] = colors
+
+    if(not "s" in kwargsPointCloud):
+        kwargsPointCloud["s"] = 2
+
+    ax.scatter(*points.T, **kwargsPointCloud)
+    return(ax)
+
+def plotPointCloudFromPath(pointCloudPath, ax = None, **kwargs):
     pointCloud = o3d.io.read_point_cloud(pointCloudPath) 
     pointCloud = pointCloud.voxel_down_sample(voxel_size=0.005)
     points = np.array(pointCloud.points)
     colors = np.array(pointCloud.colors)
-    return(plotPointCloud(points, colors, axes, **kwargs))
+    return(plotPointCloud(points, colors, ax, **kwargs))
 
 ## Function displaying mesh information
 #  @param vertices Mesh vertices

@@ -21,8 +21,26 @@ import matplotlib.pyplot as plt
 
 from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
 
-sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + "/scripts")
+sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname((os.path.abspath(__file__))))) + "/scripts")
 from MeshTools import plotMesh, plotPointCloudFromPath
+
+def sphereFit(points):
+    A = np.zeros((len(points),4))
+    A[:,0] = points[:,0]*2
+    A[:,1] = points[:,1]*2
+    A[:,2] = points[:,2]*2
+    A[:,3] = 1
+
+    #   Assemble the f matrix
+    f = np.zeros((len(points),1))
+    f[:,0] = (points[:,0]**2) + (points[:,1]**2) + (points[:,2]**2)
+    output, residules, rank, singval = np.linalg.lstsq(A,f)
+
+    #   solve for the radius
+    radius = np.sqrt(output[0]**2 + output[1]**2 + output[2]**2 + output[3])
+    center = output[:3].T
+
+    return(center, radius)
 
 if __name__ == "__main__":
 
@@ -116,7 +134,7 @@ if __name__ == "__main__":
 			TFE = P.tfe_farina([fmin,fmax])
 		else:
 			TFE = P.tfe_welch(V) #Also possible for dB values : (P*V.rms).tfe_welch(V)
-   
+	
 		for j,f in enumerate(Frequencies):
 			Data[j,i] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
 
@@ -136,8 +154,11 @@ if __name__ == "__main__":
 	Z = np.array(Z)
 
 	Points = np.array([X,Y,Z]).T
-	#Centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
-	Centroid = np.mean(Points,axis=0)
+
+	#To adapt depending on the mesh type ! 
+	#centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
+	#centroid = np.mean(Points,axis=0)
+	centroid, _ = sphereFit(Points)
 
 	if(meshPath is None):
 
@@ -181,8 +202,8 @@ if __name__ == "__main__":
 		resolution = np.mean(detailedMesh.edges_unique_length)
 		Centroids = detailedMesh.triangles_center
 
-		MeasurementsVertices = Vertices + Centroid
-		MeasurementsCentroids = Centroids + Centroid
+		MeasurementsVertices = Vertices + centroid
+		MeasurementsCentroids = Centroids + centroid
   
 		if(elementType == "P0"):
 			MeasurementsPoints = MeasurementsCentroids
@@ -201,6 +222,7 @@ if __name__ == "__main__":
 
 				#If the closest point is too far away, we consider that the Measurements point is missing
 				if(distances[indexMin] > resolution/2):
+						print("Missing measurement detected at point " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
 						missing.append(i)
 				else:
 						OrderedData[:,i] = Data[:,indexMin]
@@ -215,16 +237,16 @@ if __name__ == "__main__":
 
 			figAmp,axAmp = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
-			plot_3d_data(np.abs(data), MeasurementsPoints.T, axAmp, pointCloudPath, label = r"$|$H$|$ (Pa/V)")
-			plot_3d_data(wrap(np.angle(data)), MeasurementsPoints.T, axPhase, pointCloudPath, label = "Phase (rad)")
+			plot_3d_data(np.abs(data), MeasurementsPoints.T, axAmp, label = r"$|$H$|$ (Pa/V)")
+			plot_3d_data(wrap(np.angle(data)), MeasurementsPoints.T, axPhase, label = "Phase (rad)")
 
 			if(pointCloudPath is not None):
 				plotPointCloudFromPath(pointCloudPath, axAmp)
 				plotPointCloudFromPath(pointCloudPath, axPhase)
 
 			if(meshPath is not None):
-				plotMesh(meshPath, axAmp)
-				plotMesh(meshPath, axPhase)
+				plotMesh(MeasurementsVertices, Faces, ax = axAmp)
+				plotMesh(MeasurementsVertices, Faces, ax = axPhase)
 
 			set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 			set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
