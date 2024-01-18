@@ -80,10 +80,18 @@ if(__name__ == "__main__"):
                             size = 2*radius
 
                             if(sigmaPosition != 0.0):
-                                generateSphericMeshUncertainty(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True) #Generate a new random mesh !
+                                try:
+                                    generateSphericMeshUncertainty(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True) #Generate a new random mesh !
+                                except:
+                                    print("Mesh generation failed, skipping computation")
+                                    continue
 
                             if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")):
-                                generateSphericMesh(size,resolution,elementType=elementType,saveMesh=True)  #No need to generate a new mesh if it already exists
+                                try:
+                                    generateSphericMesh(size,resolution,elementType=elementType,saveMesh=True)  #No need to generate a new mesh if it already exists
+                                except:
+                                    print("Mesh generation failed, skipping computation")
+                                    continue
 
                             for frequency in Frequencies:
 
