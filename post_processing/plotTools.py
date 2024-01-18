@@ -17,6 +17,13 @@ cmap2 = plt.get_cmap("tab20c")
 markers = ["^","s","o","v","D","x","*","+"]
 figsize = (8,8*3/4)
 
+def log_formatter(x,pos):
+    sci = "{:.0e}".format(x)
+    sci = [int(item) for item in sci.split("e")]
+    if(sci[0] == 5):
+        return(r"$5\times10^{{{exponent}}}$".format(exponent=sci[1]))
+    else:   
+        return("")
 
 #Post-processing functions
 postProcessingFunctions = {}

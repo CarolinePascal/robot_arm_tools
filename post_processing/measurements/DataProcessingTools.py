@@ -30,8 +30,9 @@ plt.rc('text', usetex=True)
 
 def log_formatter(x,pos):
     sci = "{:.0e}".format(x)
-    if(sci[0] == "5"):
-        return(r"$5\times10^{{{exponent}}}$".format(exponent=sci[-1]))
+    sci = [int(item) for item in sci.split("e")]
+    if(sci[0] == 5):
+        return(r"$5\times10^{{{exponent}}}$".format(exponent=sci[1]))
     else:   
         return("")
 
@@ -381,7 +382,7 @@ def plot_3d_data(data, points, ax=None, **kwargs):
     ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
     ax.set_box_aspect((1,1,1))
-    
+
     return(ax)
 
 #Data processing tools and parameters
