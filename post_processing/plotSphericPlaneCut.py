@@ -7,12 +7,17 @@ import csv
 #Utility packages
 import numpy as np
 
+#Acoustic packages
+from measpy._tools import wrap
+
 #Custom tools packages
 from acousticTools import *
 from plotTools import *
 
 from matplotlib.ticker import ScalarFormatter,FormatStrFormatter
 from matplotlib.ticker import MaxNLocator
+
+figsize = (10,9)
 
 ## Function plotting the error between computed values and analytical values for an output files folder on the z=0 plane for a given parameters configuration
 #  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
@@ -93,7 +98,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
     if(not noTitle):        
         title = title[:-3]
 
-    fig.suptitle(title)
+    #fig.suptitle(title)
 
     for i,configuration in enumerate(configurations):
         #Find the corresponding file names
@@ -166,8 +171,8 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
             print("Absolute error = " +  str(absoluteError) + " (" + tmpUnit + ")")
             print("Relative error = " + str(relativeError) + " %")
 
-        if(len(configurations) == 1):
-            fig.suptitle(title + "\n Relative error = " + str(np.round(relativeError,3)) + " \%")
+        #if(len(configurations) == 1):
+            #fig.suptitle(title + "\n Relative error = " + str(np.round(relativeError,3)) + " \%")
 
         #Create plot
         Phi = np.append(Phi,Phi[0])
@@ -205,20 +210,20 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
 
             if(analyticalFunction is not None):
                 if(addLegend): 
-                    ax.plot(Phi,function(analyticalValues), label="Analytical solution" + legend, color=cmap(0), linestyle="dashed")
+                    ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0), linestyle="dashed",linewidth=2.5)
                     #ax.plot(Phi,function(numericValuesA), label="FreeFem analytical solution - " + functionName + " (" + unit + ")" + legend, color='g')
-                    ax.plot(Phi,function(numericValuesN), label="Numerical solution" + legend, color=cmap(1), alpha=1)
+                    ax.plot(Phi,function(numericValuesN), label="Numerical solution", color=cmap(1), alpha=1,linewidth=2.5)
                     return(max(max(function(analyticalValues)),max(function(numericValuesN))),min(min(function(analyticalValues)),min(function(numericValuesN))))
                 else:
-                    ax.plot(Phi,function(numericValuesN),color='g',alpha=1)
+                    ax.plot(Phi,function(numericValuesN),color=cmap(1), alpha=0.25,linewidth=2.5)
                     return(max(function(numericValuesN)),min(function(numericValuesN)))
             else:
                 if(addLegend):
-                    ax.plot(Phi,function(numericValuesA),label="Measured data - " + functionName + " (" + unit + ")" + legend, color=cmap(i), linestyle="dashed")
-                    ax.plot(Phi,function(numericValuesN),label="Computed solution - " + functionName + " (" + unit + ")" + legend, color=cmap(i))
+                    ax.plot(Phi,function(numericValuesA),label="Measured data - " + functionName + " (" + unit + ")" + legend, color=cmap(i), linestyle="dashed",linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesN),label="Computed solution - " + functionName + " (" + unit + ")" + legend, color=cmap(i),linewidth=2.5)
                 else:
-                    ax.plot(Phi,function(numericValuesA), color=cmap(i), linestyle="dashed")
-                    ax.plot(Phi,function(numericValuesN), color=cmap(i))
+                    ax.plot(Phi,function(numericValuesA), color=cmap(i), linestyle="dashed",linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesN), color=cmap(i),linewidth=2.5)
                 return(max(max(function(numericValuesA)),max(function(numericValuesN))),min(min(function(numericValuesA)),min(function(numericValuesN))))
 
         legendFlag = True if(len(configurations) >= 1 and i == 0) else False
@@ -230,14 +235,14 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                 maxPlot[0] = maxPlot_tmp
             if(minPlot_tmp < minPlot[0]):
                 minPlot[0] = minPlot_tmp
-            ax[0].set_title("Real part", y=-0.2)
+            ax[0].set_title("Real part", y=-0.325)
 
             maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x : x[1],"imaginary part","Pa",ax[1],legendFlag)
             if(maxPlot_tmp > maxPlot[1]):
                 maxPlot[1] = maxPlot_tmp
             if(minPlot_tmp < minPlot[1]):
                 minPlot[1] = minPlot_tmp
-            ax[1].set_title("Imaginary part", y=-0.2)
+            ax[1].set_title("Imaginary part", y=-0.325)
 
         elif(postProcessingID == "id"):
             maxPlot_tmp, minPlot_tmp = plotSphericFunction(np.abs,"modulus","Pa",ax[0],legendFlag)
@@ -245,14 +250,14 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                 maxPlot[0] = maxPlot_tmp
             if(minPlot_tmp < minPlot[0]):
                 minPlot[0] = minPlot_tmp
-            ax[0].set_title("Modulus (Pa)", y=-0.2)
+            ax[0].set_title("Modulus (Pa)", y=-0.325)
 
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(np.angle,"phase","rad",ax[1],legendFlag)
+            maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x :np.angle(x),"phase","rad",ax[1],legendFlag)
             if(maxPlot_tmp > maxPlot[1]):
                 maxPlot[1] = maxPlot_tmp
             if(minPlot_tmp < minPlot[1]):
                 minPlot[1] = minPlot_tmp
-            ax[1].set_title("Phase (rad)", y=-0.2)
+            ax[1].set_title("Phase (rad)", y=-0.325)
 
         elif(postProcessingID == "mod"):
             maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x:x,"modulus","Pa",ax[0],legendFlag)
@@ -260,7 +265,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                 maxPlot[0] = maxPlot_tmp
             if(minPlot_tmp < minPlot[0]):
                 minPlot[0] = minPlot_tmp
-            ax[0].set_title("Modulus (Pa)", y=-0.2)
+            ax[0].set_title("Modulus (Pa)", y=-0.325)
 
         elif(postProcessingID == "phase"):
             maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x:x,"phase","rad",ax[0],legendFlag)
@@ -268,7 +273,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                 maxPlot[0] = maxPlot_tmp
             if(minPlot_tmp < minPlot[0]):
                 minPlot[0] = minPlot_tmp
-            ax[0].set_title("Phase (rad)", y=-0.2)
+            ax[0].set_title("Phase (rad)", y=-0.325)
 
     for i,subax in enumerate(ax):
 
@@ -277,35 +282,39 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
         
         subax.set_thetagrids(np.arange(0,360,45),['0',r'$\frac{\pi}{4}$',r'$\frac{\pi}{2}$',r'$\frac{3\pi}{4}$',r'$\pi$',r'$\frac{5\pi}{4}$',r'$\frac{3\pi}{2}$',r'$\frac{7\pi}{4}$'])
 
-        arrow = dict(arrowstyle='<-',color="dimgray")
+        arrow = dict(arrowstyle='<-',color="gray")
         subax.annotate("",xy=(0.5,0.5),xytext=(1.0,0.5),xycoords="axes fraction",arrowprops=arrow)
-        subax.annotate('x',xy=(0.5,0.5),xytext=(0.95,0.45),xycoords="axes fraction",color="dimgray")
+        subax.annotate('x',xy=(0.5,0.5),xytext=(0.95,0.44),xycoords="axes fraction",color="gray")
         subax.annotate("",xy=(0.5,0.5),xytext=(0.5,1.0),xycoords="axes fraction",arrowprops=arrow)
-        subax.annotate('y',xy=(0.5,0.5),xytext=(0.45,0.95),xycoords="axes fraction",color="dimgray")
+        subax.annotate('y',xy=(0.5,0.5),xytext=(0.44,0.95),xycoords="axes fraction",color="gray")
 
         subax.yaxis.set_major_formatter(ScalarFormatter())
         subax.yaxis.get_major_formatter().set_useOffset(False)
-        subax.yaxis.set_major_locator(MaxNLocator(5))
+        subax.yaxis.set_major_locator(MaxNLocator(4))
         #subax.yaxis.set_minor_locator(MaxNLocator(2))
         subax.grid(linestyle= '-', which="major")
         #subax.grid(linestyle = '--', which="minor")
+        subax.tick_params(axis='y', which='major', pad=10, labelsize=20)
+        subax.tick_params(axis='x', which='major', pad=10)
 
     if(len(ax) == 1):
-        ax[0].legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=2.5, reverse=False)
+        ax[0].legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=2, reverse=False,  columnspacing=0.5)
     else:
-        ax[0].legend(bbox_to_anchor=(0.225, 1.0, 1.75, .1), loc='lower left', ncol=2, borderaxespad=2.5, reverse=False, mode="expand")
+        ax[0].legend(bbox_to_anchor=(-0.2, 1.0, 2.7, .1), loc='lower left', ncol=2, borderaxespad=2, reverse=False, mode="expand",  columnspacing=0.5)
 
     fig.tight_layout()
-    #fig.savefig(name, dpi = 300, bbox_inches = 'tight')
-    plt.show()
+    fig.savefig("SphericPlaneCut3.pdf", dpi = 300, bbox_inches = 'tight')
+    #plt.show()
 
 if __name__ == "__main__": 
 
-    postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
+    #postProcessing = input("Post processing function ? (default : id) " + str(list((postProcessingFunctions.keys()))))
+    postProcessing = "id"
     if(postProcessing not in list((postProcessingFunctions.keys()))):
         postProcessing = "id"
 
-    error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
+    #error = input("Error function ? (default : l2) " + str(list((errorFunctions.keys()))))
+    error = "l2"
     if(error not in list((errorFunctions.keys()))):
         error = "l2"
 
@@ -317,6 +326,15 @@ if __name__ == "__main__":
     if(analytical not in list((analyticalFunctions.keys()))):
         analytical = None
 
-    plotSphericCut(postProcessing,analytical,error)
+    kwargs = {}
+    kwargs["resolution"] = 0.05
+    kwargs["size"] = 0.5
+    kwargs["dipoleDistance"] = 0.45
+    kwargs["frequency"] = 5000
+    kwargs["sigmaPosition"] = [0.0,0.005]
+    kwargs["iteration"] = "*"
+
+
+    plotSphericCut(postProcessing,analytical,error,**kwargs)
 
 

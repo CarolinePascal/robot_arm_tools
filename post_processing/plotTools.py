@@ -10,12 +10,11 @@ import numpy as np
 #Fancy plot parameter
 import matplotlib.pyplot as plt
 
-plt.rc('font', **{'size': 12, 'family': 'serif', 'serif': ['Computer Modern']})
+plt.rc('font', **{'size': 24, 'family': 'serif', 'serif': ['Computer Modern']})
 plt.rc('text', usetex=True)
 cmap = plt.get_cmap("tab10")
 cmap2 = plt.get_cmap("tab20c")
 markers = ["^","s","o","v","D","x","*","+"]
-figsize = (8,8*3/4)
 
 def log_formatter(x,pos):
     sci = "{:.0e}".format(x)

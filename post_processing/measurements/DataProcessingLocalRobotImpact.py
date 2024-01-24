@@ -116,10 +116,10 @@ if __name__ == "__main__":
             print("Absolute L2 repetability error with robot " + str(i+1) + "/" + str(index+1) + " : " + str(errorAllWithAbs) + " Pa/V")
             print("Relative L2 repetability error with robot " + str(i+1) + "/" + str(index+1) + " : " + str(100*errorAllWithRel) + " %")
         
-    set_title(axAllWith,"Pressure/Input signal TFE with robot - 1/" + str(octBand) + " octave smoothing")
-    set_title(axAllWithAbs,"Pressure/Input signal TFE repetability absolute error with robot\n1/" + str(octBand) + " octave smoothing")
-    set_title(axAllWithRel,"Pressure/Input signal TFE repetability relative error with robot\n1/" + str(octBand) + " octave smoothing")
-    set_title(axAllWithRelSep,"Pressure/Input Signal TFE repetability modulus and phase\nrelative errors with robot - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWith,"Pressure/Input signal TFE with robot\n1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithAbs,"Pressure/Input signal TFE repetability absolute error with robot\n1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithRel,"Pressure/Input signal TFE repetability relative error with robot\n1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithRelSep,"Pressure/Input Signal TFE repetability modulus and phase\nrelative errors with robot - 1/" + str(octBand) + " octave smoothing")
 
     save_fig(figAllWith,"./" + processingMethod + "_AllPressuresWith.pdf")
     save_fig(figAllWithAbs,"./" + processingMethod + "_AbsoluteErrorAllPressuresWith.pdf")
@@ -147,10 +147,10 @@ if __name__ == "__main__":
             print("Absolute L2 repetability error without robot " + str(i+1) + "/" + str(index+1) + " : " + str(errorAllWithAbs) + " Pa/V")
             print("Relative L2 repetability error without robot " + str(i+1) + "/" + str(index+1) + " : " + str(100*errorAllWithRel) + " %")
 
-    set_title(axAllWithout,"Pressure/Input signal TFE without robot - 1/" + str(octBand) + " octave smoothing")
-    set_title(axAllWithoutAbs,"Pressure/Input signal TFE repetability absolute error without robot\n1/" + str(octBand) + " octave smoothing")
-    set_title(axAllWithoutRel,"Pressure/Input signal TFE repetability relative error without robot\n1/" + str(octBand) + " octave smoothing")
-    set_title(axAllWithoutRelSep,"Pressure/Input Signal TFE repetability modulus and phase\nrelative errors without robot - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithout,"Pressure/Input signal TFE without robot - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithoutAbs,"Pressure/Input signal TFE repetability absolute error without robot\n1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithoutRel,"Pressure/Input signal TFE repetability relative error without robot\n1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllWithoutRelSep,"Pressure/Input Signal TFE repetability modulus and phase\nrelative errors without robot - 1/" + str(octBand) + " octave smoothing")
 
     save_fig(figAllWithout,"./" + processingMethod + "_AllPressuresWithout.pdf")
     save_fig(figAllWithoutAbs,"./" + processingMethod + "_AbsoluteErrorAllPressuresWithout.pdf")
@@ -176,10 +176,10 @@ if __name__ == "__main__":
     print("Absolute L2 error : " + str(errorAbs) + " Pa/V")
     print("Relative L2 error : " + str(100*errorRel) + " %")
 
-    set_title(axBoth[0],"Pressure/Input signal TFE - 1/" + str(octBand) + " octave smoothing")
-    set_title(axAbs[0],"Pressure/Input signal TFE absolute error - 1/" + str(octBand) + " octave smoothing")
-    set_title(axRel,"Pressure/Input signal TFE relative error - 1/" + str(octBand) + " octave smoothing")  
-    set_title(axRelSep[0],"Pressure/Input Signal TFE modulus and phase relative errors\n1/" + str(octBand) + " octave smoothing")
+    #set_title(axBoth[0],"Pressure/Input signal TFE - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAbs[0],"Pressure/Input signal TFE absolute error - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axRel,"Pressure/Input signal TFE relative error - 1/" + str(octBand) + " octave smoothing")  
+    #set_title(axRelSep[0],"Pressure/Input Signal TFE modulus and phase relative errors\n1/" + str(octBand) + " octave smoothing")
 
     save_fig(figBoth,"./" + processingMethod + "_Pressure.pdf")
     save_fig(figAbs,"./" + processingMethod + "_AbsoluteError.pdf")

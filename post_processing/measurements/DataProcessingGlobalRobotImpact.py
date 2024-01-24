@@ -112,9 +112,9 @@ if __name__ == "__main__":
         print("Absolute L2 error " + str(i+1) + " : " + str(errorAbs) + " Pa/V")
         print("Relative L2 error " + str(i+1) + " : " + str(100*errorRel) + " %")
 
-    set_title(axAllAbs, "Pressure/Input signal TFE absolute error - 1/" + str(octBand) + " octave smoothing")
-    set_title(axAllRel, "Pressure/Input signal TFE relative error - 1/" + str(octBand) + " octave smoothing")
-    set_title(axAllRelSep, "Pressure/Input signal TFE modulus and phase relative error - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllAbs, "Pressure/Input signal TFE absolute error - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllRel, "Pressure/Input signal TFE relative error - 1/" + str(octBand) + " octave smoothing")
+    #set_title(axAllRelSep, "Pressure/Input signal TFE modulus and phase relative error - 1/" + str(octBand) + " octave smoothing")
 
     save_fig(figAllAbs, "./" + processingMethod + "_AbsoluteError.pdf")
     save_fig(figAllRel, "./" + processingMethod + "_RelativeError.pdf")

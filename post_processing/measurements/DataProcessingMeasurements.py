@@ -138,6 +138,7 @@ if __name__ == "__main__":
 		for j,f in enumerate(Frequencies):
 			Data[j,i] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
 
+
 	X = []
 	Y = []
 	Z = []
@@ -172,11 +173,13 @@ if __name__ == "__main__":
 			plot_3d_data(wrap(np.angle(data)), Points.T, axPhase, label = "Phase (rad)")
 
 			if(pointCloudPath is not None):
-				plotPointCloudFromPath(pointCloudPath, axAmp)
-				plotPointCloudFromPath(pointCloudPath, axPhase)
+				plotPointCloudFromPath(pointCloudPath, axAmp, s=5)
+				plotPointCloudFromPath(pointCloudPath, axPhase, s=5)
 
-			set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
-			set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+			#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+			#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+			#axAmp.set_title("Measured amplitude at " + str(int(f)) + " Hz")
+			#axPhase.set_title("Measured phase at " + str(int(f)) + " Hz")
 			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
 			save_fig(figPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".pdf")
 			plt.close("all")
@@ -241,15 +244,17 @@ if __name__ == "__main__":
 			plot_3d_data(wrap(np.angle(data)), MeasurementsPoints.T, axPhase, label = "Phase (rad)")
 
 			if(pointCloudPath is not None):
-				plotPointCloudFromPath(pointCloudPath, axAmp)
-				plotPointCloudFromPath(pointCloudPath, axPhase)
+				plotPointCloudFromPath(pointCloudPath, axAmp, s=5)
+				plotPointCloudFromPath(pointCloudPath, axPhase, s=5)
 
 			if(meshPath is not None):
-				plotMesh(MeasurementsVertices, Faces, ax = axAmp)
-				plotMesh(MeasurementsVertices, Faces, ax = axPhase)
+				plotMesh(MeasurementsVertices, Faces, ax = axAmp, linewidth=2)
+				plotMesh(MeasurementsVertices, Faces, ax = axPhase, linewidth=2)
 
-			set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
-			set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+			#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+			#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+			#axAmp.set_title("Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz")
+			#axPhase.set_title("Pressure/Input signal TFE phase at " + str(int(f)) + " Hz")
 			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
 			save_fig(figPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".pdf")
 			plt.close("all")

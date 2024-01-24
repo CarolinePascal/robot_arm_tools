@@ -21,11 +21,11 @@ from matplotlib.ticker import MaxNLocator,AutoMinorLocator
 cmap = plt.get_cmap("tab10")
 cmap2 = plt.get_cmap("tab20c")
 markers = ["^","s","o","v","D","x"]
-figsize = (8,8*3/4)
+figsize = (10,9)
 
 arrow = dict(arrowstyle='<-',lw=0.5,color="gray")
 
-plt.rc('font', **{'size': 12, 'family': 'serif', 'serif': ['Computer Modern']})
+plt.rc('font', **{'size': 24, 'family': 'serif', 'serif': ['Computer Modern']})
 plt.rc('text', usetex=True)
 
 def log_formatter(x,pos):
@@ -94,6 +94,7 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
     line_plot_kwargs = deepcopy(kwargs)
     line_plot_kwargs["label"] = None
     line_plot_kwargs["marker"] = "None"
+    line_plot_kwargs["linewidth"] = 2
 
     ax_0.plot(frequencies_to_plot, modulus_to_plot, **line_plot_kwargs)
     if not plot_phase:
@@ -103,7 +104,7 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
         ax_0.yaxis.set_major_locator(MaxNLocator(5))
 
     ax_0.yaxis.set_minor_locator(AutoMinorLocator(2))
-    ax_0.set_ylabel(modulus_label)
+    ax_0.set_ylabel(modulus_label,labelpad=15)
 
     if logx:
         ax_0.set_xscale('log')
@@ -114,10 +115,11 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
 
     ax_0.grid(linestyle= '-', which="major")
     ax_0.grid(linestyle = '--', which="minor")
+    ax_0.tick_params(axis='both', which='both', pad=7)
 
     if(validity_range is not None):
         if(len(ax_0.patches) == 0):
-            ax_0.axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175,label="Valid frequency range") 
+            ax_0.axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
         
     if plot_phase:
         phase_to_plot = interpolated_walues_phase[valid_indices]
@@ -149,17 +151,27 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
 
         if(validity_range is not None):
             if(len(ax[1].patches) == 0):
-                ax[1].axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175,label="Valid frequency range") 
+                ax[1].axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
+
+        ax[1].tick_params(axis='both', which='both', pad=7)
     
     marker_plot_kwargs = deepcopy(kwargs)
     marker_plot_kwargs["linestyle"] = "None"
     marker_plot_kwargs["markerfacecolor"] = "None"
+    marker_plot_kwargs["markersize"] = 7
+    marker_plot_kwargs["markeredgewidth"] = 2
 
     ax_0.plot(weighting.freqs, weighting_modulus_to_plot, **marker_plot_kwargs)
     if plot_phase:
         ax[1].plot(weighting.freqs, weighting_phase_to_plot, **marker_plot_kwargs)
 
-    ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=10, borderaxespad=0.25, reverse=False)
+    h, l = ax_0.get_legend_handles_labels()
+    total_label_length = np.sum([len(label) for label in l])
+    if(total_label_length > 20):
+        ncol = 2
+    else:
+        ncol = 6
+    ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=0.25, reverse=False,columnspacing=0.5)
 
     return ax
 
@@ -209,6 +221,9 @@ def plot_spatial_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phas
     modulus_to_plot = modulus_to_plot[valid_indices]
 
     kwargs["markerfacecolor"] = "None"
+    kwargs["linewidth"] = 2
+    kwargs["markersize"] = 7
+    kwargs["markeredgewidth"] = 2
 
     ax_0.plot(points_to_plot, modulus_to_plot, **kwargs)
 
@@ -225,6 +240,7 @@ def plot_spatial_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phas
     
     ax_0.grid(linestyle= '-', which="major")
     ax_0.grid(linestyle = '--', which="minor")
+    ax_0.tick_params(axis='both', which='both', pad=7)
         
     if plot_phase:
         phase_to_plot = np.angle(data)[valid_indices]
@@ -242,8 +258,9 @@ def plot_spatial_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phas
         
         ax[1].grid(linestyle = '-', which="major")
         ax[1].grid(linestyle = '--', which="minor")
+        ax[1].tick_params(axis='both', which='both', pad=7)
 
-    ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=10, borderaxespad=0.25, reverse=False)
+    ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=6, borderaxespad=0.25, reverse=False,columnspacing=0.5)
 
     return ax
 
@@ -278,7 +295,7 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
             modulus_label = r'20 log $|$H$|$ (dB)'
 
         # Only keep finite values
-        valid_indices = np.isfinite(modulus_to_plot)
+        valid_indices = np.where(np.isfinite(modulus_to_plot))[0]
 
     else:
         modulus_to_plot = np.abs(data)
@@ -287,10 +304,11 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
         modulus_label = r'$|$H$|$' + " " + modulus_unit
 
         # Only keep positive values
-        valid_indices = np.where(modulus_to_plot > 0)
+        valid_indices = np.where(modulus_to_plot > 0)[0]
 
-    points_to_plot = np.arange(0,2*np.pi,2*np.pi/len(valid_indices[0]))
+    points_to_plot = np.arange(0,2*np.pi,2*np.pi/len(valid_indices))
     points_to_plot = np.append(points_to_plot,points_to_plot[0])
+
     points_labels = np.append(points[valid_indices] + 1, points[valid_indices][0] + 1)
     modulus_to_plot = modulus_to_plot[valid_indices]
     modulus_to_plot = np.append(modulus_to_plot,modulus_to_plot[0])
@@ -304,9 +322,9 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
     
     if(len(ax_0.texts) == 0):
         ax_0.annotate("",xy=(0.5,0.5),xytext=(1.0,0.5),xycoords="axes fraction",arrowprops=arrow)
-        ax_0.annotate('x',xy=(0.5,0.5),xytext=(0.95,0.45),xycoords="axes fraction",color="gray")
+        ax_0.annotate('x',xy=(0.5,0.5),xytext=(0.95,0.44),xycoords="axes fraction",color="gray",fontsize=20)
         ax_0.annotate("",xy=(0.5,0.5),xytext=(0.5,1.0),xycoords="axes fraction",arrowprops=arrow)
-        ax_0.annotate('y',xy=(0.5,0.5),xytext=(0.45,0.95),xycoords="axes fraction",color="gray")
+        ax_0.annotate('y',xy=(0.5,0.5),xytext=(0.44,0.95),xycoords="axes fraction",color="gray",fontsize=20)
 
     ax_0.yaxis.set_major_formatter(ScalarFormatter())
     ax_0.yaxis.get_major_formatter().set_useOffset(False)
@@ -315,8 +333,9 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
     
     ax_0.grid(linestyle= '-', which="major")
     #ax_0.grid(linestyle = '--', which="minor")
+    ax_0.tick_params(axis='both', which='major', pad=10, labelsize=20)
 
-    ax_0.set_title(modulus_label, y=-0.2)
+    ax_0.set_title(modulus_label, y=-0.325)
 
     if plot_phase:
         phase_to_plot = np.angle(data)[valid_indices]
@@ -331,9 +350,9 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
 
         if(len(ax[1].texts) == 0):
             ax[1].annotate("",xy=(0.5,0.5),xytext=(1.0,0.5),xycoords="axes fraction",arrowprops=arrow)
-            ax[1].annotate('x',xy=(0.5,0.5),xytext=(0.95,0.45),xycoords="axes fraction",color="gray")
+            ax[1].annotate('x',xy=(0.5,0.5),xytext=(0.95,0.44),xycoords="axes fraction",color="gray",fontsize=20)
             ax[1].annotate("",xy=(0.5,0.5),xytext=(0.5,1.0),xycoords="axes fraction",arrowprops=arrow)
-            ax[1].annotate('y',xy=(0.5,0.5),xytext=(0.45,0.95),xycoords="axes fraction",color="gray")
+            ax[1].annotate('y',xy=(0.5,0.5),xytext=(0.44,0.95),xycoords="axes fraction",color="gray",fontsize=20)
 
         ax[1].yaxis.set_major_formatter(ScalarFormatter())
         ax[1].yaxis.get_major_formatter().set_useOffset(False)
@@ -342,12 +361,13 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
         
         ax[1].grid(linestyle= '-', which="major")
         #ax[1].grid(linestyle = '--', which="minor")
-        ax[1].set_title("Phase (rad)", y=-0.2)
+        ax[1].set_title("Phase (rad)", y=-0.325)
+        ax[1].tick_params(axis='both', which='major', pad=10, labelsize=20)
 
     if(plot_phase):
-        ax_0.legend(bbox_to_anchor=(0.225, 1.0, 1.75, .1), loc='lower left', ncol=2, borderaxespad=2.5, reverse=False, mode="expand")
+        ax_0.legend(bbox_to_anchor=(-0.2, 1.0, 2.8, .1), loc='lower left', ncol=2, borderaxespad=2, reverse=False, mode="expand", columnspacing=0.5)
     else:
-        ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=2.5, reverse=False)
+        ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=2, reverse=False, columnspacing=0.5)
 
     return ax
 
@@ -356,14 +376,14 @@ def plot_3d_data(data, points, ax=None, **kwargs):
     if type(ax) == type(None):
         _, ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-    sc = ax.scatter(*points, c = data, cmap = "jet")
-    ax.set_xlabel("x (m)")
-    ax.set_ylabel("y (m)")
-    ax.set_zlabel("z (m)")
-    cbar = plt.colorbar(sc, pad = 0.1) 
+    sc = ax.scatter(*points, c = data, s=40, cmap = "jet")
+    ax.set_xlabel("x (m)",labelpad=15)
+    ax.set_ylabel("y (m)",labelpad=15)
+    ax.set_zlabel("z (m)",labelpad=15)
+    cbar = plt.colorbar(sc, fraction=0.04, pad = 0.075) 
     
     if("label" in kwargs):
-        cbar.set_label(kwargs["label"])
+        cbar.set_label(kwargs["label"],labelpad=10)
     
     xlim = ax.get_xlim()
     deltaX = xlim[1] - xlim[0]
@@ -380,6 +400,10 @@ def plot_3d_data(data, points, ax=None, **kwargs):
     ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
     ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
     ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+
+    ax.grid(linestyle= '-', which="major")
+    ax.grid(linestyle = '--', which="minor")
+    ax.tick_params(axis='z', which='both', pad=10)
 
     ax.set_box_aspect((1,1,1))
 
@@ -407,9 +431,9 @@ def save_fig(fig, name):
 
 def set_title(ax, title):
     try:
-        ax[0].set_title(title, pad=30)
+        ax[0].set_title(title, pad=60)
     except TypeError:
-        ax.set_title(title, pad=30)
+        ax.set_title(title, pad=60)
 
 def plot_absolute_error(wExp, wTh, frequencies, ax, validity_range = None, **kwargs):
     wAbs = ms.Weighting(freqs = wTh.freqs, amp = np.abs(wExp.amp/wTh.amp), phase = np.unwrap(wrap(wExp.phase - wTh.phase)))
