@@ -18,6 +18,7 @@ import meshio as meshio
 
 #Plot package
 import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 
 from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
 
@@ -41,6 +42,8 @@ def sphereFit(points):
     center = output[:3].T
 
     return(center, radius)
+
+interactive = False
 
 if __name__ == "__main__":
 
@@ -138,7 +141,6 @@ if __name__ == "__main__":
 		for j,f in enumerate(Frequencies):
 			Data[j,i] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
 
-
 	X = []
 	Y = []
 	Z = []
@@ -156,58 +158,33 @@ if __name__ == "__main__":
 
 	Points = np.array([X,Y,Z]).T
 
-	#To adapt depending on the mesh type ! 
-	#centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
-	#centroid = np.mean(Points,axis=0)
-	centroid, _ = sphereFit(Points)
-
-	if(meshPath is None):
-
-		for f,data in zip(Frequencies,Data):
-
-			print("Processing frequency " + str(int(f)) + " Hz")
-
-			figAmp,axAmp = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
-			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
-			plot_3d_data(np.abs(data), Points.T, axAmp, label = r"$|$H$|$ (Pa/V)")
-			plot_3d_data(wrap(np.angle(data)), Points.T, axPhase, label = "Phase (rad)")
-
-			if(pointCloudPath is not None):
-				plotPointCloudFromPath(pointCloudPath, axAmp, s=5)
-				plotPointCloudFromPath(pointCloudPath, axPhase, s=5)
-
-			#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
-			#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
-			#axAmp.set_title("Measured amplitude at " + str(int(f)) + " Hz")
-			#axPhase.set_title("Measured phase at " + str(int(f)) + " Hz")
-			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
-			save_fig(figPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".pdf")
-			plt.close("all")
-
-			np.savetxt(processingMethod + "_" + outputSignalType + "/data_" + str(int(f)) + ".csv",np.array([np.real(data),np.imag(data)]).T,delimiter=",")
-			
-		if(not os.path.exists("robotMesh.mesh")):
-			meshio.write_points_cells("robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
-  
-	else:
+	#Measurement mesh
+	if(not meshPath is None):
 
 		try:
 			import shutil
 			shutil.copyfile(meshPath,"initMesh.mesh")
 		except shutil.SameFileError:
 			pass
+
+		#To adapt depending on the mesh type ! 
+		#centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
+		#centroid = np.mean(Points,axis=0)
+		centroid, _ = sphereFit(Points)
 			
 		mesh = meshio.read("initMesh.mesh")
-
 		Vertices, Faces = mesh.points, mesh.get_cells_type("triangle")
-		detailedMesh = trimesh.Trimesh(Vertices, Faces)
 
+		#Compute mesh resolution and centroids
+		detailedMesh = trimesh.Trimesh(Vertices, Faces)
 		resolution = np.mean(detailedMesh.edges_unique_length)
 		Centroids = detailedMesh.triangles_center
 
+		#Shift vertices and centroids into the real world frame (measurements frame)
 		MeasurementsVertices = Vertices + centroid
 		MeasurementsCentroids = Centroids + centroid
   
+		#Set the measurements points
 		if(elementType == "P0"):
 			MeasurementsPoints = MeasurementsCentroids
 		elif(elementType == "P1"):
@@ -218,50 +195,74 @@ if __name__ == "__main__":
 		missing = []
 		OrderedData = np.empty((len(Frequencies),len(MeasurementsPoints)),dtype=complex)
 
+		#Reorder data according to the mesh and find missing measurements
 		for i,MeasurementsPoint in enumerate(MeasurementsPoints):
 
-				distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
-				indexMin = np.argmin(distances)
+			#Find the closest measurement point to the current mesh point
+			distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
+			indexMin = np.argmin(distances)
 
-				#If the closest point is too far away, we consider that the Measurements point is missing
-				if(distances[indexMin] > resolution/2):
-						print("Missing measurement detected at point " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
-						missing.append(i)
-				else:
-						OrderedData[:,i] = Data[:,indexMin]
+			#If the closest measurement point is too far away, we consider that the Measurements point is missing
+			#Else, we assign the corresponding data value to the mesh point
+			if(distances[indexMin] > resolution/2):
+				print("Missing measurement detected at point " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
+				missing.append(i)
+			else:
+				OrderedData[:,i] = Data[:,indexMin]
 
+		#Fill missing mesh points with the average of the 3 closest points
 		for i in missing:
-				closest = np.argsort(np.linalg.norm(Points - MeasurementsPoints[i], axis=1))[1:4]
-				OrderedData[:,i] = np.average(np.abs(Data[:,closest]),axis=1)*np.exp(1j*np.average(np.angle(Data[:,closest]),axis=1))
-  
-		for f,data in zip(Frequencies,OrderedData):
+			closest = np.argsort(np.linalg.norm(Points - MeasurementsPoints[i], axis=1))[1:4]
+			OrderedData[:,i] = np.average(np.abs(Data[:,closest]),axis=1)*np.exp(1j*np.average(np.angle(Data[:,closest]),axis=1))
 
-			print("Processing frequency " + str(int(f)) + " Hz")
+		#Save mesh
+		if(not os.path.exists("robotMesh.mesh")):
+			meshio.write_points_cells("robotMesh.mesh", MeasurementsVertices, mesh.cells)
 
+		Data = OrderedData
+		Points = MeasurementsPoints
+
+	#Circular verification mesh
+	else:
+
+		#Save mesh
+		if(not os.path.exists("robotMesh.mesh")):
+			meshio.write_points_cells("robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
+
+	for f,data in zip(Frequencies,Data):
+
+		print("Processing frequency " + str(int(f)) + " Hz")
+
+		if(interactive):
+			axAmp = go.Figure()
+			axPhase = go.Figure()
+		else:
 			figAmp,axAmp = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
-			plot_3d_data(np.abs(data), MeasurementsPoints.T, axAmp, label = r"$|$H$|$ (Pa/V)")
-			plot_3d_data(wrap(np.angle(data)), MeasurementsPoints.T, axPhase, label = "Phase (rad)")
 
-			if(pointCloudPath is not None):
-				plotPointCloudFromPath(pointCloudPath, axAmp, s=5)
-				plotPointCloudFromPath(pointCloudPath, axPhase, s=5)
+		plot_3d_data(np.abs(data), Points.T, axAmp, label = r"$|$H$|$ (Pa/V)", interactive=interactive)
+		plot_3d_data(wrap(np.angle(data)), Points.T, axPhase, label = "Phase (rad)", interactive=interactive)
 
-			if(meshPath is not None):
-				plotMesh(MeasurementsVertices, Faces, ax = axAmp, linewidth=2)
-				plotMesh(MeasurementsVertices, Faces, ax = axPhase, linewidth=2)
+		if(pointCloudPath is not None):
+			plotPointCloudFromPath(pointCloudPath, ax = axAmp, interactive=interactive, s=5)
+			plotPointCloudFromPath(pointCloudPath, ax = axPhase, interactive=interactive, s=5)
 
-			#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
-			#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
-			#axAmp.set_title("Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz")
-			#axPhase.set_title("Pressure/Input signal TFE phase at " + str(int(f)) + " Hz")
+		if(meshPath is not None):
+			plotMesh(MeasurementsVertices, Faces, ax = axAmp, interactive=interactive, linewidth=2)
+			plotMesh(MeasurementsVertices, Faces, ax = axPhase, interactive=interactive, linewidth=2)
+
+		#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+		#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
+		#axAmp.set_title("Measured amplitude at " + str(int(f)) + " Hz")
+		#axPhase.set_title("Measured phase at " + str(int(f)) + " Hz")
+			
+		if(interactive):
+			save_fig(axAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".html",interactive=True)
+			save_fig(axPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".html",interactive=True)
+		else:
 			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
 			save_fig(figPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".pdf")
 			plt.close("all")
-  
-			np.savetxt(processingMethod + "_" + outputSignalType + "/data_" + str(int(f)) + ".csv",np.array([np.real(data),np.imag(data)]).T,delimiter=",")
 
-		if(not os.path.exists("robotMesh.mesh")):
-			meshio.write_points_cells("robotMesh.mesh", MeasurementsVertices, mesh.cells)
-  
-	#plt.show()
+		#Save data at given frequency
+		np.savetxt(processingMethod + "_" + outputSignalType + "/data_" + str(int(f)) + ".csv",np.array([np.real(data),np.imag(data)]).T,delimiter=",")

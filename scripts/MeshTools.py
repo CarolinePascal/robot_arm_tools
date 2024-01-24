@@ -17,6 +17,7 @@ import trimesh
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
 import open3d as o3d
+import plotly.graph_objects as go
 
 ## Function creating a spheric mesh using an icosahedric approximation
 #  @param size Size of the sphere as its diameter
@@ -138,26 +139,6 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
             yaml.dump({"poses":sortedMeshPoses.tolist()},file)
             yaml.dump({"gradientOffset":gradientOffset},file)
 
-        """
-        import matplotlib.pyplot as plt
-        ax = plt.axes(projection='3d')
-        scatter = ax.scatter(sortedMeshPoses[:200,0],sortedMeshPoses[:200,1],sortedMeshPoses[:200,2],c=np.arange(200),cmap='jet')
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        plt.colorbar(scatter)
-
-        extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
-        sz = extents[:,1] - extents[:,0]
-        centers = np.mean(extents, axis=1)
-        maxsize = max(abs(sz))
-        r = maxsize/2
-        for ctr, dim in zip(centers, 'xyz'):
-            getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
-
-        plt.show()
-        """
-
     return(points, faces)
 
 ## Function creating a dual spheric mesh using an icosahedric approximation
@@ -234,26 +215,6 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
             yaml.dump({"poses":sortedMeshPoses.tolist()},file)
             yaml.dump({"gradientOffset":gradientOffset},file)
 
-        """
-        import matplotlib.pyplot as plt
-        ax = plt.axes(projection='3d')
-        scatter = ax.scatter(sortedMeshPoses[:200,0],sortedMeshPoses[:200,1],sortedMeshPoses[:200,2],c=np.arange(200),cmap='jet')
-        ax.set_xlabel("x")
-        ax.set_ylabel("y")
-        ax.set_zlabel("z")
-        plt.colorbar(scatter)
-
-        extents = np.array([getattr(ax, 'get_{}lim'.format(dim))() for dim in 'xyz'])
-        sz = extents[:,1] - extents[:,0]
-        centers = np.mean(extents, axis=1)
-        maxsize = max(abs(sz))
-        r = maxsize/2
-        for ctr, dim in zip(centers, 'xyz'):
-            getattr(ax, 'set_{}lim'.format(dim))(ctr - r, ctr + r)
-
-        plt.show()
-        """
-
     return(points, faces)
 
 ## Function creating a circular mesh
@@ -323,60 +284,140 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
 #  @param plotEdges Wether to plot the edges or not
 #  @param plotNodes Wether to plot the elements nodes or not
 #  @param ax Matplotlib axes
-def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, **kwargs):
+def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, interactive = False, **kwargs):
 
     if(ax is None):
-        _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
-
-    if(plotEdges):
-        kwargsEdges = deepcopy(kwargs)
-        kwargsEdges["facecolor"] = (0,0,0,0)
-        if(not "edgecolor" in kwargsEdges):
-            kwargsEdges["edgecolor"] = (0,0,0,0.1)
-        plotMesh = art3d.Poly3DCollection(vertices[faces], **kwargsEdges)
-        ax.add_collection3d(copy(plotMesh))
-
-    if(plotNodes):
-        kwargsNodes = deepcopy(kwargs)
-        kwargsNodes["marker"] = "o"
-        if (elementType == "P0"):
-            centroids = np.average(vertices[faces],axis=1)
-            ax.scatter(centroids[:,0],centroids[:,1],centroids[:,2], **kwargsNodes)
-        elif (elementType == "P1"):
-            ax.scatter(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsNodes)
+        if(interactive):
+            ax = go.Figure()
         else:
-            print("Invalid element type, nodes will not be displayed")
+           _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+
+    if(interactive):
+        if(plotEdges):
+            kwargsEdges = deepcopy(kwargs)
+            kwargsEdges["mode"] = "lines"
+            kwargsEdges["line"] = {"color":'rgba(0, 0, 0, 0.1)',"width":5}
+
+            Xe = []
+            Ye = []
+            Ze = []
+            for T in vertices[faces]:
+                Xe += [T[k%3][0] for k in range(4)]+[None]
+                Ye += [T[k%3][1] for k in range(4)]+[None]
+                Ze += [T[k%3][2] for k in range(4)]+[None]
+
+            ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,**kwargsEdges))
+        if(plotNodes):
+            kwargsNodes = deepcopy(kwargs)
+            kwargsNodes["mode"] = "markers"
+            kwargsNodes["marker"] = {"size":2}
+            if (elementType == "P0"):
+                centroids = np.average(vertices[faces],axis=1)
+                ax.add_trace(go.Scatter3d(x=centroids[:,0],y=centroids[:,1],z=centroids[:,2],**kwargsNodes))
+            elif(elementType == "P1"):
+                ax.add_trace(go.Scatter3d(x=vertices[:,0],y=vertices[:,1],z=vertices[:,2],**kwargsNodes))
+            else:
+                print("Invalid element type, nodes will not be displayed")
+
+    else:
+        if(plotEdges):
+            kwargsEdges = deepcopy(kwargs)
+            kwargsEdges["facecolor"] = (0,0,0,0)
+            if(not "edgecolor" in kwargsEdges):
+                kwargsEdges["edgecolor"] = (0,0,0,0.1)
+            plotMesh = art3d.Poly3DCollection(vertices[faces], **kwargsEdges)
+            ax.add_collection3d(copy(plotMesh))
+
+        if(plotNodes):
+            kwargsNodes = deepcopy(kwargs)
+            kwargsNodes["marker"] = "o"
+            if (elementType == "P0"):
+                centroids = np.average(vertices[faces],axis=1)
+                ax.scatter(centroids[:,0],centroids[:,1],centroids[:,2], **kwargsNodes)
+            elif (elementType == "P1"):
+                ax.scatter(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsNodes)
+            else:
+                print("Invalid element type, nodes will not be displayed")
+
+        #Set 3D plot limits and aspect
+        xlim = ax.get_xlim()
+        deltaX = xlim[1] - xlim[0]
+        meanX = np.mean(xlim)
+        ylim = ax.get_ylim()
+        deltaY = ylim[1] - ylim[0]
+        meanY = np.mean(ylim)
+        zlim = ax.get_zlim()
+        deltaZ = zlim[1] - zlim[0]
+        meanZ = np.mean(zlim)
+
+        delta = np.max([deltaX,deltaY,deltaZ])
+
+        ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+
+        ax.set_box_aspect((1,1,1))
 
     return(ax)
 
-def plotMeshFromPath(meshPath, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, **kwargs):
+def plotMeshFromPath(meshPath, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, interactive = False, **kwargs):
 	mesh = meshio.read(meshPath)
 	vertices, faces = mesh.points, mesh.get_cells_type("triangle")
-	return(plotMesh(vertices, faces, elementType, plotEdges, plotNodes, ax, **kwargs))
+	return(plotMesh(vertices, faces, elementType, plotEdges, plotNodes, ax, interactive, **kwargs))
 
 ## Function plotting a colored point cloud
 #  @param points Point cloud points
 #  @param colors Point cloud points colors
 #  @param ax Matplotlib axes
-def plotPointCloud(points, colors = None, ax = None, **kwargs):
+def plotPointCloud(points, colors = None, ax = None, interactive = False, **kwargs):
     if(ax is None):
-        _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+        if(interactive):
+            ax = go.Figure()
+        else:
+            _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-    kwargsPointCloud = deepcopy(kwargs)
-    kwargsPointCloud["c"] = colors
+    if(interactive):
+        kwargsPointCloud = deepcopy(kwargs)
+        kwargsPointCloud["mode"] = "markers"
+        kwargsPointCloud["marker"] = {"color":colors,"size":2}
 
-    if(not "s" in kwargsPointCloud):
-        kwargsPointCloud["s"] = 2
+        ax.add_trace(go.Scatter3d(x=points[:,0],y=points[:,1],z=points[:,2],**kwargsPointCloud))
+    else:
+        kwargsPointCloud = deepcopy(kwargs)
+        kwargsPointCloud["c"] = colors
 
-    ax.scatter(*points.T, **kwargsPointCloud)
+        if(not "s" in kwargsPointCloud):
+            kwargsPointCloud["s"] = 2
+
+        ax.scatter(*points.T, **kwargsPointCloud)
+
+        #Set 3D plot limits and aspect
+        xlim = ax.get_xlim()
+        deltaX = xlim[1] - xlim[0]
+        meanX = np.mean(xlim)
+        ylim = ax.get_ylim()
+        deltaY = ylim[1] - ylim[0]
+        meanY = np.mean(ylim)
+        zlim = ax.get_zlim()
+        deltaZ = zlim[1] - zlim[0]
+        meanZ = np.mean(zlim)
+
+        delta = np.max([deltaX,deltaY,deltaZ])
+
+        ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+
+        ax.set_box_aspect((1,1,1))
+        
     return(ax)
 
-def plotPointCloudFromPath(pointCloudPath, ax = None, **kwargs):
+def plotPointCloudFromPath(pointCloudPath, ax = None, interactive = False, **kwargs):
     pointCloud = o3d.io.read_point_cloud(pointCloudPath) 
     pointCloud = pointCloud.voxel_down_sample(voxel_size=0.005)
     points = np.array(pointCloud.points)
     colors = np.array(pointCloud.colors)
-    return(plotPointCloud(points, colors, ax, **kwargs))
+    return(plotPointCloud(points, colors, ax, interactive, **kwargs))
 
 ## Function displaying mesh information
 #  @param vertices Mesh vertices

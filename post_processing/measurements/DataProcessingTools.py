@@ -17,6 +17,7 @@ import open3d as o3d
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
 from matplotlib.ticker import MaxNLocator,AutoMinorLocator
+import plotly.graph_objects as go
 
 cmap = plt.get_cmap("tab10")
 cmap2 = plt.get_cmap("tab20c")
@@ -371,41 +372,52 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
 
     return ax
 
-def plot_3d_data(data, points, ax=None, **kwargs):
+def plot_3d_data(data, points, ax=None, interactive = False, **kwargs):
 
     if type(ax) == type(None):
-        _, ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+        if(interactive):
+            ax = go.Figure()
+        else:
+            _, ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-    sc = ax.scatter(*points, c = data, s=40, cmap = "jet")
-    ax.set_xlabel("x (m)",labelpad=15)
-    ax.set_ylabel("y (m)",labelpad=15)
-    ax.set_zlabel("z (m)",labelpad=15)
-    cbar = plt.colorbar(sc, fraction=0.04, pad = 0.075) 
-    
-    if("label" in kwargs):
-        cbar.set_label(kwargs["label"],labelpad=10)
-    
-    xlim = ax.get_xlim()
-    deltaX = xlim[1] - xlim[0]
-    meanX = np.mean(xlim)
-    ylim = ax.get_ylim()
-    deltaY = ylim[1] - ylim[0]
-    meanY = np.mean(ylim)
-    zlim = ax.get_zlim()
-    deltaZ = zlim[1] - zlim[0]
-    meanZ = np.mean(zlim)
+    if(interactive):
+        ax.add_trace(go.Scatter3d(x=points[:,0],y=points[:,1],z=points[:,2],mode="markers",marker={"size": 2,"color": data,"colorscale": "Jet"}))
 
-    delta = np.max([deltaX,deltaY,deltaZ])
+        ax.update_layout(xaxis_title="x (m)",yaxis_title="y (m)",zaxis_title="z (m)")
+        if("label" in kwargs):
+            ax.update_layout(coloraxis_colorbar={"title":kwargs["label"]})
 
-    ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
-    ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
-    ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+    else:
+        sc = ax.scatter(*points, c = data, s=40, cmap = "jet")
+        ax.set_xlabel("x (m)",labelpad=15)
+        ax.set_ylabel("y (m)",labelpad=15)
+        ax.set_zlabel("z (m)",labelpad=15)
+        cbar = plt.colorbar(sc, fraction=0.04, pad = 0.075) 
+        
+        if("label" in kwargs):
+            cbar.set_label(kwargs["label"],labelpad=10)
+        
+        xlim = ax.get_xlim()
+        deltaX = xlim[1] - xlim[0]
+        meanX = np.mean(xlim)
+        ylim = ax.get_ylim()
+        deltaY = ylim[1] - ylim[0]
+        meanY = np.mean(ylim)
+        zlim = ax.get_zlim()
+        deltaZ = zlim[1] - zlim[0]
+        meanZ = np.mean(zlim)
 
-    ax.grid(linestyle= '-', which="major")
-    ax.grid(linestyle = '--', which="minor")
-    ax.tick_params(axis='z', which='both', pad=10)
+        delta = np.max([deltaX,deltaY,deltaZ])
 
-    ax.set_box_aspect((1,1,1))
+        ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+
+        ax.grid(linestyle= '-', which="major")
+        ax.grid(linestyle = '--', which="minor")
+        ax.tick_params(axis='z', which='both', pad=10)
+
+        ax.set_box_aspect((1,1,1))
 
     return(ax)
 
@@ -425,9 +437,13 @@ octBandFrequencies = np.round(nth_octave_bands(octBand,fminOct,fmaxOct)[0])
 fminValidity = 50
 fmaxValidity = 1000
 
-def save_fig(fig, name):
-    fig.tight_layout()
-    fig.savefig(name, dpi = 300, bbox_inches = 'tight')
+def save_fig(fig, name, interactive = False):
+    if(interactive):
+        fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
+        fig.write_html(name)
+    else:
+        fig.tight_layout()
+        fig.savefig(name, dpi = 300, bbox_inches = 'tight')
 
 def set_title(ax, title):
     try:
