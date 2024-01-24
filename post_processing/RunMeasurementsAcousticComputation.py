@@ -76,7 +76,8 @@ if(__name__ == "__main__"):
 
     #Get verification data folder
     verificationDataFolder = ""
-    verificationDataFolderDefault = os.path.abspath("../../../Verification/Verification/welch_sweep/") + "/"
+    verificationDataFolderDefault = os.path.abspath("../../../Verification/Verification/") + "/" + os.path.basename(os.getcwd()) + "/"
+    print(verificationDataFolderDefault)
     try:
         verificationDataFolder = sys.argv[5]
     except IndexError:
