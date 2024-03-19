@@ -10,7 +10,7 @@ import glob
 import os
 import sys
 import csv
-from copy import copy
+from copy import deepcopy
 
 #Mesh package
 import trimesh as trimesh
@@ -19,6 +19,9 @@ import meshio as meshio
 #Plot package
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+
+#Multiprocessing package
+from multiprocessing import Pool
 
 from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
 
@@ -35,7 +38,7 @@ def sphereFit(points):
     #   Assemble the f matrix
     f = np.zeros((len(points),1))
     f[:,0] = (points[:,0]**2) + (points[:,1]**2) + (points[:,2]**2)
-    output, residules, rank, singval = np.linalg.lstsq(A,f)
+    output, residules, rank, singval = np.linalg.lstsq(A,f,rcond=None)
 
     #   solve for the radius
     radius = np.sqrt(output[0]**2 + output[1]**2 + output[2]**2 + output[3])
@@ -43,7 +46,7 @@ def sphereFit(points):
 
     return(center, radius)
 
-interactive = False
+INTERACTIVE = True
 
 if __name__ == "__main__":
 
@@ -116,13 +119,22 @@ if __name__ == "__main__":
 		if(meshPath is not None):
 			print("Invalid element type, defaulting to " + elementType)
 
+	#Wether to adapt data to the mesh (i.e. when data is not provided at the centroids locations)
+	adaptToMesh = False
+	try:
+		adaptToMesh = bool(sys.argv[9])
+		if(adaptToMesh and elementType != "P0"):
+			raise ValueError("Adapt to mesh is only possible with P0 elements")
+	except IndexError:
+		pass
+
 	Files = sorted(glob.glob(outputSignalType + "*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 	
 	Data = np.empty((len(Frequencies),len(Files)),dtype=complex)
 
-	for i,file in enumerate(Files):
-
+	def processing_data(file):
 		print("Data processing file : " + file)
+		
 		M = ms.Measurement.from_csvwav(file.split(".")[0])
 		
 		#Check processing method compatibility
@@ -137,9 +149,16 @@ if __name__ == "__main__":
 			TFE = P.tfe_farina([fmin,fmax])
 		else:
 			TFE = P.tfe_welch(V) #Also possible for dB values : (P*V.rms).tfe_welch(V)
-	
+		
+		output = np.empty(len(Frequencies),dtype=complex)
 		for j,f in enumerate(Frequencies):
-			Data[j,i] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
+			output[j] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
+			#output[j] = 100.0
+
+		return(output)
+
+	with Pool(os.cpu_count()-1) as pool:
+		Data = np.array(pool.map(processing_data,Files)).T
 
 	X = []
 	Y = []
@@ -170,19 +189,20 @@ if __name__ == "__main__":
 		#To adapt depending on the mesh type ! 
 		#centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
 		#centroid = np.mean(Points,axis=0)
-		centroid, _ = sphereFit(Points)
+		centroid, radius = sphereFit(Points)
+		print("Estimated sphere centroid : " + str(centroid) + " m")
+		print("Estimated sphere radius : " + str(radius) + " m")
 			
 		mesh = meshio.read("initMesh.mesh")
 		Vertices, Faces = mesh.points, mesh.get_cells_type("triangle")
 
-		#Compute mesh resolution and centroids
-		detailedMesh = trimesh.Trimesh(Vertices, Faces)
-		resolution = np.mean(detailedMesh.edges_unique_length)
-		Centroids = detailedMesh.triangles_center
-
 		#Shift vertices and centroids into the real world frame (measurements frame)
 		MeasurementsVertices = Vertices + centroid
-		MeasurementsCentroids = Centroids + centroid
+
+		#Compute mesh resolution and centroids
+		detailedMesh = trimesh.Trimesh(MeasurementsVertices, Faces)
+		resolution = np.mean(detailedMesh.edges_unique_length)
+		MeasurementsCentroids = detailedMesh.triangles_center
   
 		#Set the measurements points
 		if(elementType == "P0"):
@@ -192,73 +212,158 @@ if __name__ == "__main__":
 		else:
 			raise ValueError("Invalid element type")
 
-		missing = []
 		OrderedData = np.empty((len(Frequencies),len(MeasurementsPoints)),dtype=complex)
 
-		#Reorder data according to the mesh and find missing measurements
-		for i,MeasurementsPoint in enumerate(MeasurementsPoints):
+		if(not adaptToMesh):
 
-			#Find the closest measurement point to the current mesh point
-			distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
-			indexMin = np.argmin(distances)
+			missing = []
+			
+			#Reorder data according to the mesh and find missing measurements
+			for i,MeasurementsPoint in enumerate(MeasurementsPoints):
 
-			#If the closest measurement point is too far away, we consider that the Measurements point is missing
-			#Else, we assign the corresponding data value to the mesh point
-			if(distances[indexMin] > resolution/2):
-				print("Missing measurement detected at point " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
-				missing.append(i)
-			else:
-				OrderedData[:,i] = Data[:,indexMin]
+				#Find the closest measurement point to the current mesh point
+				distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
+				indexMin = np.argmin(distances)
 
-		#Fill missing mesh points with the average of the 3 closest points
-		for i in missing:
-			closest = np.argsort(np.linalg.norm(Points - MeasurementsPoints[i], axis=1))[1:4]
-			OrderedData[:,i] = np.average(np.abs(Data[:,closest]),axis=1)*np.exp(1j*np.average(np.angle(Data[:,closest]),axis=1))
+				#If the closest measurement point is too far away, we consider that the Measurements point is missing
+				#Else, we assign the corresponding data value to the mesh point
+				if(distances[indexMin] > resolution/2):
+					print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
+					missing.append(i)
+				else:
+					OrderedData[:,i] = Data[:,indexMin]
+					
+		else:
+
+			#Get mesh closest face for each measurement point
+			_,_,faceIndex = trimesh.proximity.closest_point(detailedMesh,Points) 
+			DataBuffer = []
+			sortedFaceIndex = np.sort(faceIndex)
+			sortedData = Data[:,np.argsort(faceIndex)]
+
+			#For each face, compte the average value of the closest measurements
+			previousIndex = sortedFaceIndex[0]
+			for i,(index,data) in enumerate(zip(sortedFaceIndex,sortedData.T)):
+				if(index != previousIndex):
+					OrderedData[:,previousIndex] = np.average(np.abs(DataBuffer),axis=0)*np.exp(1j*np.average(np.angle(DataBuffer),axis=0))
+					DataBuffer = []
+					previousIndex = index
+				DataBuffer.append(data)
+
+			#Compute missing points (i.e. faces with no closest measurement point)
+			missing = [i for i in range(len(MeasurementsPoints)) if i not in faceIndex]
+			for i in missing:
+				print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoints[i]))
+
+		#Fill missing mesh points
+		filledPoints = deepcopy(Points)
+
+		#While there are missing points...
+		while(len(missing) > 0):
+
+			#Compute the distances to the three closest filled points
+			closestPointsIndex = np.empty((len(missing),3),dtype=int)
+			criteria = np.zeros(len(missing))
+
+			for i,index in enumerate(missing):
+				distances = np.linalg.norm(filledPoints - MeasurementsPoints[index], axis=1)
+				closestPointsIndex[i] = np.argsort(distances)[:3]
+
+				closestPointsDistance = distances[closestPointsIndex[i]]
+				criteria[i] = len(np.where(closestPointsDistance < resolution)[0])
+			
+			#Fill the best candidate points with the 3 closest points
+			bestIndex = np.where(criteria == np.max(criteria))[0]
+			for i in bestIndex:
+				OrderedData[:,missing[i]] = np.average(np.abs(Data[:,closestPointsIndex[i]]),axis=1)*np.exp(1j*np.average(np.angle(Data[:,closestPointsIndex[i]]),axis=1))
+
+				#Update list of missing points
+				filledPoints = np.vstack((filledPoints,MeasurementsPoints[missing[i]]))
+				Data = np.vstack((Data.T,OrderedData[:,missing[i]])).T
+
+			missing = [missing[i] for i in range(len(missing)) if i not in bestIndex]
 
 		#Save mesh
-		if(not os.path.exists("robotMesh.mesh")):
-			meshio.write_points_cells("robotMesh.mesh", MeasurementsVertices, mesh.cells)
+		meshio.write_points_cells("robotMesh.mesh", MeasurementsVertices, mesh.cells)
 
 		Data = OrderedData
 		Points = MeasurementsPoints
 
 	#Circular verification mesh
 	else:
+		#Compute mesh resolution and bounding radius
+		resolution = np.mean(np.linalg.norm(Points - np.roll(Points,-1,axis=0),axis=1))
+		radius = np.mean(np.linalg.norm(Points - np.average(Points,axis=1)))
 
 		#Save mesh
-		if(not os.path.exists("robotMesh.mesh")):
-			meshio.write_points_cells("robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
+		meshio.write_points_cells("robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
 
-	for f,data in zip(Frequencies,Data):
+	def processing_frequency(data):
+
+		f = data[0]
+		data = data[1]
+		elementType = data[2]
+
+		if(elementType == "P0"):
+			epsilon = resolution
+		elif(elementType == "P1"):
+			epsilon = resolution*1.5
+		else:
+			raise ValueError("Invalid element type")
 
 		print("Processing frequency " + str(int(f)) + " Hz")
 
-		if(interactive):
+		#Neighbours value filtering
+		if(resolution < 0.2*np.sqrt(radius*2)):	 #Very arbitrary criterion
+			filteredData = deepcopy(data)
+
+			for i,(point,pointData) in enumerate(zip(Points,data)):
+
+				neighbours = np.where(np.linalg.norm(Points - point,axis=1) <= epsilon)[0]
+				neighbours = np.delete(neighbours,np.where(neighbours == i))
+
+				neighboursAbs = np.abs(data[neighbours])
+				neighboursPhase = np.angle(data[neighbours])
+
+				meanAbs = np.mean(neighboursAbs)
+				meanPhase = np.mean(neighboursPhase)
+				stdAbs = np.std(neighboursAbs)
+				stdPhase = np.std(neighboursPhase)
+
+				if(np.abs(np.abs(pointData) - meanAbs) > 3*stdAbs and np.abs(np.angle(pointData) - meanPhase) > 3*stdPhase):
+					filteredData[i] = meanAbs*np.exp(1j*meanPhase)
+					print("Replacing data at point " + str(point) + " : initial data = " + str(pointData) + " - filtered data = " + str(filteredData[i]))
+
+			data = filteredData
+		else:
+			print("Not enough points to filter data based on neighbour values")
+					
+		if(INTERACTIVE):
 			axAmp = go.Figure()
 			axPhase = go.Figure()
 		else:
 			figAmp,axAmp = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 
-		plot_3d_data(np.abs(data), Points.T, axAmp, label = r"$|$H$|$ (Pa/V)", interactive=interactive)
-		plot_3d_data(wrap(np.angle(data)), Points.T, axPhase, label = "Phase (rad)", interactive=interactive)
+		plot_3d_data(np.abs(data), Points, axAmp, label = r"$|$H$|$ (Pa/V)", interactive=INTERACTIVE)
+		plot_3d_data(wrap(np.angle(data)), Points, axPhase, label = "Phase (rad)", INTERACTIVE=INTERACTIVE)
 
 		if(pointCloudPath is not None):
-			plotPointCloudFromPath(pointCloudPath, ax = axAmp, interactive=interactive, s=5)
-			plotPointCloudFromPath(pointCloudPath, ax = axPhase, interactive=interactive, s=5)
+			plotPointCloudFromPath(pointCloudPath, ax = axAmp, INTERACTIVE=INTERACTIVE)
+			plotPointCloudFromPath(pointCloudPath, ax = axPhase, INTERACTIVE=INTERACTIVE)
 
 		if(meshPath is not None):
-			plotMesh(MeasurementsVertices, Faces, ax = axAmp, interactive=interactive, linewidth=2)
-			plotMesh(MeasurementsVertices, Faces, ax = axPhase, interactive=interactive, linewidth=2)
+			plotMesh(MeasurementsVertices, Faces, ax = axAmp, INTERACTIVE=INTERACTIVE)
+			plotMesh(MeasurementsVertices, Faces, ax = axPhase, INTERACTIVE=INTERACTIVE)
 
 		#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 		#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 		#axAmp.set_title("Measured amplitude at " + str(int(f)) + " Hz")
 		#axPhase.set_title("Measured phase at " + str(int(f)) + " Hz")
 			
-		if(interactive):
-			save_fig(axAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".html",interactive=True)
-			save_fig(axPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".html",interactive=True)
+		if(INTERACTIVE):
+			save_fig(axAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".html",INTERACTIVE=True)
+			save_fig(axPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".html",INTERACTIVE=True)
 		else:
 			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
 			save_fig(figPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".pdf")
@@ -266,3 +371,6 @@ if __name__ == "__main__":
 
 		#Save data at given frequency
 		np.savetxt(processingMethod + "_" + outputSignalType + "/data_" + str(int(f)) + ".csv",np.array([np.real(data),np.imag(data)]).T,delimiter=",")
+
+	with Pool(os.cpu_count()-1) as pool:
+		pool.map(processing_frequency,list(zip(Frequencies,Data)))
