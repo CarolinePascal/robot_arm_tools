@@ -37,11 +37,16 @@ figsize = (10,9)
 from matplotlib.ticker import MaxNLocator
 from matplotlib.ticker import FuncFormatter
 
+import itertools
+
+def flip(items, ncol):
+    return itertools.chain(*[items[i::ncol] for i in range(ncol)])
+
 ## Function plotting the error between computed values and analytical values for an output files folder according to a given parameter
 #  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
 #  @param analyticalFunctionID ID of the analytical function (c.f. acousticTools.py)
 #  @param errorID ID of the error function (c.f. plotTools.py)
-def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
+def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.pdf",**kwargs):
 
     #Get post-processing and analytical functions
     postProcessingFunction = postProcessingFunctions[postProcessingID]
@@ -172,7 +177,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                     fixedValues = [None]
 
             elif(isinstance(kwargs["fixedValues"], list) and len(fixedParameters) == len(kwargs["fixedValues"])):
-                fixedValues = kwargs["fixedValues"]
+                fixedValues = copy.deepcopy(kwargs["fixedValues"])
                 for i,itemList in enumerate(fixedValues):
                     try:
                         fixedValues[i] = [float(item) for item in itemList]
@@ -598,9 +603,9 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                 minSpace, maxSpace = np.ones(len(plotN[0,i]))*10**10, -np.ones(len(plotN[0,i]))*10**10
                 for l,subPlotN in enumerate(plotN[:,i]):
                     if(l==0):
-                        axNi.plot(plotListP[i],scalingFunction(subPlotN),label=label,color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=7,markeredgewidth=1)
+                        axNi.plot(plotListP[i],scalingFunction(subPlotN),label=label,color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=7,markeredgewidth=2)
                     else:
-                        axNi.plot(plotListP[i],scalingFunction(subPlotN),color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=7,markeredgewidth=1)
+                        axNi.plot(plotListP[i],scalingFunction(subPlotN),color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=7,markeredgewidth=2)
                     maxSpace = np.maximum(maxSpace,scalingFunction(subPlotN))
                     minSpace = np.minimum(minSpace,scalingFunction(subPlotN))
                 axNi.fill_between(plotListP[i],minSpace,maxSpace,color=cmap(i),alpha=0.15)
@@ -634,17 +639,17 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                     #     axNi.plot(plotListP[i],VN[0]*scalingFunction(plotListP[i])+VN[1],label="Reference",color=cmap(i),alpha=0.75,zorder=0)
 
                 else:
-                    #axNi.plot(plotListP[i],plotMaxN,label="Maximum",color=cmap(i),linestyle='dashed',linewidth=2)
-                    #axNi.plot(plotListP[i],plotMeanN,label="Average",color=cmap(i),linestyle='dotted',linewidth=2)
-                    axNi.plot(plotListP[i],plotMaxN,color=cmap(i),linestyle='dashed',linewidth=2)
-                    axNi.plot(plotListP[i],plotMeanN,color=cmap(i),linestyle='dotted',linewidth=2)
+                    axNi.plot(plotListP[i],plotMaxN,label="Maximum",color=cmap(i),linestyle='dashed',linewidth=2)
+                    axNi.plot(plotListP[i],plotMeanN,label="Average",color=cmap(i),linestyle='dotted',linewidth=2)
+                    #axNi.plot(plotListP[i],plotMaxN,color=cmap(i),linestyle='dashed',linewidth=2)
+                    #axNi.plot(plotListP[i],plotMeanN,color=cmap(i),linestyle='dotted',linewidth=2)
                     #if(len(referenceInterestConfigurations) != 0):
                         #axNi.plot(plotListP[i],plotRefN,label="Reference",color=cmap(i),alpha=0.75,zorder=0)
 
             else:
                 if(len(shapeN) >= 3):
                     plotN = plotN[0]
-                axNi.plot(plotListP[i],scalingFunction(plotN[i]),label=label,color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=7,markeredgewidth=2)
+                axNi.plot(plotListP[i],scalingFunction(plotN[i]),label=label,color=cmap(i),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=10,markeredgewidth=3)
 
                 if(linearRegression):
                     M = np.vstack((scalingFunction(plotListP[i]),np.ones(len(parameterValues)))).T
@@ -723,14 +728,27 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
 
         #if(len(axAi.get_legend_handles_labels()[0]) != 0 or len(axAi.get_legend_handles_labels()[1]) != 0):
             #axAi.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=0.25, reverse=False)
-        if(len(axNi.get_legend_handles_labels()[0]) != 0 or len(axNi.get_legend_handles_labels()[1]) != 0):
+        handles, labels = axNi.get_legend_handles_labels()
+        ncol = 3
+        spacing = 1.0
+
+        if(len(handles)%2 == 0):
+            if(len(handles)%3 != 0):
+                ncol = 2
+            handles = list(flip(handles, ncol))
+            labels = list(flip(labels, ncol))
+
+        if(len(handles) != 0 or len(labels) != 0):
             figN.tight_layout()
-            box = axNi.get_position()
-            axNi.set_position([box.x0, box.y0, box.width, box.height * 0.94])
+            # box = axNi.get_position()
+            # print(box)
+            # print(box.width)
+            # print(box.height)
+            axNi.set_position([0.165,0.125,0.8,0.85])
             if(extraPadding):
-                axNi.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=2, borderaxespad=1.1, reverse=False,columnspacing=0.1, fontsize=20)
+                axNi.legend(handles, labels, bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=1.1, reverse=False, columnspacing=spacing, fontsize=20)
             else:
-                axNi.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=2, borderaxespad=0.25, reverse=False,columnspacing=0.1, fontsize=20)
+                axNi.legend(handles, labels, bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=0.25, reverse=False, columnspacing=spacing, fontsize=20)
             # figN.tight_layout()
             # box = axNi.get_position()
             # axNi.set_position([box.x0, box.y0, box.width * 0.75, box.height])
@@ -748,8 +766,11 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,**kwargs):
     axNi.tick_params(axis='both', which='major', pad=7)
     #axNi.xaxis.set_minor_formatter(FuncFormatter(log_formatter))
 
-    #figN.savefig("NormalizedErrorSigmaResolution.pdf", dpi = 300, bbox_inches = 'tight')
-    #plt.show()
+    if(not figureName is None):
+        figN.savefig(figureName, dpi = 300, bbox_inches = 'tight')
+    else:
+        axNi.set_position([0.165,0.125,0.8,0.7])
+        plt.show()
 
     return(AlphaMean,AlphaMax)
 
@@ -774,34 +795,82 @@ if __name__ == "__main__":
         error = "l2"
 
     kwargs = {}
-    #kwargs["abscissaParameter"] = "sigmaPosition"
-    #kwargs["abscissaValues"] = [0.0005,  0.00125, 0.0025,  0.00375, 0.005]
-    kwargs["abscissaParameter"] = "resolution"
-    kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
-    #kwargs["abscissaParameter"] = "size"
-    #kwargs["abscissaValues"] = "*"
 
-    kwargs["fixedParameters"] = ["resolution","size","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.05],[0.5],[100,500,1000,5000],[0.0],[0.0],[0.05]]
-
-    #kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","dipoleDistance"]
-    #kwargs["fixedValues"] = [[0.25],[0.025],[100,500,1000,5000],[0.0],[0.05]]
-
-    kwargs["normalisation"] = False
     kwargs["verticesNumber"] = False
-
     kwargs["errorType"] = "relative"
-    kwargs["linearRegression"] = True
     kwargs["logScale"] = True
 
     """
+    ### Resolution 
+    kwargs["abscissaParameter"] = "resolution"
+    kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
+    kwargs["fixedValues"] = [[0.5],"*",[0.0],[0.0],[0.45]]
+
+    ### Resolution error unnormalized
+    kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
+    kwargs["normalisation"] = False
+    kwargs["linearRegression"] = True
+    plotError(postProcessing,analytical,error,figureName="ResolutionError.pdf",**kwargs)
+
+    ### Resolution error normalized
+    kwargs["abscissaValues"] = "*"
+    kwargs["normalisation"] = True
+    kwargs["linearRegression"] = False
+    plotError(postProcessing,analytical,error,figureName="NormalizedResolutionError.pdf",**kwargs)
+
+    ### Size error normalized
+    kwargs["abscissaParameter"] = "size"
+    kwargs["abscissaValues"] = "*"
+    kwargs["fixedParameters"] = ["resolution","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
+    kwargs["fixedValues"] = [[0.05],"*",[0.0],[0.0],[0.05]]
+    kwargs["normalisation"] = True
+    kwargs["linearRegression"] = False
+    plotError(postProcessing,analytical,error,figureName="NormalizedSizeError.pdf",**kwargs)
+
+    ### Sigma error normalized
+    kwargs["abscissaParameter"] = "sigmaPosition"
+    kwargs["abscissaValues"] = [0.0005,  0.00125, 0.0025,  0.00375, 0.005, 0.0125]
+    kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure"]
+    kwargs["fixedValues"] = [[0.5],[0.05],[100,1000,5000],[0.0]]
+    kwargs["normalisation"] = False
+    kwargs["linearRegression"] = False
+    kwargs["robot"] = True
+    plotError(postProcessing,analytical,error,figureName="NormalizedSigmaError.pdf",**kwargs)
+    kwargs["robot"] = False
+
+    ### Size error normalized with sigma
+    kwargs["abscissaParameter"] = "size"
+    kwargs["abscissaValues"] = "*"
+    kwargs["fixedParameters"] = ["resolution","frequency","sigmaPosition","sigmaMeasure"]
+    kwargs["fixedValues"] = [[0.05],[100,500,1000,5000],[0.005],[0.0]]
+    kwargs["normalisation"] = True
+    kwargs["linearRegression"] = False
+    plotError(postProcessing,analytical,error,figureName="NormalizedSizeErrorSigma.pdf",**kwargs)
+
+    ### Resolution error normalized with sigma
+    kwargs["abscissaParameter"] = "resolution"
+    kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
+    kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure"]
+    kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.005],[0.0]]
+    kwargs["normalisation"] = True
+    kwargs["linearRegression"] = False
+    plotError(postProcessing,analytical,error,figureName="NormalizedResolutionErrorSigma.pdf",**kwargs)
+
+    ### Resolution error unnormalized with sigma => Slope study
+    kwargs["abscissaParameter"] = "resolution"
+    kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
+    kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure"]
+    kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.0],[0.0]]
+    kwargs["normalisation"] = False
+    kwargs["linearRegression"] = True
+
     sigmaPositions = [0.0, 0.0005,  0.00125, 0.0025,  0.00375, 0.005]
     AlphaMean = []
     AlphaMax = []
 
     for sigmaP in sigmaPositions :
-        kwargs["fixedValues"][3] = [sigmaP]
-        amean, amax = plotError(postProcessing,analytical,error,**kwargs)
+        kwargs["fixedValues"][2] = [sigmaP]
+        amean, amax = plotError(postProcessing,analytical,error,None,**kwargs)
         AlphaMean.append(amean)
         AlphaMax.append(amax)
 
@@ -813,20 +882,19 @@ if __name__ == "__main__":
     
     figN, axN = plt.subplots(1,figsize=figsize)
     Labels = [r"$\angle_{max}$",r"$\angle_{avg}$"]
-    for i,f in enumerate(kwargs["fixedValues"][2]):
+    for i,f in enumerate(kwargs["fixedValues"][1]):
         for j,list in enumerate([AlphaMax,AlphaMean]):
-            axN.plot(sigmaPositions,list[:,i],color=cmap2(4*i+j),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=10,markeredgewidth=2,label=Labels[j] + " - f = " + str(f) + " Hz")
+            axN.plot(sigmaPositions,list[:,i],color=cmap2(4*i+j),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=10,markeredgewidth=3,label=Labels[j] + " - f = " + str(f) + " Hz")
 
-    axN.axhline(y=0.5,color="dimgray",linestyle='dashed',linewidth=2)
-    t = axN.text(-0.02, 0.5, r"$\sqrt{h}$", color='dimgray', transform=axN.get_yaxis_transform(), ha='right', va='center',fontsize = 20)
+    #axN.axhline(y=0.5,color="dimgray",linestyle='dashed',linewidth=2)
+    #t = axN.text(-0.02, 0.5, r"$\sqrt{h}$", color='dimgray', transform=axN.get_yaxis_transform(), ha='right', va='center',fontsize = 20)
 
     figN.tight_layout()
-    box = axN.get_position()
-    axN.set_position([box.x0, box.y0, box.width, box.height * 0.94])
+    axN.set_position([0.165,0.125,0.8,0.85])
 
 
-    axN.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=2, borderaxespad=0.25, reverse=False,columnspacing=0.1, fontsize=20)
-    axN.set_ylabel(r"slope",labelpad=15)
+    axN.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=2, borderaxespad=0.25, reverse=False,columnspacing=1.0, fontsize=20)
+    axN.set_ylabel(r"slope (-)",labelpad=15)
     axN.set_xlabel(r"$\sigma_P$ (m)")
     axN.grid(which="major")
     axN.grid(linestyle = '--',which="minor")
@@ -837,3 +905,32 @@ if __name__ == "__main__":
     figN.savefig("SigmaSlope.pdf", dpi = 300, bbox_inches = 'tight')
     """
 
+    ### When sigmaP << h, we fall back on the unnoised error estimate
+    ### We took the smallest sigmaP with all resolution, knowing there is a ten fold factor between the smallest resolution and sigmaP
+    # kwargs["abscissaParameter"] = "resolution"
+    # kwargs["abscissaValues"] = [0.005, 0.0125, 0.025,  0.0375, 0.05]
+    # kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
+    # kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.0005]]
+    # kwargs["normalisation"] = False
+    # kwargs["linearRegression"] = True
+    # plotError(postProcessing,analytical,error,figureName="ResolutionErrorSigma<<h.pdf",**kwargs)
+
+    ### When sigmaP >> 1 (and I guess h is not to big), we wish to find a sqrt(h) tendancy
+    ### We took the highest sigmaP value for all resolutions
+    # kwargs["abscissaParameter"] = "resolution"
+    # kwargs["abscissaValues"] = [0.005, 0.0125, 0.025,  0.0375, 0.05]
+    # kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
+    # kwargs["fixedValues"] = [[0.5],[0.05],[100,500,1000,5000],[0.0],[0.0125]]
+    # kwargs["normalisation"] = False
+    # kwargs["linearRegression"] = True
+    # plotError(postProcessing,analytical,error,figureName=None,**kwargs)
+
+    ### When sigmaP <= h, the linear sigmaP dependancy arises
+    ### We took the smallest resolution, whith the 4 highest values of sigmaP, knowing that the highest sigmaP value is equal to the resolution (in practice only the 0.0005 sigmaP is removed)
+    kwargs["abscissaParameter"] = "sigmaPosition"
+    kwargs["abscissaValues"] = [0.0005, 0.00125, 0.0025,  0.00375, 0.005]
+    kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
+    kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.005]]
+    kwargs["normalisation"] = False
+    kwargs["linearRegression"] = True
+    plotError(postProcessing,analytical,error,figureName=None,**kwargs)
