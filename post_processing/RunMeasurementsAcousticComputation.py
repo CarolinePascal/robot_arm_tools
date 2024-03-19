@@ -6,6 +6,9 @@ import os
 import glob
 import sys
 import csv
+import time
+
+#Utility packages
 import numpy as np
 
 #Mesh packages
@@ -77,7 +80,6 @@ if(__name__ == "__main__"):
     #Get verification data folder
     verificationDataFolder = ""
     verificationDataFolderDefault = os.path.abspath("../../../Verification/Verification/") + "/" + os.path.basename(os.getcwd()) + "/"
-    print(verificationDataFolderDefault)
     try:
         verificationDataFolder = sys.argv[5]
     except IndexError:
@@ -129,15 +131,23 @@ if(__name__ == "__main__"):
 
         bashCommand = command + " -frequency " + str(frequency) + " -realMeasurements 1 -measurementsMeshPath " + measurementsMeshPath + " -measurementsDataPath " + measurementsDataFolder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verificationMeshPath + " -verificationDataPath " + verificationDataFolder + "data_" + str(frequency) + ".csv -verificationGradientDataFolder " + verificationDataFolder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
         print(bashCommand)
+
+        t0 = time.time()
         process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
         output, error = process.communicate()
+        t1 = time.time()
+
+        with open("computation_time_CL_"+ elementType + ".csv","a") as f:
+            data = [str(frequency),str(t1-t0)]
+            writer = csv.writer(f)
+            writer.writerow(data)
 
         #DEBUG
         print(output.decode())
 
-        # killProcess = "killall FreeFem++-mpi"
-        # process = subprocess.Popen(killProcess.split(), stdout=subprocess.PIPE)
-        # output, error = process.communicate()
+        killProcess = "killall FreeFem++-mpi"
+        process = subprocess.Popen(killProcess.split(), stdout=subprocess.PIPE)
+        output, error = process.communicate()
 
-        # #DEBUG
-        # print(output.decode())
+        #DEBUG
+        print(output.decode())

@@ -4,6 +4,8 @@
 import subprocess
 import os
 import sys
+import time
+import csv
 
 #Utility packages
 import numpy as np
@@ -24,14 +26,13 @@ verificationRadius = 0.5
 verificationSize = 2*verificationRadius
 verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 
-Frequencies = [100,250,500,750,1000,2500,5000] 
+Frequencies = [100,250,500,750,1000,2500,5000]
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
 Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius,0.1*verificationRadius] 
 
 DipoleDistances = [0.05*verificationRadius,0.1*verificationRadius,0.15*verificationRadius,0.25*verificationRadius,0.5*verificationRadius,0.75*verificationRadius,0.9*verificationRadius] if function == "dipole" else [0.0]
 
-#SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.01*verificationRadius,0.0075*verificationRadius]
-SigmasPosition = [0.0]
+SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.0075*verificationRadius,0.01*verificationRadius]
 SigmasMeasure = [0.01,0.05,0.1]
 Nsigma = 20
 
@@ -117,8 +118,19 @@ if(__name__ == "__main__"):
 
                                     bashCommand = command + " -realMeasurements 0 -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
                                     print(bashCommand)
+
+                                    t0 = time.time()
                                     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
                                     output, error = process.communicate()
+                                    t1 = time.time()
+
+                                    with open("computation_time_CL_" + function + "_" + elementType + ".csv","a") as f:
+                                        if(function == "dipole"):
+                                            data = [str(frequency),str(resolution),str(size),str(dipoleDistance),str(sigmaPosition),str(sigmaMeasure),str(t1-t0)]
+                                        else:
+                                            data = [str(frequency),str(resolution),str(size),str(sigmaPosition),str(sigmaMeasure),str(t1-t0)]
+                                        writer = csv.writer(f)
+                                        writer.writerow(data)
 
                                     #DEBUG
                                     print(output.decode())
