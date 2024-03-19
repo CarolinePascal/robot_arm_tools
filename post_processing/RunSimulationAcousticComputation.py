@@ -26,14 +26,15 @@ verificationRadius = 0.5
 verificationSize = 2*verificationRadius
 verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 
-Frequencies = [100,250,500,750,1000,2500,5000]
+Frequencies = [100,500,1000,5000]
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
 Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius,0.1*verificationRadius] 
 
 DipoleDistances = [0.05*verificationRadius,0.1*verificationRadius,0.15*verificationRadius,0.25*verificationRadius,0.5*verificationRadius,0.75*verificationRadius,0.9*verificationRadius] if function == "dipole" else [0.0]
 
-SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.0075*verificationRadius,0.01*verificationRadius]
-SigmasMeasure = [0.01,0.05,0.1]
+SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.0075*verificationRadius,0.01*verificationRadius,0.025*verificationRadius]
+#SigmasMeasure = [0.01,0.05,0.1]
+SigmasMeasure = [0.0]
 Nsigma = 20
 
 parametersCombinations = len(Frequencies)*len(Radius)*len(Resolutions)*len(DipoleDistances)*max(1,Nsigma*len(np.nonzero(SigmasPosition)[0]))*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0]))
