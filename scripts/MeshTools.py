@@ -19,7 +19,7 @@ from mpl_toolkits.mplot3d import art3d
 import open3d as o3d
 import plotly.graph_objects as go
 
-LEGACY = True
+LEGACY = False
 SIMILAR = False
 DUAL = False
 
@@ -89,9 +89,11 @@ def generateSphericMeshFromParameters(size, b, c, elementType = "P0"):
         points *= delta
 
     hull = ConvexHull(points)
+
+    vertices = hull.points[hull.vertices]
     faces = hull.simplices
 
-    return(points, faces)
+    return(vertices, faces)
 
 ## Function creating a spheric mesh using an icosahedric approximation
 #  @param size Size of the sphere as its diameter
@@ -112,7 +114,7 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
         raise NotImplementedError
 
     bTarget, cTarget = getTargetParameters(size,resolution,elementType)
-    points, faces = generateSphericMeshFromParameters(size, bTarget, cTarget, elementType = "P0")
+    points, faces = generateSphericMeshFromParameters(size, bTarget, cTarget, elementType)
 
     if(saveMesh):
         meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
