@@ -19,25 +19,17 @@ from mpl_toolkits.mplot3d import art3d
 import open3d as o3d
 import plotly.graph_objects as go
 
-## Function creating a spheric mesh using an icosahedric approximation
+LEGACY = True
+SIMILAR = False
+DUAL = False
+
+## Function computing the best values of the b and c parameters for the icosaedric approximation of a sphere
 #  @param size Size of the sphere as its diameter
 #  @param resolution Target resolution of the mesh
 #  @param elementType Type of element for triangular faces
-#  @param saveMesh Wether to save mesh file or not
-#  @param saveYAML Wether to save mesh poses in YAML file or not
-#  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
-#  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0):
+#  @return b, c Computed b and c parameters
+def getTargetParameters(size,resolution,elementType = "P0"):
 
-    try:
-        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/")
-    except:
-        pass
-
-    if(elementType != "P0" and elementType != "P1"):
-        raise NotImplementedError
-
-    #Sphere radius 
     radius = size/2
 
     #Icosahedron initial number of faces 
@@ -48,7 +40,10 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
 
     alpha = 1
     if(elementType == "P0"):
-        alpha = 2 - np.sqrt(1 - (resolution**2)/(3*radius**2))
+        if(LEGACY):
+            alpha = 1/np.sqrt(1-((resolution)**2)/(4*radius**2))
+        else:
+            alpha = 2 - np.sqrt(1 - (resolution**2)/(3*radius**2))
         
     TTarget = int(np.round((16*np.pi*(alpha*radius)**2)/(k*np.sqrt(3)*(resolution)**2)))
 
@@ -63,9 +58,20 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
 
     #TODO Keep closest solution result-wise
     solution = np.unravel_index(np.argmin(np.abs(TTarget - solutions), axis=None), solutions.shape) 
-    bTarget, cTarget = solution[0], solution[1]
+    return(solution[0], solution[1])
 
-    args = " -l -o /tmp/points.txt -p i -c " + str(bTarget) + "," + str(cTarget)
+## Function creating a spheric mesh using an icosahedric approximation with given b and c parameters
+#  @param size Size of the sphere as its diameter
+#  @param resolution Target resolution of the mesh
+#  @param b Icosahedric approximation b parameter
+#  @param c Icosahedric approximation c parameter
+#  @param elementType Type of element for triangular faces
+#  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
+def generateSphericMeshFromParameters(size, b, c, elementType = "P0"):
+
+    radius = size/2
+
+    args = " -l -o /tmp/points.txt -p i -c " + str(b) + "," + str(c)
     subprocess.call("python3.8 " + os.path.dirname(anti_lib_progs.__file__) + "/geodesic.py " + args, shell=True)
 
     points = []
@@ -85,12 +91,41 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
     hull = ConvexHull(points)
     faces = hull.simplices
 
+    return(points, faces)
+
+## Function creating a spheric mesh using an icosahedric approximation
+#  @param size Size of the sphere as its diameter
+#  @param resolution Target resolution of the mesh
+#  @param elementType Type of element for triangular faces
+#  @param saveMesh Wether to save mesh file or not
+#  @param saveYAML Wether to save mesh poses in YAML file or not
+#  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
+#  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
+def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveDirectory = None):
+
+    try:
+        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/")
+    except:
+        pass
+
+    if(elementType != "P0" and elementType != "P1"):
+        raise NotImplementedError
+
+    bTarget, cTarget = getTargetParameters(size,resolution,elementType)
+    points, faces = generateSphericMeshFromParameters(size, bTarget, cTarget, elementType = "P0")
+
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
+        if(not saveDirectory is None):
+            meshPath = saveDirectory + "/sphere" + "_legacy"*LEGACY + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
+
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
     if(saveYAML):
+        #Sphere radius
+        radius = size/2
+
         meshPoses = np.empty((0,6))
         listPoints = None
 
@@ -132,7 +167,10 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
                 gradientPose[2] += gradientOffset*np.cos(meshPose[4])
             np.insert(sortedMeshPoses,1+np.arange(len(sortedMeshPoses)),sortedMeshPosesGradient,axis=0)
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        if(not saveDirectory is None):
+            YAMLPath = saveDirectory + "/sphere" + "_legacy"*LEGACY + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
+
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -149,10 +187,10 @@ def generateSphericMesh(size, resolution, elementType = "P0", saveMesh = False, 
 #  @param saveYAML Wether to save mesh poses in YAML file or not
 #  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0):
+def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveDirectory = None):
 
     try:
-        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/")
+        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/")
     except:
         pass
 
@@ -168,7 +206,10 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
     faces = hull.simplices
 
     if(saveMesh):
-        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".mesh"
+        if(not saveDirectory is None):
+            meshPath = saveDirectory + "/sphere" + "_legacy"*LEGACY + "/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".mesh"
+
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
@@ -208,7 +249,10 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
                 gradientPose[2] += gradientOffset*np.cos(meshPose[4])
             np.insert(sortedMeshPoses,1+np.arange(len(sortedMeshPoses)),sortedMeshPosesGradient,axis=0)
 
-        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".yaml"
+        if(not saveDirectory is None):
+            YAMLPath = saveDirectory + "/sphere" + "_legacy"*LEGACY + "/" + elementType + "/dual_" + str(size) + "_" + str(resolution) + ".yaml"
+
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -225,7 +269,7 @@ def generateDualSphericMesh(size, resolution, elementType = "P0", saveMesh = Fal
 #  @param saveYAML Wether to save mesh poses in YAML file or not
 #  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @return points, faces Generated mesh points (vertices) and lines (cells)
-def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False, saveYAML = False, gradientOffset = 0.0):
+def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveDirectory = None):
 
     try:
         os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/")
@@ -247,6 +291,9 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
 
     if(saveMesh):
         meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
+        if(not saveDirectory is None):
+            meshPath = saveDirectory + "/circle/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh"
+
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("line",lines)])
 
@@ -269,6 +316,9 @@ def generateCircularMesh(size, resolution, elementType = "P1", saveMesh = False,
             np.insert(meshPoses,1+np.arange(len(meshPoses)),meshPosesGradient,axis=0)
 
         YAMLPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/circle/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        if(not saveDirectory is None):
+            YAMLPath = saveDirectory + "/circle/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml"
+
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
             yaml.dump({"elementType":elementType},file)
@@ -296,7 +346,12 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
         if(plotEdges):
             kwargsEdges = deepcopy(kwargs)
             kwargsEdges["mode"] = "lines"
-            kwargsEdges["line"] = {"color":'rgba(0, 0, 0, 0.1)',"width":5}
+            kwargsEdges["line"] = {}
+            kwargsEdges["line"]["color"] = "rgba" + str(kwargsEdges.pop("edgecolor",(0,0,0,0.25)))
+            kwargsEdges["line"]["width"] = kwargsEdges.pop("linewidth",5)
+
+            if(not kwargsEdges.pop("facecolor",None) is None):
+                print("Facecolor will not be displayed in interactive mode")
 
             Xe = []
             Ye = []
@@ -306,31 +361,39 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
                 Ye += [T[k%3][1] for k in range(4)]+[None]
                 Ze += [T[k%3][2] for k in range(4)]+[None]
 
-            ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,**kwargsEdges))
+            ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,hoverinfo='skip',**kwargsEdges))
+
         if(plotNodes):
             kwargsNodes = deepcopy(kwargs)
             kwargsNodes["mode"] = "markers"
-            kwargsNodes["marker"] = {"size":2}
+            kwargsNodes["marker_symbol"] = "circle"
+            kwargsNodes["marker"] = {}
+            kwargsNodes["marker"]["size"] = kwargsNodes.pop("s",4)
+            kwargsNodes["marker"]["color"] = "rgba" + str(kwargsNodes.pop("c",(1.0,0.0,0.0)))
+
             if (elementType == "P0"):
                 centroids = np.average(vertices[faces],axis=1)
-                ax.add_trace(go.Scatter3d(x=centroids[:,0],y=centroids[:,1],z=centroids[:,2],**kwargsNodes))
+                ax.add_trace(go.Scatter3d(x=centroids[:,0],y=centroids[:,1],z=centroids[:,2],hoverinfo='skip',**kwargsNodes))
             elif(elementType == "P1"):
-                ax.add_trace(go.Scatter3d(x=vertices[:,0],y=vertices[:,1],z=vertices[:,2],**kwargsNodes))
+                ax.add_trace(go.Scatter3d(x=vertices[:,0],y=vertices[:,1],z=vertices[:,2],hoverinfo='skip',**kwargsNodes))
             else:
                 print("Invalid element type, nodes will not be displayed")
 
     else:
         if(plotEdges):
             kwargsEdges = deepcopy(kwargs)
-            kwargsEdges["facecolor"] = (0,0,0,0)
+            if(not "facecolor" in kwargsEdges):
+                kwargsEdges["facecolor"] = (0,0,0.0,0)
             if(not "edgecolor" in kwargsEdges):
-                kwargsEdges["edgecolor"] = (0,0,0,0.1)
-            plotMesh = art3d.Poly3DCollection(vertices[faces], **kwargsEdges)
-            ax.add_collection3d(copy(plotMesh))
-
+                kwargsEdges["edgecolor"] = (0,0,0,0.25)
+            if(not "linewidth" in kwargsEdges):
+                kwargsEdges["linewidth"] = 2
+            ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces, **kwargsEdges)
+            
         if(plotNodes):
             kwargsNodes = deepcopy(kwargs)
             kwargsNodes["marker"] = "o"
+
             if (elementType == "P0"):
                 centroids = np.average(vertices[faces],axis=1)
                 ax.scatter(centroids[:,0],centroids[:,1],centroids[:,2], **kwargsNodes)
@@ -340,21 +403,21 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
                 print("Invalid element type, nodes will not be displayed")
 
         #Set 3D plot limits and aspect
-        xlim = ax.get_xlim()
+        xlim = ax.get_xlim3d()
         deltaX = xlim[1] - xlim[0]
         meanX = np.mean(xlim)
-        ylim = ax.get_ylim()
+        ylim = ax.get_ylim3d()
         deltaY = ylim[1] - ylim[0]
         meanY = np.mean(ylim)
-        zlim = ax.get_zlim()
+        zlim = ax.get_zlim3d()
         deltaZ = zlim[1] - zlim[0]
         meanZ = np.mean(zlim)
 
         delta = np.max([deltaX,deltaY,deltaZ])
 
-        ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
-        ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
-        ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+        ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
         ax.set_box_aspect((1,1,1))
 
@@ -379,34 +442,37 @@ def plotPointCloud(points, colors = None, ax = None, interactive = False, **kwar
     if(interactive):
         kwargsPointCloud = deepcopy(kwargs)
         kwargsPointCloud["mode"] = "markers"
-        kwargsPointCloud["marker"] = {"color":colors,"size":2}
+        kwargsPointCloud["marker_symbol"] = "circle"
+        kwargsPointCloud["marker"] = {}
+        kwargsPointCloud["marker"]["color"] = colors
+        kwargsPointCloud["marker"]["size"] = kwargsPointCloud.pop("s",2)
 
-        ax.add_trace(go.Scatter3d(x=points[:,0],y=points[:,1],z=points[:,2],**kwargsPointCloud))
+        ax.add_trace(go.Scatter3d(x=points[:,0],y=points[:,1],z=points[:,2],hoverinfo='skip',**kwargsPointCloud))
     else:
         kwargsPointCloud = deepcopy(kwargs)
         kwargsPointCloud["c"] = colors
 
         if(not "s" in kwargsPointCloud):
-            kwargsPointCloud["s"] = 2
+            kwargsPointCloud["s"] = 5
 
         ax.scatter(*points.T, **kwargsPointCloud)
 
         #Set 3D plot limits and aspect
-        xlim = ax.get_xlim()
+        xlim = ax.get_xlim3d()
         deltaX = xlim[1] - xlim[0]
         meanX = np.mean(xlim)
-        ylim = ax.get_ylim()
+        ylim = ax.get_ylim3d()
         deltaY = ylim[1] - ylim[0]
         meanY = np.mean(ylim)
-        zlim = ax.get_zlim()
+        zlim = ax.get_zlim3d()
         deltaZ = zlim[1] - zlim[0]
         meanZ = np.mean(zlim)
 
         delta = np.max([deltaX,deltaY,deltaZ])
 
-        ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
-        ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
-        ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
+        ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
         ax.set_box_aspect((1,1,1))
         
@@ -419,6 +485,32 @@ def plotPointCloudFromPath(pointCloudPath, ax = None, interactive = False, **kwa
     colors = np.array(pointCloud.colors)
     return(plotPointCloud(points, colors, ax, interactive, **kwargs))
 
+def getMeshResolution(mesh):
+    try:
+        lines = np.array(mesh.vertices[mesh.edges_unique])
+    except:
+        mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
+        lines = np.array(mesh.vertices[mesh.edges_unique])
+        
+    if(len(lines) == 0):
+        h = np.linalg.norm(vertices[faces[:,1]] - vertices[faces[:,0]],axis=1)
+    else:
+        h = np.linalg.norm(lines[:,1] - lines[:,0],axis=1)
+    
+    return(np.min(h),np.max(h),np.average(h),np.std(h))
+
+def getMeshAreas(mesh):
+    try:
+        areas = np.array(mesh.area_faces)
+    except:
+        mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
+        areas = np.array(mesh.area_faces)
+
+        if(len(areas) == 0):
+            areas = np.zeros(1)
+
+    return(np.min(areas),np.max(areas),np.average(areas),np.std(areas))
+
 ## Function displaying mesh information
 #  @param vertices Mesh vertices
 #  @param faces Mesh faces
@@ -426,32 +518,6 @@ def plotPointCloudFromPath(pointCloudPath, ax = None, interactive = False, **kwa
 def getMeshInfo(vertices,faces,elementType="P0"):
 
     mesh = trimesh.Trimesh(vertices,faces)
-
-    def getMeshResolution(mesh):
-        try:
-            lines = np.array(mesh.vertices[mesh.edges_unique])
-        except:
-            mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
-            lines = np.array(mesh.vertices[mesh.edges_unique])
-            
-        if(len(lines) == 0):
-            h = np.linalg.norm(vertices[faces[:,1]] - vertices[faces[:,0]],axis=1)
-        else:
-            h = np.linalg.norm(lines[:,1] - lines[:,0],axis=1)
-        
-        return(np.min(h),np.max(h),np.average(h),np.std(h))
-
-    def getMeshAreas(mesh):
-        try:
-            areas = np.array(mesh.area_faces)
-        except:
-            mesh = trimesh.Trimesh(mesh.vertices,mesh.faces)
-            areas = np.array(mesh.area_faces)
-
-            if(len(areas) == 0):
-                areas = np.zeros(1)
-
-        return(np.min(areas),np.max(areas),np.average(areas),np.std(areas))
 
     print("MESH RESOLUTION - min, max, avg, std : ")
     print(getMeshResolution(mesh))
@@ -510,19 +576,86 @@ if __name__ == "__main__":
         print("element type = " + elementType)
 
     if(meshType == "sphere"):
-        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
+        if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "_legacy"*LEGACY + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or (saveYAML and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".yaml")) or info):
             vertices,faces = generateSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
-                plotMesh(vertices,faces,elementType)
-                #generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
+                ax = plotMesh(vertices,faces,elementType,plotNodes=True,plotEdges=True)
+                plt.show()
+
+        #Dual mesh
+        if(DUAL):
+            generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
+                
+        #Similar meshes
+        if(SIMILAR):
+
+            vertices,faces = generateSphericMesh(size, resolution, elementType)
+
+            ### Find the (b,c) parameters combinations leading to the best centroid fit
+            bmax,cmax = getTargetParameters(size,resolution,elementType)
+
+            centroidsInit = np.average(vertices[faces],axis=1)
+            centroidsDistances = np.ma.empty((bmax+1,cmax+1))
+
+            for b in range(bmax+1):
+                for c in range(cmax+1):
+                    if((c == cmax and b == bmax) or (c == 0)):
+                        centroidsDistances[b,c] = np.ma.masked
+                        continue
+
+                    verticesTmp,facesTmp = generateSphericMeshFromParameters(size,b,c,elementType)
+                    centroidsTmp = np.average(verticesTmp[facesTmp],axis=1)
+
+                    distance = 0
+                    for centroid in centroidsTmp:
+                        tmp = np.min(np.linalg.norm(centroidsInit - centroid, axis=1))
+                        if(tmp > distance):
+                            distance = tmp
+
+                    centroidsDistances[b,c] = distance
+
+            centroidsDistances = np.ma.array(centroidsDistances, mask=np.isnan(centroidsDistances))
+            bestParameters = np.array(np.ma.where(centroidsDistances <= 0.5*np.std(centroidsDistances))).T
+            
+            #Tweak the best meshes for better centroid fit
+            for parameters in bestParameters:
+                verticesTmp,facesTmp = generateSphericMeshFromParameters(size,parameters[0],parameters[1],elementType)
+                centroidsTmp = np.average(verticesTmp[facesTmp],axis=1)
+
+                #Compute M s.t. centroidsTmp = M*verticesTmp
+                M = np.zeros((3*len(facesTmp),3*len(verticesTmp)))
+                for i,face in enumerate(facesTmp):
+                    for j,index in enumerate(face):
+                        M[3*i:3*i+3,3*index:3*index+3] = np.eye(3)/3
+
+                #Get the matching (closest) centroids in the initial mesh
+                centroidsInitMatch = np.zeros(centroidsTmp.shape)
+                for i,centroid in enumerate(centroidsTmp):
+                    index = np.argmin(np.linalg.norm(centroidsInit - centroid, axis=1))
+                    centroidsInitMatch[i] = centroidsInit[index]
+
+                #Find verticesTmp s.t. |centroidsTmp - centroidsInitMatch| = |M*verticesTmp - centroidsInitMatch| is minimized
+                verticesTmp = np.linalg.lstsq(M,centroidsInitMatch.flatten(),rcond=None)[0].reshape(-1,3)
+
+                #Get new mesh resolution
+                resolutionTmp = np.round(getMeshResolution(trimesh.Trimesh(verticesTmp,facesTmp))[2],2)
+
+                if(not os.path.isdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")):
+                    os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")
+
+                meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/" + str(size) + "_" + str(resolutionTmp) + ".mesh"
+
+                print("Saving similar mesh with resolution " + str(resolutionTmp) + " at " + meshPath)
+                meshio.write_points_cells(meshPath, list(verticesTmp), [("triangle",list(facesTmp))])
 
     elif(meshType == "circle"):
         if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or info):
             vertices,faces = generateCircularMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
             if(info):
                 getMeshInfo(vertices,faces,elementType)
-                plotMesh(vertices,faces,elementType)
+                plotMesh(vertices,faces,elementType,plotEdges=True)
+                plt.show()
 
     else:
         print("Invalid mesh type !")
