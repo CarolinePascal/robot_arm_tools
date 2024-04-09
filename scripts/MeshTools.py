@@ -13,6 +13,9 @@ from scipy.spatial import ConvexHull
 import meshio
 import trimesh
 
+#Point cloud packages
+import point_cloud_utils as pcu
+
 #Plotting packages
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import art3d
@@ -21,6 +24,7 @@ import plotly.graph_objects as go
 
 LEGACY = False
 SIMILAR = False
+N_SIMILAR = 3
 DUAL = False
 
 ## Function computing the best values of the b and c parameters for the icosaedric approximation of a sphere
@@ -349,7 +353,7 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
             kwargsEdges = deepcopy(kwargs)
             kwargsEdges["mode"] = "lines"
             kwargsEdges["line"] = {}
-            kwargsEdges["line"]["color"] = "rgba" + str(kwargsEdges.pop("edgecolor",(0,0,0,0.25)))
+            kwargsEdges["line"]["color"] = "rgba" + str(kwargsEdges.pop("edgecolor",(0,0,0,0.2)))
             kwargsEdges["line"]["width"] = kwargsEdges.pop("linewidth",5)
 
             if(not kwargsEdges.pop("facecolor",None) is None):
@@ -387,7 +391,7 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
             if(not "facecolor" in kwargsEdges):
                 kwargsEdges["facecolor"] = (0,0,0.0,0)
             if(not "edgecolor" in kwargsEdges):
-                kwargsEdges["edgecolor"] = (0,0,0,0.25)
+                kwargsEdges["edgecolor"] = (0,0,0,0.2)
             if(not "linewidth" in kwargsEdges):
                 kwargsEdges["linewidth"] = 2
             ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces, **kwargsEdges)
@@ -587,69 +591,102 @@ if __name__ == "__main__":
 
         #Dual mesh
         if(DUAL):
-            generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset)
+            print("Dual mesh are hazardous for now")
+            generateDualSphericMesh(size, resolution, elementType, saveMesh, saveYAML, gradientOffset) 
                 
         #Similar meshes
         if(SIMILAR):
 
+            #TODO Get previously computed data, or load previously computed mesh ?
             vertices,faces = generateSphericMesh(size, resolution, elementType)
+            
+            #This is actually a problem that does not always have a solution : some meshes will have similar lower resolution meshes, but others wont have any !
+            if(elementType == "P0"):
 
-            ### Find the (b,c) parameters combinations leading to the best centroid fit
-            bmax,cmax = getTargetParameters(size,resolution,elementType)
+                #Compute current mesh data               
+                bmax,cmax = getTargetParameters(size,resolution,elementType)
+                centroidsInit = np.average(vertices[faces],axis=1)
 
-            centroidsInit = np.average(vertices[faces],axis=1)
-            centroidsDistances = np.ma.empty((bmax+1,cmax+1))
+                ### Find the (b,c) parameters combinations leading to the best centroid fit
+                centroidsDistances = np.ma.empty((bmax+1,cmax+1))
 
-            for b in range(bmax+1):
-                for c in range(cmax+1):
-                    if((c == cmax and b == bmax) or (c == 0)):
-                        centroidsDistances[b,c] = np.ma.masked
-                        continue
+                for b in range(bmax+1):
+                    for c in range(cmax+1):
 
-                    verticesTmp,facesTmp = generateSphericMeshFromParameters(size,b,c,elementType)
+                        #Remove current mesh parameters, and redundant parameters
+                        if((c == cmax and b == bmax) or (c == 0)):
+                            centroidsDistances[b,c] = np.ma.masked
+                            continue
+
+                        #Compute distance from current mesh centroids to the studied mesh centroids
+                        verticesTmp,facesTmp = generateSphericMeshFromParameters(size,b,c,elementType)
+                        centroidsTmp = np.average(verticesTmp[facesTmp],axis=1)
+
+                        distance = 0
+                        for centroid in centroidsTmp:
+                            tmp = np.min(np.linalg.norm(centroidsInit - centroid, axis=1))
+                            if(tmp > distance):
+                                distance = tmp
+
+                        centroidsDistances[b,c] = distance
+
+                #Keep only the best mesh which are the closest centroid-wise to the current mesh
+                centroidsDistances = np.ma.array(centroidsDistances, mask=np.isnan(centroidsDistances))
+                bestParameters = np.array(np.ma.where(centroidsDistances <= 0.5*np.std(centroidsDistances))).T
+                
+                #Tweak the best meshes for better centroid fit
+                for parameters in bestParameters:
+                    verticesTmp,facesTmp = generateSphericMeshFromParameters(size,parameters[0],parameters[1],elementType)
                     centroidsTmp = np.average(verticesTmp[facesTmp],axis=1)
 
-                    distance = 0
-                    for centroid in centroidsTmp:
-                        tmp = np.min(np.linalg.norm(centroidsInit - centroid, axis=1))
-                        if(tmp > distance):
-                            distance = tmp
+                    #Compute M s.t. centroidsTmp = M*verticesTmp
+                    M = np.zeros((3*len(facesTmp),3*len(verticesTmp)))
+                    for i,face in enumerate(facesTmp):
+                        for j,index in enumerate(face):
+                            M[3*i:3*i+3,3*index:3*index+3] = np.eye(3)/3
 
-                    centroidsDistances[b,c] = distance
+                    #Get the matching (closest) centroids in the initial mesh
+                    centroidsInitMatch = np.zeros(centroidsTmp.shape)
+                    for i,centroid in enumerate(centroidsTmp):
+                        index = np.argmin(np.linalg.norm(centroidsInit - centroid, axis=1))
+                        centroidsInitMatch[i] = centroidsInit[index]
 
-            centroidsDistances = np.ma.array(centroidsDistances, mask=np.isnan(centroidsDistances))
-            bestParameters = np.array(np.ma.where(centroidsDistances <= 0.5*np.std(centroidsDistances))).T
-            
-            #Tweak the best meshes for better centroid fit
-            for parameters in bestParameters:
-                verticesTmp,facesTmp = generateSphericMeshFromParameters(size,parameters[0],parameters[1],elementType)
-                centroidsTmp = np.average(verticesTmp[facesTmp],axis=1)
+                    #Find verticesTmp s.t. |centroidsTmp - centroidsInitMatch| = |M*verticesTmp - centroidsInitMatch| is minimized
+                    verticesTmp = np.linalg.lstsq(M,centroidsInitMatch.flatten(),rcond=None)[0].reshape(-1,3)
 
-                #Compute M s.t. centroidsTmp = M*verticesTmp
-                M = np.zeros((3*len(facesTmp),3*len(verticesTmp)))
-                for i,face in enumerate(facesTmp):
-                    for j,index in enumerate(face):
-                        M[3*i:3*i+3,3*index:3*index+3] = np.eye(3)/3
+                    #Get new mesh resolution
+                    resolutionTmp = trimesh.Trimesh(verticesTmp,facesTmp).edges_unique_length.max()
 
-                #Get the matching (closest) centroids in the initial mesh
-                centroidsInitMatch = np.zeros(centroidsTmp.shape)
-                for i,centroid in enumerate(centroidsTmp):
-                    index = np.argmin(np.linalg.norm(centroidsInit - centroid, axis=1))
-                    centroidsInitMatch[i] = centroidsInit[index]
+                    if(not os.path.isdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")):
+                        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")
 
-                #Find verticesTmp s.t. |centroidsTmp - centroidsInitMatch| = |M*verticesTmp - centroidsInitMatch| is minimized
-                verticesTmp = np.linalg.lstsq(M,centroidsInitMatch.flatten(),rcond=None)[0].reshape(-1,3)
+                    meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/" + str(size) + "_" + str(resolutionTmp) + ".mesh"
 
-                #Get new mesh resolution
-                resolutionTmp = np.round(getMeshResolution(trimesh.Trimesh(verticesTmp,facesTmp))[2],2)
+                    print("Saving similar mesh with resolution " + str(resolutionTmp) + " at " + meshPath)
+                    meshio.write_points_cells(meshPath, list(verticesTmp), [("triangle",list(facesTmp))])
 
-                if(not os.path.isdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")):
-                    os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")
+            #This problem however does always have a solution :)
+            if(elementType == "P1"):
+                
+                similarResolutions = [resolution*(1+i) for i in range(N_SIMILAR)]
 
-                meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/" + str(size) + "_" + str(resolutionTmp) + ".mesh"
+                for similarResolution in similarResolutions:
+                    idx = pcu.downsample_point_cloud_poisson_disk(vertices, similarResolution)
+                    sampledPoints = vertices[idx]
 
-                print("Saving similar mesh with resolution " + str(resolutionTmp) + " at " + meshPath)
-                meshio.write_points_cells(meshPath, list(verticesTmp), [("triangle",list(facesTmp))])
+                    hull = ConvexHull(sampledPoints)
+                    similarVertices, similarFaces = hull.points[hull.vertices], hull.simplices
+
+                    #Get new mesh resolution
+                    resolutionTmp = trimesh.Trimesh(verticesTmp,facesTmp).edges_unique_length.max()
+
+                    if(not os.path.isdir(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")):
+                        os.makedirs(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/")
+
+                    meshPath = os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/sphere" + "_legacy"*LEGACY + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)  + "/" + str(size) + "_" + str(resolutionTmp) + ".mesh"
+
+                    print("Saving similar mesh with resolution " + str(resolutionTmp) + " at " + meshPath)
+                    meshio.write_points_cells(meshPath, list(verticesTmp), [("triangle",list(facesTmp))])
 
     elif(meshType == "circle"):
         if((saveMesh and not os.path.isfile(os.path.dirname(os.path.dirname(os.path.abspath(__file__))) + "/config/meshes/" + meshType + "/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")) or info):
