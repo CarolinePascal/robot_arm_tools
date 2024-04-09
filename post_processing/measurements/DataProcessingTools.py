@@ -18,10 +18,14 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter, ScalarFormatter
 from matplotlib.ticker import MaxNLocator,AutoMinorLocator
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 cmap = plt.get_cmap("tab10")
 cmap2 = plt.get_cmap("tab20c")
-markers = ["^","s","o","v","D","x"]
+markers = ["^","s","o","v","D","x","*","+"]
+plotly_markers = ["triangle-up","square","circle","triangle-down","diamond","x","star","cross"]
+plt_to_plotly_markers = dict(zip(markers,plotly_markers))
+
 figsize = (10,9)
 
 arrow = dict(arrowstyle='<-',lw=0.5,color="gray")
@@ -37,24 +41,41 @@ def log_formatter(x,pos):
     else:   
         return("")
 
-def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, dby=True, plot_phase=True, unwrap_phase=True, validity_range = None, scalingFactor = 1.0, **kwargs):
+def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, dby=True, plot_phase=True, unwrap_phase=True, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
 
     if dby and (unit != Unit("Pa")) and (unit != Unit("m/s")) and (unit != Unit("1")):
         dby = False
         print("Warning: dB cannot be plotted with unit " + str(unit.units) + ", plotting linear values instead")
 
     if type(ax) == type(None):
-        if plot_phase:
-            _, ax = plt.subplots(2)
-            ax_0 = ax[0]
+        if interactive:
+            if plot_phase:
+                ax = make_subplots(rows=2, cols=1)
+            else:
+                ax = go.Figure()
         else:
-            _, ax = plt.subplots(1)
-            ax_0 = ax
+            if plot_phase:
+                _, ax = plt.subplots(2)
+                ax_0 = ax[0]
+            else:
+                _, ax = plt.subplots(1)
+                ax_0 = ax
     else:
-        if plot_phase:
-            ax_0 = ax[0]
-        else:
-            ax_0 = ax
+        if not interactive:
+            if plot_phase:
+                ax_0 = ax[0]
+            else:
+                ax_0 = ax
+
+    if interactive:
+        marker = {}
+        if "color" in kwargs:
+            marker["color"] = "rgb" + str(kwargs["color"][:3])
+        if "marker" in kwargs:
+            marker["symbol"] = plt_to_plotly_markers[kwargs["marker"]]
+        legend = ""
+        if "label" in kwargs:
+            legend = kwargs["label"]
 
     #Interpolate weighting data
     spa = csaps(weighting.freqs, weighting.amp, smooth=0.9)
@@ -92,38 +113,58 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
     frequencies_to_plot = scalingFactor*frequencies[valid_indices]
     modulus_to_plot = modulus_to_plot[valid_indices]
 
-    line_plot_kwargs = deepcopy(kwargs)
-    line_plot_kwargs["label"] = None
-    line_plot_kwargs["marker"] = "None"
-    line_plot_kwargs["linewidth"] = 2
-
-    ax_0.plot(frequencies_to_plot, modulus_to_plot, **line_plot_kwargs)
-    if not plot_phase:
-        if(scalingFactor != 1.0):
-            ax_0.set_xlabel(r'$hk$')
+    if interactive:
+        if plot_phase:
+            ax.add_trace(go.Scatter(x=frequencies_to_plot,y=modulus_to_plot,mode="lines",marker=marker, showlegend=False), row=1, col=1)
+            if(logx):
+                ax.update_xaxes(type="log", row=1, col=1)
+            if(scalingFactor != 1.0):
+                ax.update_xaxes(title_text=r'$hk$', row=1, col=1)
+            else:
+                ax.update_xaxes(title_text='Frequency (Hz)', row=1, col=1)
+            ax.update_yaxes(title_text=modulus_label, row=1, col=1)
         else:
-            ax_0.set_xlabel('Frequency (Hz)')
-        ax_0.yaxis.set_major_locator(MaxNLocator(10))
+            ax.add_trace(go.Scatter(x=frequencies_to_plot,y=modulus_to_plot,mode="lines",marker=marker, showlegend=False))
+            if(logx):
+                ax.update_xaxes(type="log")
+            if(scalingFactor != 1.0):
+                ax.update_xaxes(title_text=r'$hk$')
+            else:
+                ax.update_xaxes(title_text='Frequency (Hz)')
+            ax.update_yaxes(title_text=modulus_label)
     else:
-        ax_0.yaxis.set_major_locator(MaxNLocator(5))
+        line_plot_kwargs = deepcopy(kwargs)
+        line_plot_kwargs["label"] = None
+        line_plot_kwargs["marker"] = "None"
+        line_plot_kwargs["linewidth"] = 2
 
-    ax_0.yaxis.set_minor_locator(AutoMinorLocator(2))
-    ax_0.set_ylabel(modulus_label,labelpad=15)
+        ax_0.plot(frequencies_to_plot, modulus_to_plot, **line_plot_kwargs)
+        if not plot_phase:
+            if(scalingFactor != 1.0):
+                ax_0.set_xlabel(r'$hk$')
+            else:
+                ax_0.set_xlabel('Frequency (Hz)')
+            ax_0.yaxis.set_major_locator(MaxNLocator(10))
+        else:
+            ax_0.yaxis.set_major_locator(MaxNLocator(5))
 
-    if logx:
-        ax_0.set_xscale('log')
-        #ax_0.xaxis.set_minor_formatter(FuncFormatter(log_formatter))
-    else:
-        ax_0.xaxis.set_major_locator(MaxNLocator(10))
-        ax_0.xaxis.set_minor_locator(AutoMinorLocator(2))
+        ax_0.yaxis.set_minor_locator(AutoMinorLocator(2))
+        ax_0.set_ylabel(modulus_label,labelpad=15)
 
-    ax_0.grid(linestyle= '-', which="major")
-    ax_0.grid(linestyle = '--', which="minor")
-    ax_0.tick_params(axis='both', which='both', pad=7)
+        if logx:
+            ax_0.set_xscale('log')
+            #ax_0.xaxis.set_minor_formatter(FuncFormatter(log_formatter))
+        else:
+            ax_0.xaxis.set_major_locator(MaxNLocator(10))
+            ax_0.xaxis.set_minor_locator(AutoMinorLocator(2))
 
-    if(validity_range is not None and scalingFactor == 1.0):
-        if(len(ax_0.patches) == 0):
-            ax_0.axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
+        ax_0.grid(linestyle= '-', which="major")
+        ax_0.grid(linestyle = '--', which="minor")
+        ax_0.tick_params(axis='both', which='both', pad=7)
+
+        if(validity_range is not None and scalingFactor == 1.0):
+            if(len(ax_0.patches) == 0):
+                ax_0.axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
         
     if plot_phase:
         phase_to_plot = interpolated_walues_phase[valid_indices]
@@ -136,51 +177,68 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
             phase_delta = 2*np.pi * np.round((np.unwrap(interpolated_walues_phase)[first_index] - weighting.phase[0]) / (2*np.pi))
             weighting_phase_to_plot = weighting.phase + phase_delta
             
-        ax[1].plot(frequencies_to_plot, phase_to_plot, **line_plot_kwargs)
-
-        if(scalingFactor != 1.0):
-            ax[1].set_xlabel(r'$hk$')
+        if interactive:
+            ax.add_trace(go.Scatter(x=frequencies_to_plot,y=phase_to_plot,mode="lines",marker=marker,showlegend=False),row=2,col=1)
+            if(logx):
+                ax.update_xaxes(type="log", row=2, col=1)
+            if(scalingFactor != 1.0):
+                ax.update_xaxes(title_text=r'$hk$', row=2, col=1)
+            else:
+                ax.update_xaxes(title_text='Frequency (Hz)', row=2, col=1)
+            ax.update_yaxes(title_text=modulus_label, row=2, col=1)
         else:
-            ax[1].set_xlabel('Frequency (Hz)')
-        if logx:
-            ax[1].set_xscale('log')
-            #ax[1].xaxis.set_minor_formatter(FuncFormatter(log_formatter))
-        else:
-            ax[1].xaxis.set_major_locator(MaxNLocator(10))
-            ax[1].xaxis.set_minor_locator(AutoMinorLocator(2))
+            ax[1].plot(frequencies_to_plot, phase_to_plot, **line_plot_kwargs)
 
-        ax[1].set_ylabel('Phase (rad)')
-        ax[1].yaxis.set_major_locator(MaxNLocator(5))
-        ax[1].yaxis.set_minor_locator(AutoMinorLocator(2))
+            if(scalingFactor != 1.0):
+                ax[1].set_xlabel(r'$hk$')
+            else:
+                ax[1].set_xlabel('Frequency (Hz)')
+            if logx:
+                ax[1].set_xscale('log')
+                #ax[1].xaxis.set_minor_formatter(FuncFormatter(log_formatter))
+            else:
+                ax[1].xaxis.set_major_locator(MaxNLocator(10))
+                ax[1].xaxis.set_minor_locator(AutoMinorLocator(2))
 
-        ax[1].grid(linestyle = '-', which="major")
-        ax[1].grid(linestyle = '--', which="minor")
+            ax[1].set_ylabel('Phase (rad)')
+            ax[1].yaxis.set_major_locator(MaxNLocator(5))
+            ax[1].yaxis.set_minor_locator(AutoMinorLocator(2))
 
-        if(validity_range is not None):
-            if(len(ax[1].patches) == 0):
-                ax[1].axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
+            ax[1].grid(linestyle = '-', which="major")
+            ax[1].grid(linestyle = '--', which="minor")
 
-        ax[1].tick_params(axis='both', which='both', pad=7)
+            if(validity_range is not None):
+                if(len(ax[1].patches) == 0):
+                    ax[1].axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
+
+            ax[1].tick_params(axis='both', which='both', pad=7)
     
-    marker_plot_kwargs = deepcopy(kwargs)
-    marker_plot_kwargs["linestyle"] = "None"
-    marker_plot_kwargs["markerfacecolor"] = "None"
-    marker_plot_kwargs["markersize"] = 7
-    marker_plot_kwargs["markeredgewidth"] = 2
-
-    ax_0.plot(scalingFactor*weighting.freqs, weighting_modulus_to_plot, **marker_plot_kwargs)
-    if plot_phase:
-        ax[1].plot(scalingFactor*weighting.freqs, weighting_phase_to_plot, **marker_plot_kwargs)
-
-    h, l = ax_0.get_legend_handles_labels()
-    total_label_length = np.sum([len(label) for label in l])
-    if(total_label_length > 20):
-        ncol = 2
-        spacing = 1.0
+    if interactive:
+        if plot_phase:
+            ax.add_trace(go.Scatter(x=scalingFactor*weighting.freqs,y=weighting_modulus_to_plot,mode="markers",marker=marker,showlegend=True,name=legend),row=1,col=1)
+            ax.add_trace(go.Scatter(x=scalingFactor*weighting.freqs,y=weighting_phase_to_plot,mode="markers",marker=marker,showlegend=False,name=legend),row=2,col=1)
+        else:
+            ax.add_trace(go.Scatter(x=scalingFactor*weighting.freqs,y=weighting_modulus_to_plot,mode="markers",marker=marker,showlegend=True,name=legend))
     else:
-        ncol = 6
-        spacing = 0.5
-    ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=0.25, reverse=False,columnspacing=spacing,fontsize = 20)
+        marker_plot_kwargs = deepcopy(kwargs)
+        marker_plot_kwargs["linestyle"] = "None"
+        marker_plot_kwargs["markerfacecolor"] = "None"
+        marker_plot_kwargs["markersize"] = 7
+        marker_plot_kwargs["markeredgewidth"] = 2
+
+        ax_0.plot(scalingFactor*weighting.freqs, weighting_modulus_to_plot, **marker_plot_kwargs)
+        if plot_phase:
+            ax[1].plot(scalingFactor*weighting.freqs, weighting_phase_to_plot, **marker_plot_kwargs)
+
+        h, l = ax_0.get_legend_handles_labels()
+        total_label_length = np.sum([len(label) for label in l])
+        if(total_label_length > 20):
+            ncol = 2
+            spacing = 1.0
+        else:
+            ncol = 6
+            spacing = 0.5
+        ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=0.25, reverse=False,columnspacing=spacing,fontsize = 20)
 
     return ax
 
@@ -485,35 +543,41 @@ def save_fig(fig, name, interactive = False):
         fig.tight_layout()
         fig.savefig(name, dpi = 300, bbox_inches = 'tight')
 
-def set_title(ax, title):
-    try:
-        ax[0].set_title(title, pad=60)
-    except TypeError:
-        ax.set_title(title, pad=60)
+def set_title(ax, title, interactive = False):
+    if(interactive):
+        ax.update_layout(title_text=title)
+    else:
+        try:
+            ax[0].set_title(title, pad=60)
+        except TypeError:
+            ax.set_title(title, pad=60)
 
-def plot_absolute_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, **kwargs):
+def plot_absolute_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
     wAbs = ms.Weighting(freqs = wTh.freqs, amp = np.abs(wExp.amp/wTh.amp), phase = np.unwrap(wrap(wExp.phase - wTh.phase)))
 
-    plot_weighting(wAbs, frequencies, unit=Unit("1"), ax=ax, validity_range=validity_range, scalingFactor=scalingFactor, **kwargs)
+    plot_weighting(wAbs, frequencies, unit=Unit("1"), ax=ax, validity_range=validity_range, scalingFactor=scalingFactor, interactive=interactive, **kwargs)
 
     return(wAbs)          
 
-def plot_relative_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, **kwargs):
+def plot_relative_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
     valuesRel = (wExp.amp*np.exp(1j*wExp.phase) - wTh.amp*np.exp(1j*wTh.phase)) / (wTh.amp*np.exp(1j*wTh.phase))
     wRel = ms.Weighting(freqs = wTh.freqs, amp = np.abs(valuesRel))
 
-    plot_weighting(wRel, frequencies, unit=Unit("1"), ax=ax, plot_phase=False, dby=False, validity_range=validity_range, scalingFactor=scalingFactor, **kwargs)
+    plot_weighting(wRel, frequencies, unit=Unit("1"), ax=ax, plot_phase=False, dby=False, validity_range=validity_range, scalingFactor=scalingFactor, interactive=interactive, **kwargs)
 
     return(wRel)
 
-def plot_relative_separated_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, **kwargs):
+def plot_relative_separated_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
     ampValuesRelSep = np.abs(wExp.amp - wTh.amp)/np.abs(wTh.amp)
     phaseValuesRelSep = np.unwrap(wrap(wExp.phase - wTh.phase))/(2*np.pi)
     wRelSep = ms.Weighting(freqs = wTh.freqs, amp = ampValuesRelSep, phase = phaseValuesRelSep)
 
-    plot_weighting(wRelSep, frequencies, unit=Unit("1"), ax=ax, dby=False, validity_range=validity_range, scalingFactor=scalingFactor, **kwargs)
+    plot_weighting(wRelSep, frequencies, unit=Unit("1"), ax=ax, dby=False, validity_range=validity_range, scalingFactor=scalingFactor, interactive=interactive, **kwargs)
 
-    ax[1].set_ylabel(r'Phase (rad/2$\pi$)')
+    if(interactive):
+        ax.update_yaxes(title_text=r'Phase (rad/2$\pi$)', row=2, col=1)
+    else:
+        ax[1].set_ylabel(r'Phase (rad/2$\pi$)')
 
     return(wRelSep)
 

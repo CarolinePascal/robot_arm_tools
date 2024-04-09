@@ -12,12 +12,15 @@ np.set_printoptions(threshold=sys.maxsize)
 
 #Plot packages
 import matplotlib.pyplot as plt
+from plotly.subplots import make_subplots
 
 #Data processing tools
 from DataProcessingTools import plot_absolute_error, plot_relative_error, plot_relative_separated_error, compute_l2_errors, save_fig, set_title, cmap, markers, figsize, fmin, fmax, fminValidity, fmaxValidity, octBand
 
-#Reference signal index
-index = 0
+INTERACTIVE = False
+
+#Reference signal INDEX
+INDEX = 0
 
 if __name__ == "__main__":
 
@@ -51,7 +54,7 @@ if __name__ == "__main__":
         FilesWith = sorted(glob.glob(folder + "WithRobot/*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
         FilesWithout = sorted(glob.glob(folder + "WithoutRobot/*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 
-        file = FilesWith[index]
+        file = FilesWith[INDEX]
 
         print("Data processing file : " + file)
         M = ms.Measurement.from_csvwav(file.split(".")[0])
@@ -76,7 +79,7 @@ if __name__ == "__main__":
         w = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin,fmax)
         WWith.append(w)
 
-        file = FilesWithout[index]
+        file = FilesWithout[INDEX]
 
         print("Data processing file : " + file)
         M = ms.Measurement.from_csvwav(file.split(".")[0])
@@ -96,29 +99,39 @@ if __name__ == "__main__":
         w = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin,fmax)
         WWithout.append(w)
         
-    figAllAbs,axAllAbs = plt.subplots(2,figsize=figsize)
-    figAllRel,axAllRel = plt.subplots(1,figsize=figsize)
-    figAllRelSep,axAllRelSep = plt.subplots(2,figsize=figsize)
+    if INTERACTIVE:
+        axAllAbs = make_subplots(rows=2, cols=1)
+        axAllRel = make_subplots(rows=1, cols=1)
+        axAllRelSep = make_subplots(rows=2, cols=1)
+    else:
+        figAllAbs,axAllAbs = plt.subplots(2,figsize=figsize)
+        figAllRel,axAllRel = plt.subplots(1,figsize=figsize)
+        figAllRelSep,axAllRelSep = plt.subplots(2,figsize=figsize)
 
     for i,(wWith, wWithout) in enumerate(zip(WWith,WWithout)):
 
-        plot_absolute_error(wWith, wWithout, Freqs, ax=axAllAbs, validity_range=[fminValidity,fmaxValidity], marker=markers[i], color=cmap(i), label=str(i+1))
+        plot_absolute_error(wWith, wWithout, Freqs, ax=axAllAbs, validity_range=[fminValidity,fmaxValidity], interactive=INTERACTIVE, marker=markers[i], color=cmap(i), label=str(i+1))
 
-        plot_relative_error(wWith, wWithout, Freqs, ax=axAllRel, validity_range=[fminValidity,fmaxValidity], marker=markers[i], color=cmap(i), label=str(i+1))
+        plot_relative_error(wWith, wWithout, Freqs, ax=axAllRel, validity_range=[fminValidity,fmaxValidity], interactive=INTERACTIVE, marker=markers[i], color=cmap(i), label=str(i+1))
 
-        plot_relative_separated_error(wWith, wWithout, Freqs, ax=axAllRelSep, validity_range=[fminValidity,fmaxValidity], marker=markers[i], color=cmap(i), label=str(i+1))
+        plot_relative_separated_error(wWith, wWithout, Freqs, ax=axAllRelSep, validity_range=[fminValidity,fmaxValidity], interactive=INTERACTIVE, marker=markers[i], color=cmap(i), label=str(i+1))
 
         errorAbs, errorRel = compute_l2_errors(wWith, wWithout, frequencyRange=[fminValidity,fmaxValidity])
-        print("Absolute L2 error " + str(i+1) + " : " + str(errorAbs) + " Pa/V")
-        print("Relative L2 error " + str(i+1) + " : " + str(100*errorRel) + " %")
+        print("Absolute L2 error with and without robot (index " + str(i+1) + ") : " + str(errorAbs) + " Pa/V")
+        print("Relative L2 error with and without robot (index " + str(i+1) + ") : " + str(100*errorRel) + " %")
 
     #set_title(axAllAbs, "Pressure/Input signal TFE absolute error - 1/" + str(octBand) + " octave smoothing")
     #set_title(axAllRel, "Pressure/Input signal TFE relative error - 1/" + str(octBand) + " octave smoothing")
     #set_title(axAllRelSep, "Pressure/Input signal TFE modulus and phase relative error - 1/" + str(octBand) + " octave smoothing")
-
-    save_fig(figAllAbs, "./" + processingMethod + "_AbsoluteError.pdf")
-    save_fig(figAllRel, "./" + processingMethod + "_RelativeError.pdf")
-    save_fig(figAllRelSep, "./" + processingMethod + "_RelativeErrorSeparate.pdf")
-    plt.close("all")
+        
+    if INTERACTIVE:
+        axAllAbs.write_html("./" + processingMethod + "_AbsoluteError.html")
+        axAllRel.write_html("./" + processingMethod + "_RelativeError.html")
+        axAllRelSep.write_html("./" + processingMethod + "_RelativeErrorSeparate.html")
+    else:
+        save_fig(figAllAbs, "./" + processingMethod + "_AbsoluteError.pdf")
+        save_fig(figAllRel, "./" + processingMethod + "_RelativeError.pdf")
+        save_fig(figAllRelSep, "./" + processingMethod + "_RelativeErrorSeparate.pdf")
+        plt.close("all")
 
     #plt.show()
