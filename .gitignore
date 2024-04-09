@@ -1,6 +1,9 @@
-post_processing/measurements/*/
-post_processing/Baseline*/
-post_processing/Derivative*/
-config/meshes/
-
+*/__pycache__/
 *.pdf
+*.ipynb
+
+post_processing/measurements/*/
+post_processing/pretty_plot/
+post_processing/legacy/
+post_processing/SFT_monopole_P0_SL/
+config/meshes/
