@@ -16,6 +16,9 @@ from copy import deepcopy
 import trimesh as trimesh
 import meshio as meshio
 
+#Point cloud package
+import open3d as o3d
+
 #Plot package
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
@@ -27,6 +30,8 @@ from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, o
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname((os.path.abspath(__file__))))) + "/scripts")
 from MeshTools import plotMesh, plotPointCloudFromPath
+
+INTERACTIVE = True
 
 def sphereFit(points):
     A = np.zeros((len(points),4))
@@ -46,8 +51,6 @@ def sphereFit(points):
 
     return(center, radius)
 
-INTERACTIVE = True
-
 if __name__ == "__main__":
 
 	#Get processing method 
@@ -65,9 +68,6 @@ if __name__ == "__main__":
 		outputSignalType = sys.argv[2].lower()
 	except IndexError:
 		print("Invalid output signal type, defaulting to " + str(outputSignalType) + " output signal")
-
-	if(not os.path.isdir(processingMethod + "_" + outputSignalType)):
-		os.mkdir(processingMethod + "_" + outputSignalType)
 
 	#Get transfer function input and output signals names
 	inputSignal = "Out1" #Voltage
@@ -93,7 +93,7 @@ if __name__ == "__main__":
 		pointCloudPath = sys.argv[6]
 	except IndexError:
 		pass
-	if(not os.path.isfile(pointCloudPath)):
+	if(not pointCloudPath is None and not os.path.isfile(pointCloudPath)):
 		pointCloudPath = None
 
 	#Get mesh path
@@ -127,6 +127,11 @@ if __name__ == "__main__":
 			raise ValueError("Adapt to mesh is only possible with P0 elements")
 	except IndexError:
 		pass
+
+	#Retrieve measurements data and locations
+
+	folderName = processingMethod + "_" + outputSignalType + "_" + inputSignal + "_" + outputSignal + "_" + elementType
+	os.makedirs(folderName,exist_ok=True)
 
 	Files = sorted(glob.glob(outputSignalType + "*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 	
@@ -164,7 +169,7 @@ if __name__ == "__main__":
 	Y = []
 	Z = []
 
-	with open("States.csv", newline='') as csvfile:
+	with open("States.csv", 'r') as csvfile:
 		reader = csv.reader(csvfile, delimiter=',')
 		for row in reader:
 			X.append(float(row[0]))
@@ -180,33 +185,33 @@ if __name__ == "__main__":
 	#Measurement mesh
 	if(not meshPath is None):
 
-		try:
-			import shutil
-			shutil.copyfile(meshPath,"initMesh.mesh")
-		except shutil.SameFileError:
-			pass
-
-		#To adapt depending on the mesh type ! 
+		### TO ADPAT DEPENDING ON MESH TYPE ###
 		#centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
 		#centroid = np.mean(Points,axis=0)
 		centroid, radius = sphereFit(Points)
 		print("Estimated sphere centroid : " + str(centroid) + " m")
 		print("Estimated sphere radius : " + str(radius) + " m")
-			
-		mesh = meshio.read("initMesh.mesh")
+		########################################
+		
+		mesh = meshio.read(meshPath)
 		Vertices, Faces = mesh.points, mesh.get_cells_type("triangle")
 
+		### TO ADPAT DEPENDING ON MESH TYPE ###
 		#Shift vertices and centroids into the real world frame (measurements frame)
 		MeasurementsVertices = Vertices + centroid
+		########################################
 
-		#Compute mesh resolution and centroids
+		#Compute measurements resolution
+		pointCloud = o3d.geometry.PointCloud(o3d.utility.Vector3dVector(Points))
+		resolution = np.array(pointCloud.compute_nearest_neighbor_distance()).max()
+
+		#Compute mesh resolution
 		detailedMesh = trimesh.Trimesh(MeasurementsVertices, Faces)
-		resolution = np.mean(detailedMesh.edges_unique_length)
-		MeasurementsCentroids = detailedMesh.triangles_center
-  
+		meshResolution = detailedMesh.edges_unique_length.max()
+
 		#Set the measurements points
 		if(elementType == "P0"):
-			MeasurementsPoints = MeasurementsCentroids
+			MeasurementsPoints = np.mean(MeasurementsVertices[Faces],axis=1)
 		elif(elementType == "P1"):
 			MeasurementsPoints = MeasurementsVertices
 		else:
@@ -283,8 +288,8 @@ if __name__ == "__main__":
 
 			missing = [missing[i] for i in range(len(missing)) if i not in bestIndex]
 
-		#Save mesh
-		meshio.write_points_cells("robotMesh.mesh", MeasurementsVertices, mesh.cells)
+		#Save mesh, but offsetted to the measurements centroid
+		meshio.write_points_cells(folderName + "/robotMesh.mesh", MeasurementsVertices, mesh.cells)
 
 		Data = OrderedData
 		Points = MeasurementsPoints
@@ -298,25 +303,26 @@ if __name__ == "__main__":
 		#Save mesh
 		meshio.write_points_cells("robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
 
-	def processing_frequency(data):
+	def processing_frequency(input):
 
-		f = data[0]
-		data = data[1]
-		elementType = data[2]
-
-		if(elementType == "P0"):
-			epsilon = resolution
-		elif(elementType == "P1"):
-			epsilon = resolution*1.5
-		else:
-			raise ValueError("Invalid element type")
+		f = input[0]
+		data = input[1]
 
 		print("Processing frequency " + str(int(f)) + " Hz")
 
+		#Define epslion for minimal distance between measurements
+		if(elementType == "P0"):
+			epsilon = meshResolution
+		elif(elementType == "P1"):
+			epsilon = meshResolution*1.5
+		else:
+			raise ValueError("Invalid element type")
+
 		#Neighbours value filtering
-		if(resolution < 0.2*np.sqrt(radius*2)):	 #Very arbitrary criterion
+		if(not meshPath is None and meshResolution < 0.1*np.sqrt(radius)):	 #Very arbitrary criterion
 			filteredData = deepcopy(data)
 
+			counter = 0
 			for i,(point,pointData) in enumerate(zip(Points,data)):
 
 				neighbours = np.where(np.linalg.norm(Points - point,axis=1) <= epsilon)[0]
@@ -330,11 +336,18 @@ if __name__ == "__main__":
 				stdAbs = np.std(neighboursAbs)
 				stdPhase = np.std(neighboursPhase)
 
-				if(np.abs(np.abs(pointData) - meanAbs) > 3*stdAbs and np.abs(np.angle(pointData) - meanPhase) > 3*stdPhase):
+				#TO TEST
+				meanNeighbours = np.mean(data[neighbours])
+				stdNeighbours = np.std(data[neighbours])
+				#if(np.abs(pointData - meanNeighbours) > 3*stdNeighbours):
+
+				if(np.abs(np.abs(pointData) - meanAbs) > 3*stdAbs or np.abs(np.angle(pointData) - meanPhase) > 3*stdPhase):
+					counter += 1
 					filteredData[i] = meanAbs*np.exp(1j*meanPhase)
 					print("Replacing data at point " + str(point) + " : initial data = " + str(pointData) + " - filtered data = " + str(filteredData[i]))
 
 			data = filteredData
+			print("Percentage of filtered values : " + str(np.round(100*counter/len(Points),3)) + " %")
 		else:
 			print("Not enough points to filter data based on neighbour values")
 					
@@ -346,15 +359,15 @@ if __name__ == "__main__":
 			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 
 		plot_3d_data(np.abs(data), Points, axAmp, label = r"$|$H$|$ (Pa/V)", interactive=INTERACTIVE)
-		plot_3d_data(wrap(np.angle(data)), Points, axPhase, label = "Phase (rad)", INTERACTIVE=INTERACTIVE)
+		plot_3d_data(wrap(np.angle(data)), Points, axPhase, label = "Phase (rad)", interactive=INTERACTIVE)
 
 		if(pointCloudPath is not None):
-			plotPointCloudFromPath(pointCloudPath, ax = axAmp, INTERACTIVE=INTERACTIVE)
-			plotPointCloudFromPath(pointCloudPath, ax = axPhase, INTERACTIVE=INTERACTIVE)
+			plotPointCloudFromPath(pointCloudPath, ax = axAmp, interactive=INTERACTIVE)
+			plotPointCloudFromPath(pointCloudPath, ax = axPhase, interactive=INTERACTIVE)
 
 		if(meshPath is not None):
-			plotMesh(MeasurementsVertices, Faces, ax = axAmp, INTERACTIVE=INTERACTIVE)
-			plotMesh(MeasurementsVertices, Faces, ax = axPhase, INTERACTIVE=INTERACTIVE)
+			plotMesh(MeasurementsVertices, Faces, ax = axAmp, interactive=INTERACTIVE)
+			plotMesh(MeasurementsVertices, Faces, ax = axPhase, interactive=INTERACTIVE)
 
 		#set_title(axAmp,"Pressure/Input signal TFE amplitude at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
 		#set_title(axPhase,"Pressure/Input signal TFE phase at " + str(int(f)) + " Hz\n1/" + str(octBand) + " octave smoothing")
@@ -362,15 +375,15 @@ if __name__ == "__main__":
 		#axPhase.set_title("Measured phase at " + str(int(f)) + " Hz")
 			
 		if(INTERACTIVE):
-			save_fig(axAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".html",INTERACTIVE=True)
-			save_fig(axPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".html",INTERACTIVE=True)
+			save_fig(axAmp, folderName + "/amplitude_" + str(int(f)) + ".html",interactive=True)
+			save_fig(axPhase, folderName + "/phase_" + str(int(f)) + ".html",interactive=True)
 		else:
-			save_fig(figAmp, processingMethod + "_" + outputSignalType + "/amplitude_" + str(int(f)) + ".pdf")
-			save_fig(figPhase, processingMethod + "_" + outputSignalType + "/phase_" + str(int(f)) + ".pdf")
+			save_fig(figAmp, folderName + "/amplitude_" + str(int(f)) + ".pdf")
+			save_fig(figPhase, folderName + "/phase_" + str(int(f)) + ".pdf")
 			plt.close("all")
 
 		#Save data at given frequency
-		np.savetxt(processingMethod + "_" + outputSignalType + "/data_" + str(int(f)) + ".csv",np.array([np.real(data),np.imag(data)]).T,delimiter=",")
+		np.savetxt(folderName + "/data_" + str(int(f)) + ".csv",np.array([np.real(data),np.imag(data)]).T,delimiter=",")
 
 	with Pool(os.cpu_count()-1) as pool:
 		pool.map(processing_frequency,list(zip(Frequencies,Data)))
