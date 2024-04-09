@@ -1,20 +1,5 @@
 #!/usr/bin/python3
 
-#TODO
-# DATA PROCESSING
-#-> Mesures moyennées sur tous les points de controle, sur plusieurs acquisitions
-#-> Bonne métrique pour le calcul des erreurs (relative, absolue)
-#-> Simuler une mesure avec résolution plus faible (échantillonnage des points mesurés)
-#-> Haute fréquences : regarder longueure d'onde, taille de la sphère, résolution, etc.
-
-# UNCERTAINTIES
-#-> Moyenne ecart type => Tracer les deux en même temps ?
-#-> Plus de sigmas, explosion quand sigma = resolution => A voir sur les prochains tracés
-#-> Trace en fonction des valeurs normalisées r1/lambda, r2/lambda, resolution/lambda
-#-> Sigma sur la mesure => Estimer des valeurs de sigma, peut-être en fonction de la fréquence ?
-#-> Introduire distance caractéristique source avec dipole
-
-
 #System packages
 import sys
 import os
@@ -152,9 +137,9 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
     interestConfigurations = np.unique(P[:,1:],axis=0)
 
     #Select only the parameters configurations which are computed for each studied parameter value
-    #for configurations in splittedP:
-        #configurations = configurations[:,1:]
-        #interestConfigurations = interestConfigurations[(interestConfigurations[:, None] == configurations).all(-1).any(1)]
+    for configurations in splittedP:
+        configurations = configurations[:,1:]
+        interestConfigurations = interestConfigurations[(interestConfigurations[:, None] == configurations).all(-1).any(1)]
 
     if(len(interestConfigurations) == 0):
         print("[WARNING]: Inconsistent data, missing outputs for all parameters configurations.")
@@ -166,6 +151,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
 
     if("fixedParameters" in kwargs):
         fixedParameters = kwargs["fixedParameters"]
+        
         if(not isinstance(fixedParameters, list)):
             fixedParameters = [fixedParameters]
 
@@ -545,9 +531,9 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
         scalingFunction = lambda x: 100*x  
 
     linearRegression = False
-    if("linearRegression" in kwargs and kwargs["linearRegression"] == True):
+    if("linearRegression" in kwargs and kwargs["linearRegression"]):
         linearRegression = True
-    elif("linearRegression" in kwargs and kwargs["linearRegression"] == False):
+    elif("linearRegression" in kwargs and not kwargs["linearRegression"]):
         linearRegression = False
     else:
         flag = input("Linear regression ? y/n")
@@ -637,10 +623,16 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
                     #     R2N = 1 - np.sum((plotRefN - (VN[0]*scalingFunction(plotListP[i])+VN[1]))**2)/np.sum((plotRefN - np.mean(plotRefN))**2)
 
                     #     axNi.plot(plotListP[i],VN[0]*scalingFunction(plotListP[i])+VN[1],label="Reference",color=cmap(i),alpha=0.75,zorder=0)
-
+                    
+                elif("drawSlope" in kwargs and kwargs["drawSlope"] and "slopeValue" in kwargs):
+                    verticalOffset = np.mean(plotMaxN - kwargs["slopeValue"]*scalingFunction(plotListP[i]))
+                    axNi.plot(plotListP[i],verticalOffset + kwargs["slopeValue"]*scalingFunction(plotListP[i]),color=cmap(i),linestyle='dashed',linewidth=2)
+                    verticalOffset = np.mean(plotMeanN - kwargs["slopeValue"]*scalingFunction(plotListP[i]))
+                    axNi.plot(plotListP[i],verticalOffset + kwargs["slopeValue"]*scalingFunction(plotListP[i]),color=cmap(i),linestyle='dotted',linewidth=2)
+                    
                 else:
-                    axNi.plot(plotListP[i],plotMaxN,label="Maximum",color=cmap(i),linestyle='dashed',linewidth=2)
-                    axNi.plot(plotListP[i],plotMeanN,label="Average",color=cmap(i),linestyle='dotted',linewidth=2)
+                    axNi.plot(plotListP[i],plotMaxN,color=cmap(i),linestyle='dashed',linewidth=2)
+                    axNi.plot(plotListP[i],plotMeanN,color=cmap(i),linestyle='dotted',linewidth=2)
                     #axNi.plot(plotListP[i],plotMaxN,color=cmap(i),linestyle='dashed',linewidth=2)
                     #axNi.plot(plotListP[i],plotMeanN,color=cmap(i),linestyle='dotted',linewidth=2)
                     #if(len(referenceInterestConfigurations) != 0):
@@ -663,6 +655,10 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
 
                     AlphaMean.append(VN[0])
                     AlphaMax.append(VN[0])
+                    
+                elif("drawSlope" in kwargs and kwargs["drawSlope"] and "slopeValue" in kwargs):
+                    verticalOffset = np.mean(scalingFunction(plotN[i]) - kwargs["slopeValue"]*scalingFunction(plotListP[i]))
+                    axNi.plot(plotListP[i],verticalOffset + kwargs["slopeValue"]*scalingFunction(plotListP[i]),color=cmap(i),linestyle='dashed',linewidth=2)
 
     titleCounter = 0
 
@@ -770,7 +766,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
         figN.savefig(figureName, dpi = 300, bbox_inches = 'tight')
     else:
         axNi.set_position([0.165,0.125,0.8,0.7])
-        plt.show()
+        #plt.show()
 
     return(AlphaMean,AlphaMax)
 
@@ -797,71 +793,89 @@ if __name__ == "__main__":
     kwargs = {}
 
     kwargs["verticesNumber"] = False
+    kwargs["linearRegression"] = False
     kwargs["errorType"] = "relative"
     kwargs["logScale"] = True
 
-    """
     ### Resolution 
     kwargs["abscissaParameter"] = "resolution"
     kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],"*",[0.0],[0.0],[0.45]]
+    kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.0],[0.0],[0.45]]
 
     ### Resolution error unnormalized
-    kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
+    kwargs["abscissaValues"] = [0.005,0.0125,0.025,0.0375,0.05,0.0625,0.125,0.25]
     kwargs["normalisation"] = False
-    kwargs["linearRegression"] = True
+    kwargs["drawSlope"] = True
+    kwargs["slopeValue"] = 2.0
     plotError(postProcessing,analytical,error,figureName="ResolutionError.pdf",**kwargs)
-
+    
     ### Resolution error normalized
-    kwargs["abscissaValues"] = "*"
+    kwargs["abscissaValues"] = [0.005,0.0125,0.025,0.0375,0.05,0.0625,0.125,0.25]
     kwargs["normalisation"] = True
-    kwargs["linearRegression"] = False
+    kwargs["drawSlope"] = True
+    kwargs["slopeValue"] = 2.0
     plotError(postProcessing,analytical,error,figureName="NormalizedResolutionError.pdf",**kwargs)
 
     ### Size error normalized
     kwargs["abscissaParameter"] = "size"
     kwargs["abscissaValues"] = "*"
     kwargs["fixedParameters"] = ["resolution","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.05],"*",[0.0],[0.0],[0.05]]
+    kwargs["fixedValues"] = [[0.005],[100,500,1000,5000],[0.0],[0.0],[0.05]]
     kwargs["normalisation"] = True
-    kwargs["linearRegression"] = False
+    kwargs["drawSlope"] = False
     plotError(postProcessing,analytical,error,figureName="NormalizedSizeError.pdf",**kwargs)
-
+    
     ### Sigma error normalized
     kwargs["abscissaParameter"] = "sigmaPosition"
     kwargs["abscissaValues"] = [0.0005,  0.00125, 0.0025,  0.00375, 0.005, 0.0125]
     kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure"]
-    kwargs["fixedValues"] = [[0.5],[0.05],[100,1000,5000],[0.0]]
+    kwargs["fixedValues"] = [[0.5],[0.05],[100,500,1000,5000],[0.0]]
     kwargs["normalisation"] = False
     kwargs["linearRegression"] = False
     kwargs["robot"] = True
     plotError(postProcessing,analytical,error,figureName="NormalizedSigmaError.pdf",**kwargs)
     kwargs["robot"] = False
 
-    ### Size error normalized with sigma
-    kwargs["abscissaParameter"] = "size"
-    kwargs["abscissaValues"] = "*"
-    kwargs["fixedParameters"] = ["resolution","frequency","sigmaPosition","sigmaMeasure"]
-    kwargs["fixedValues"] = [[0.05],[100,500,1000,5000],[0.005],[0.0]]
-    kwargs["normalisation"] = True
-    kwargs["linearRegression"] = False
-    plotError(postProcessing,analytical,error,figureName="NormalizedSizeErrorSigma.pdf",**kwargs)
-
-    ### Resolution error normalized with sigma
+    ### When sigmaP << h, we fall back on the unnoised error estimate
+    ## We took the smallest sigmaP with all resolution, knowing there is a ten fold factor between the smallest resolution and sigmaP    
     kwargs["abscissaParameter"] = "resolution"
-    kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
-    kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure"]
-    kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.005],[0.0]]
-    kwargs["normalisation"] = True
-    kwargs["linearRegression"] = False
-    plotError(postProcessing,analytical,error,figureName="NormalizedResolutionErrorSigma.pdf",**kwargs)
+    kwargs["abscissaValues"] = [0.005, 0.0125, 0.025,  0.0375, 0.05]
+    kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
+    kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.0005]]
+    kwargs["normalisation"] = False
+    kwargs["drawSlope"] = True
+    kwargs["slopeValue"] = 2.0
+    plotError(postProcessing,analytical,error,figureName="ResolutionErrorSigma<<h.pdf",**kwargs)
 
+    ### When sigmaP >> 1 (and I guess h is not to big), we wish to find a sqrt(h) tendancy
+    ### We took the highest sigmaP value for all resolutions, but the largest sigmaP is still smaller than the largest resolution (#TODO New computation with sigmaP = 0.05/0.1/0.5 ?)
+    kwargs["abscissaParameter"] = "resolution"
+    kwargs["abscissaValues"] = [0.0125, 0.025,  0.0375, 0.05]
+    kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
+    kwargs["fixedValues"] = [[0.5],[0.05],[100,500,1000,5000],[0.0],[0.0125]]
+    kwargs["normalisation"] = False
+    kwargs["drawSlope"] = True
+    kwargs["slopeValue"] = 0.5
+    plotError(postProcessing,analytical,error,figureName="SigmaErrorSigma>>h.pdf",**kwargs)
+
+    ### When sigmaP ~ h, the linear sigmaP dependancy arises
+    ### We took the smallest resolution, whith the 4 highest values of sigmaP, knowing that the highest sigmaP value is equal to the resolution (in practice only the 0.0005 sigmaP is removed)
+    kwargs["abscissaParameter"] = "sigmaPosition"
+    kwargs["abscissaValues"] = [0.0005, 0.00125, 0.0025, 0.00375, 0.005]
+    kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
+    kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.005]]
+    kwargs["normalisation"] = False
+    kwargs["drawSlope"] = True
+    kwargs["slopeValue"] = 1.0
+    plotError(postProcessing,analytical,error,figureName="SigmaErrorSigma~h.pdf",**kwargs)
+    
     ### Resolution error unnormalized with sigma => Slope study
     kwargs["abscissaParameter"] = "resolution"
     kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
     kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure"]
     kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.0],[0.0]]
     kwargs["normalisation"] = False
+    kwargs["drawSlope"] = False
     kwargs["linearRegression"] = True
 
     sigmaPositions = [0.0, 0.0005,  0.00125, 0.0025,  0.00375, 0.005]
@@ -886,15 +900,18 @@ if __name__ == "__main__":
         for j,list in enumerate([AlphaMax,AlphaMean]):
             axN.plot(sigmaPositions,list[:,i],color=cmap2(4*i+j),marker=markers[i],linestyle='None',markerfacecolor='None',markersize=10,markeredgewidth=3,label=Labels[j] + " - f = " + str(f) + " Hz")
 
-    #axN.axhline(y=0.5,color="dimgray",linestyle='dashed',linewidth=2)
-    #t = axN.text(-0.02, 0.5, r"$\sqrt{h}$", color='dimgray', transform=axN.get_yaxis_transform(), ha='right', va='center',fontsize = 20)
+    axN.axhline(y=0.5,color="dimgray",linestyle='dashed',linewidth=1.5)
+    t = axN.text(1.02, 0.5, r"$\sqrt{h}$", color='dimgray', transform=axN.get_yaxis_transform(), ha='left', va='center',fontsize = 20)
+    axN.axhline(y=2,color="dimgray",linestyle='dashed',linewidth=1.5)
+    t = axN.text(1.02, 2, r"$h^2$", color='dimgray', transform=axN.get_yaxis_transform(), ha='left', va='center',fontsize = 20)
+    axN.axhline(y=1,color="dimgray",linestyle='dashed',linewidth=1.5)
+    t = axN.text(1.02, 1, r"$h$", color='dimgray', transform=axN.get_yaxis_transform(), ha='left', va='center',fontsize = 20)
 
     figN.tight_layout()
     axN.set_position([0.165,0.125,0.8,0.85])
 
-
     axN.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=2, borderaxespad=0.25, reverse=False,columnspacing=1.0, fontsize=20)
-    axN.set_ylabel(r"slope (-)",labelpad=15)
+    axN.set_ylabel(r"Error slope (-)",labelpad=15)
     axN.set_xlabel(r"$\sigma_P$ (m)")
     axN.grid(which="major")
     axN.grid(linestyle = '--',which="minor")
@@ -903,34 +920,3 @@ if __name__ == "__main__":
     axN.tick_params(axis='both', which='major', pad=7)
 
     figN.savefig("SigmaSlope.pdf", dpi = 300, bbox_inches = 'tight')
-    """
-
-    ### When sigmaP << h, we fall back on the unnoised error estimate
-    ### We took the smallest sigmaP with all resolution, knowing there is a ten fold factor between the smallest resolution and sigmaP
-    # kwargs["abscissaParameter"] = "resolution"
-    # kwargs["abscissaValues"] = [0.005, 0.0125, 0.025,  0.0375, 0.05]
-    # kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
-    # kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.0005]]
-    # kwargs["normalisation"] = False
-    # kwargs["linearRegression"] = True
-    # plotError(postProcessing,analytical,error,figureName="ResolutionErrorSigma<<h.pdf",**kwargs)
-
-    ### When sigmaP >> 1 (and I guess h is not to big), we wish to find a sqrt(h) tendancy
-    ### We took the highest sigmaP value for all resolutions
-    # kwargs["abscissaParameter"] = "resolution"
-    # kwargs["abscissaValues"] = [0.005, 0.0125, 0.025,  0.0375, 0.05]
-    # kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
-    # kwargs["fixedValues"] = [[0.5],[0.05],[100,500,1000,5000],[0.0],[0.0125]]
-    # kwargs["normalisation"] = False
-    # kwargs["linearRegression"] = True
-    # plotError(postProcessing,analytical,error,figureName=None,**kwargs)
-
-    ### When sigmaP <= h, the linear sigmaP dependancy arises
-    ### We took the smallest resolution, whith the 4 highest values of sigmaP, knowing that the highest sigmaP value is equal to the resolution (in practice only the 0.0005 sigmaP is removed)
-    kwargs["abscissaParameter"] = "sigmaPosition"
-    kwargs["abscissaValues"] = [0.0005, 0.00125, 0.0025,  0.00375, 0.005]
-    kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition"]
-    kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.005]]
-    kwargs["normalisation"] = False
-    kwargs["linearRegression"] = True
-    plotError(postProcessing,analytical,error,figureName=None,**kwargs)
