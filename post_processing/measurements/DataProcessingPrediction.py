@@ -54,8 +54,11 @@ if __name__ == "__main__":
 	FoldersLabels = [""]*len(Folders)
 	try:
 		FoldersLabels = sys.argv[4].split(",")
+		if FoldersLabels[0] == "None" and len(FoldersLabels) == 1:
+			raise IndexError
 	except IndexError:
-		print("Invalid folders lables, defaulting to no labels")
+		print("Invalid folders labels, defaulting to no labels")
+		FoldersLabels = [""]*len(Folders)
 
 	FoldersScalingFactors = [1.0]*len(Folders)
 	try:
@@ -75,8 +78,8 @@ if __name__ == "__main__":
 	if(len(Frequencies) == 0):
 		Files = sorted(glob.glob(Folders[0] + "output_*.csv"), key = keyFunction)
 		Frequencies = np.array([keyFunction(file) for file in Files])
-		Frequencies = Frequencies[Frequencies < fmaxValidity*1.1]
-		Frequencies = Frequencies[Frequencies > fminValidity*0.9]
+		#Frequencies = Frequencies[Frequencies < fmaxValidity*1.1]
+		#Frequencies = Frequencies[Frequencies > fminValidity*0.9]
 
 	Files = [[glob.glob(folder + "output_" + str(f) + ".csv")[0] for f in Frequencies] for folder in Folders]
 
@@ -130,7 +133,7 @@ if __name__ == "__main__":
 				#Compute error at each fixed frequency for all points
 				for i,(f,predicted,measured) in enumerate(zip(Frequencies,PredictedData.transpose(1,0,2),MeasuredData.transpose(1,0,2))):
 
-					#figBoth, axBoth = plt.subplots(1,2,figsize=figsize,subplot_kw={'projection': 'polar'})
+					figBoth, axBoth = plt.subplots(1,2,figsize=figsize,subplot_kw={'projection': 'polar'})
 					figAbs, axAbs = plt.subplots(2,figsize=figsize)
 					figRel, axRel = plt.subplots(1,figsize=figsize)
 					figRelSep, axRelSep = plt.subplots(2,figsize=figsize)
@@ -141,8 +144,8 @@ if __name__ == "__main__":
 
 						additionnalLabel = "" if len(folderLabel) == 0 else " - " + folderLabel
 
-						#plot_polar_data(predicted[j],PointsIndex,unit=Unit("Pa/V"),ax=axBoth, marker=markers[2*j], color=cmap2(4*j), label="Prediction" + additionnalLabel)
-						#plot_polar_data(measured[j],PointsIndex,unit=Unit("Pa/V"),ax=axBoth, marker=markers[2*j+1], color=cmap2(4*j+1), label="Measurement" + additionnalLabel)
+						plot_polar_data(predicted[j],PointsIndex,unit=Unit("Pa/V"),ax=axBoth, marker=markers[2*j], color=cmap2(4*j), label="Prediction" + additionnalLabel)
+						plot_polar_data(measured[j],PointsIndex,unit=Unit("Pa/V"),ax=axBoth, marker=markers[2*j+1], color=cmap2(4*j+1), label="Measurement" + additionnalLabel)
 
 						plot_absolute_error_spatial(predicted[j], measured[j], PointsIndex, ax=axAbs, marker=markers[j], color=cmap(j), label="Absolute error" + additionnalLabel)
 						plot_relative_error_spatial(predicted[j], measured[j], PointsIndex, ax=axRel, marker=markers[j], color=cmap(j), label="Relative error" + additionnalLabel)
@@ -158,7 +161,7 @@ if __name__ == "__main__":
 					#set_title(axRel, "Pressure/Input signal TFE relative error - f = " + str(f) + " Hz")
 					#set_title(axRelSep, "Pressure/Input signal TFE modulus and phase relative errors\n - f = " + str(f) + " Hz")
 
-					#save_fig(figBoth, globalFolder + "Both_" + str(f) + ".pdf")
+					save_fig(figBoth, globalFolder + "Both_" + str(f) + ".pdf")
 					save_fig(figAbs, globalFolder + "Absolute_" + str(f) + ".pdf")
 					save_fig(figRel, globalFolder + "Relative_" + str(f) + ".pdf")
 					save_fig(figRelSep, globalFolder + "RelativeSeparated_" + str(f) + ".pdf")
@@ -211,7 +214,7 @@ if __name__ == "__main__":
 				#Compute error at each fixed point for all frequencies
 				for i,(index,predicted,measured) in enumerate(zip(PointsIndex,PredictedData.transpose(2,0,1),MeasuredData.transpose(2,0,1))):
 
-					#figBoth, axBoth = plt.subplots(2,figsize=figsize)
+					figBoth, axBoth = plt.subplots(2,figsize=figsize)
 					figAbs, axAbs = plt.subplots(2,figsize=figsize)
 					figRel, axRel = plt.subplots(1,figsize=figsize)
 					figRelSep, axRelSep = plt.subplots(2,figsize=figsize)
@@ -225,8 +228,8 @@ if __name__ == "__main__":
 						wPredicted = ms.Weighting(freqs=Frequencies,amp=np.abs(predicted[j]),phase=wrap(np.angle(predicted[j])))
 						wMeasured = ms.Weighting(freqs=Frequencies,amp=np.abs(measured[j]),phase=wrap(np.angle(measured[j])))
 
-						#plot_weighting(wPredicted,PlotFrequencies,unit=Unit("Pa/V"),ax=axBoth, validity_range=[fminValidity,fmaxValidity], marker=markers[2*j], color=cmap2(4*j), label="Prediction" + additionnalLabel)
-						#plot_weighting(wMeasured,PlotFrequencies,unit=Unit("Pa/V"),ax=axBoth, validity_range=[fminValidity,fmaxValidity], marker=markers[2*j+1], color=cmap2(4*j+1), label="Measurement" + additionnalLabel)
+						plot_weighting(wPredicted,PlotFrequencies,unit=Unit("Pa/V"),ax=axBoth, validity_range=[fminValidity,fmaxValidity], marker=markers[2*j], color=cmap2(4*j), label="Prediction" + additionnalLabel)
+						plot_weighting(wMeasured,PlotFrequencies,unit=Unit("Pa/V"),ax=axBoth, validity_range=[fminValidity,fmaxValidity], marker=markers[2*j+1], color=cmap2(4*j+1), label="Measurement" + additionnalLabel)
 
 						plot_absolute_error(wPredicted, wMeasured, PlotFrequencies, ax=axAbs, validity_range=[fminValidity,fmaxValidity], scalingFactor=folderScalingFactor, marker=markers[j], color=cmap(j), label="Absolute error" + additionnalLabel)
 						plot_relative_error(wPredicted, wMeasured, PlotFrequencies, ax=axRel, validity_range=[fminValidity,fmaxValidity], scalingFactor=folderScalingFactor, marker=markers[j], color=cmap(j), label="Relative error" + additionnalLabel)
@@ -242,7 +245,7 @@ if __name__ == "__main__":
 					#set_title(axRel, "Pressure/Input signal TFE relative error\nPoint " + display_point(Points[index]))
 					#set_title(axRelSep, "Pressure/Input signal TFE modulus and phase relative errors\nPoint " + display_point(Points[index]))
 
-					#save_fig(figBoth, globalFolder + "Both_" + str(index) + ".pdf")
+					save_fig(figBoth, globalFolder + "Both_" + str(index) + ".pdf")
 					save_fig(figAbs, globalFolder + "Absolute_" + str(index) + ".pdf")
 					save_fig(figRel, globalFolder + "Relative_" + str(index) + ".pdf")
 					save_fig(figRelSep, globalFolder + "RelativeSeparated_" + str(index) + ".pdf")
