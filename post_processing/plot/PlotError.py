@@ -15,8 +15,8 @@ sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + 
 from MeshTools import generateSphericMesh
 
 #Custom tools packages
-from acousticTools import *
-from plotTools import *
+from AcousticTools import *
+from PlotTools import *
 figsize = (10,9)
 
 from matplotlib.ticker import MaxNLocator
@@ -28,9 +28,9 @@ def flip(items, ncol):
     return itertools.chain(*[items[i::ncol] for i in range(ncol)])
 
 ## Function plotting the error between computed values and analytical values for an output files folder according to a given parameter
-#  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
-#  @param analyticalFunctionID ID of the analytical function (c.f. acousticTools.py)
-#  @param errorID ID of the error function (c.f. plotTools.py)
+#  @param postProcessingID ID of the post-processing function (c.f. PlotTools.py)
+#  @param analyticalFunctionID ID of the analytical function (c.f. AcousticTools.py)
+#  @param errorID ID of the error function (c.f. PlotTools.py)
 def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.pdf",**kwargs):
 
     #Get post-processing and analytical functions

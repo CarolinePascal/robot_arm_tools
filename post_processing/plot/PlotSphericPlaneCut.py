@@ -11,8 +11,8 @@ import numpy as np
 from measpy._tools import wrap
 
 #Custom tools packages
-from acousticTools import *
-from plotTools import *
+from AcousticTools import *
+from PlotTools import *
 
 from matplotlib.ticker import ScalarFormatter,FormatStrFormatter
 from matplotlib.ticker import MaxNLocator
@@ -20,9 +20,9 @@ from matplotlib.ticker import MaxNLocator
 figsize = (10,9)
 
 ## Function plotting the error between computed values and analytical values for an output files folder on the z=0 plane for a given parameters configuration
-#  @param postProcessingID ID of the post-processing function (c.f. plotTools.py)
-#  @param analyticalFunctionID ID of the analytical function (c.f. acousticTools.py)
-#  @param errorID ID of the error function (c.f. plotTools.py)
+#  @param postProcessingID ID of the post-processing function (c.f. PlotTools.py)
+#  @param analyticalFunctionID ID of the analytical function (c.f. AcousticTools.py)
+#  @param errorID ID of the error function (c.f. PlotTools.py)
 def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
 
     #Get post-processing and analytical functions
