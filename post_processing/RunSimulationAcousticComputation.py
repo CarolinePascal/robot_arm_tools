@@ -125,7 +125,7 @@ if(__name__ == "__main__"):
                                     output, error = process.communicate()
                                     t1 = time.time()
 
-                                    with open("computation_time_CL_" + function + "_" + elementType + ".csv","a") as f:
+                                    with open("computation_time_" + function + "_" + elementType + ".csv","a") as f:
                                         if(function == "dipole"):
                                             data = [str(frequency),str(resolution),str(size),str(dipoleDistance),str(sigmaPosition),str(sigmaMeasure),str(t1-t0)]
                                         else:
