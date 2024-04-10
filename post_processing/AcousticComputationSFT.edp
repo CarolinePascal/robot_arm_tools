@@ -4,9 +4,9 @@ load "iovtk"
 load "medit"
 load "msh3"
 
-include "computationTools.edp"
-include "acousticTools.edp"
-include "measurementsTools.edp"
+include "ComputationTools.edp"
+include "AcousticTools.edp"
+include "MeasurementsTools.edp"
 
 include "getARGV.idp"
 
