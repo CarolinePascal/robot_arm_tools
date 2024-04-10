@@ -25,7 +25,7 @@
 
 	<!-- STUDIED OBJECT -->
 	<node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node_object" output="screen">
-		<param name="environmentFileName" value="FILL HERE"/>
+		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/StudiedObject.yaml"/>
 	</node>
 
 	<!-- MAIN NODE -->
@@ -43,7 +43,7 @@
 
 	<!-- Run Rviz --> 
     <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node" output="screen">
-		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/AnechoicRoom.yaml"/>
+		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/Environment.yaml"/>
 	</node>
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_acoustic)/config/AcousticSetup.rviz"/>
 

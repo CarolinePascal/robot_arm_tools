@@ -19,7 +19,7 @@
 
 	<!-- STUDIED OBJECT -->
 	<node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node_object" output="screen">
-		<param name="environmentFileName" value="FILL HERE"/>
+		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/StudiedObject.yaml"/>
 	</node>
 
 	<!-- MEASUREMENT SERVER -->
@@ -30,12 +30,12 @@
 	
 	<!-- MAIN NODE -->
 	<node pkg="robot_arm_tools" type="robot_arm_tools_example_trajectory_node" name="robot_arm_tools_example_trajectory_node" output="screen" required="true">
-		<param name="trajectoryFilePath" value="FILL HERE"/>
+		<param name="trajectoryFilePath" value="$(find robot_arm_acoustic)/config/environments/StudiedObject.yaml"/>
 	</node>
 
 	<!-- Run Rviz --> 
     <node pkg="robot_arm_tools" type="robot_arm_tools_environment_node" name="robot_arm_tools_environment_node_environment" output="screen">
-		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/AnechoicRoom.yaml"/>
+		<param name="environmentFileName" value="$(find robot_arm_acoustic)/config/environments/Environment.yaml"/>
 	</node>
     <node type="rviz" name="rviz" pkg="rviz" args="-d $(find robot_arm_acoustic)/config/AcousticSetup.rviz"/>
 

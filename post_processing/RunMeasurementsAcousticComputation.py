@@ -129,7 +129,7 @@ if(__name__ == "__main__"):
 
         ### Run computation
 
-        bashCommand = command + " -frequency " + str(frequency) + " -realMeasurements 1 -measurementsMeshPath " + measurementsMeshPath + " -measurementsDataPath " + measurementsDataFolder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verificationMeshPath + " -verificationDataPath " + verificationDataFolder + "data_" + str(frequency) + ".csv -verificationGradientDataFolder " + verificationDataFolder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
+        bashCommand = command + " -frequency " + str(frequency) + " -realMeasurements 1 -measurementsMeshPath " + measurementsMeshPath + " -measurementsDataPath " + measurementsDataFolder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verificationMeshPath + " -verificationDataPath " + verificationDataFolder + "data_" + str(frequency) + ".csv -verificationGradientDataPath " + verificationDataFolder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
         print(bashCommand)
 
         t0 = time.time()

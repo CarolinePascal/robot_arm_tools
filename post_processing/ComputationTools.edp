@@ -33,6 +33,7 @@ func real[int] linspace(real min, real max, int itemNumber)
     return(output);
 }
 
+//TODO Run the meshing tool if mesh is missing ?
 func meshS getSphericMesh(real size, real resolution, real sigma, string elementType)
 {
     //Solve rounding issues...
