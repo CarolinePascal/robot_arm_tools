@@ -391,7 +391,7 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
             if(not "facecolor" in kwargsEdges):
                 kwargsEdges["facecolor"] = (0,0,0.0,0)
             if(not "edgecolor" in kwargsEdges):
-                kwargsEdges["edgecolor"] = (0,0,0,0.2)
+                kwargsEdges["edgecolor"] = (0,0,0,0.1)
             if(not "linewidth" in kwargsEdges):
                 kwargsEdges["linewidth"] = 2
             ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces, **kwargsEdges)
