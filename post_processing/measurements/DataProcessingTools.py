@@ -162,9 +162,9 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
         ax_0.grid(linestyle = '--', which="minor")
         ax_0.tick_params(axis='both', which='both', pad=7)
 
-        if(validity_range is not None and scalingFactor == 1.0):
+        if(validity_range is not None):
             if(len(ax_0.patches) == 0):
-                ax_0.axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
+                ax_0.axvspan(scalingFactor*validity_range[0],scalingFactor*validity_range[1],color="gray",alpha=0.175)
         
     if plot_phase:
         phase_to_plot = interpolated_walues_phase[valid_indices]
