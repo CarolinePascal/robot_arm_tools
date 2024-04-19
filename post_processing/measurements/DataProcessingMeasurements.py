@@ -31,7 +31,7 @@ from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, o
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname((os.path.abspath(__file__))))) + "/scripts")
 from MeshTools import plotMesh, plotPointCloudFromPath
 
-INTERACTIVE = True
+INTERACTIVE = False
 
 def sphereFit(points):
     A = np.zeros((len(points),4))
@@ -122,11 +122,14 @@ if __name__ == "__main__":
 	#Wether to adapt data to the mesh (i.e. when data is not provided at the centroids locations)
 	adaptToMesh = False
 	try:
-		adaptToMesh = bool(sys.argv[9])
+		adaptToMesh = bool(int(sys.argv[9]))
 		if(adaptToMesh and elementType != "P0"):
 			raise ValueError("Adapt to mesh is only possible with P0 elements")
 	except IndexError:
 		pass
+
+	if(adaptToMesh):
+		print("[WARNING] Data will be adapted to the mesh")
 
 	#Retrieve measurements data and locations
 
@@ -219,26 +222,7 @@ if __name__ == "__main__":
 
 		OrderedData = np.empty((len(Frequencies),len(MeasurementsPoints)),dtype=complex)
 
-		if(not adaptToMesh):
-
-			missing = []
-			
-			#Reorder data according to the mesh and find missing measurements
-			for i,MeasurementsPoint in enumerate(MeasurementsPoints):
-
-				#Find the closest measurement point to the current mesh point
-				distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
-				indexMin = np.argmin(distances)
-
-				#If the closest measurement point is too far away, we consider that the Measurements point is missing
-				#Else, we assign the corresponding data value to the mesh point
-				if(distances[indexMin] > resolution/2):
-					print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
-					missing.append(i)
-				else:
-					OrderedData[:,i] = Data[:,indexMin]
-					
-		else:
+		if(adaptToMesh):
 
 			#Get mesh closest face for each measurement point
 			_,_,faceIndex = trimesh.proximity.closest_point(detailedMesh,Points) 
@@ -259,6 +243,26 @@ if __name__ == "__main__":
 			missing = [i for i in range(len(MeasurementsPoints)) if i not in faceIndex]
 			for i in missing:
 				print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoints[i]))
+				
+		else:
+
+			missing = []
+			
+			#Reorder data according to the mesh and find missing measurements
+			for i,MeasurementsPoint in enumerate(MeasurementsPoints):
+
+				#Find the closest measurement point to the current mesh point
+				distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
+				indexMin = np.argmin(distances)
+
+				#If the closest measurement point is too far away, we consider that the Measurements point is missing
+				#Else, we assign the corresponding data value to the mesh point
+				print(distances[indexMin])
+				if(distances[indexMin] > resolution/2):
+					print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
+					missing.append(i)
+				else:
+					OrderedData[:,i] = Data[:,indexMin]
 
 		#Fill missing mesh points
 		filledPoints = deepcopy(Points)
