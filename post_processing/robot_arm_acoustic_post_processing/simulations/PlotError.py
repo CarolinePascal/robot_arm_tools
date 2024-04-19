@@ -11,8 +11,7 @@ import numpy as np
 
 #Mesh packages
 import meshio as meshio
-sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + "/scripts")
-from MeshTools import generateSphericMesh
+from robot_arm_acoustic.MeshTools import generateSphericMesh
 
 #Custom tools packages
 from AcousticTools import *
