@@ -7,22 +7,8 @@ import os
 #Utility packages
 import numpy as np
 
-#Fancy plot parameter
-import matplotlib.pyplot as plt
-
-plt.rc('font', **{'size': 24, 'family': 'serif', 'serif': ['Computer Modern']})
-plt.rc('text', usetex=True)
-cmap = plt.get_cmap("tab10")
-cmap2 = plt.get_cmap("tab20c")
-markers = ["^","s","o","v","D","x","*","+"]
-
-def log_formatter(x,pos):
-    sci = "{:.0e}".format(x)
-    sci = [int(item) for item in sci.split("e")]
-    if(sci[0] == 5):
-        return(r"$5\times10^{{{exponent}}}$".format(exponent=sci[1]))
-    else:   
-        return("")
+#Plot packages
+from robot_arm_acoustic_post_processing.PlotTools import *
 
 #Post-processing functions
 postProcessingFunctions = {}

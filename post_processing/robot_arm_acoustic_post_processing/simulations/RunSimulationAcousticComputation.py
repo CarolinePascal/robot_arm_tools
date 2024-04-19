@@ -12,8 +12,7 @@ import numpy as np
 
 #Mesh packages
 sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + "/scripts")
-from MeshTools import generateSphericMesh, generateCircularMesh
-from MeshToolsUncertainty import generateSphericMeshUncertainty
+from robot_arm_acoustic.MeshTools import generateSphericMesh, generateCircularMesh
 
 ### Studied function
 function = "monopole"
@@ -82,7 +81,7 @@ if(__name__ == "__main__"):
 
                             if(sigmaPosition != 0.0):
                                 try:
-                                    generateSphericMeshUncertainty(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True) #Generate a new random mesh !
+                                    generateSphericMesh(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True) #Generate a new random mesh !
                                 except:
                                     print("Mesh generation failed, skipping computation")
                                     continue
