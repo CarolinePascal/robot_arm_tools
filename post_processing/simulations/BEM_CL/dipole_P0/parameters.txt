@@ -1,7 +1,0 @@
-frequency Hz
-resolution m
-size m
-dipoleDistance m
-sigmaPosition m
-sigmaMeasure Pa
-iteration
