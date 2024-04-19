@@ -47,6 +47,7 @@ def getParametersConfigurations():
 
     #Get all output files
     fileList = np.array(glob.glob("output*"))
+    fileList = np.append(fileList,np.array(glob.glob("position_noise/output*")))
     
     #Get parameters names and units, or define them if none given
     parametersList = []
@@ -75,6 +76,6 @@ def getParametersConfigurations():
     P = np.empty((len(fileList),len(parametersList)))
 
     for i,file in enumerate(fileList):
-        P[i] = np.array([float(l) for l in os.path.splitext(file)[0].split("_")[1:]])
+        P[i] = np.array([float(l) for l in os.path.splitext(os.path.basename(file))[0].split("_")[1:]])
 
     return(P,parametersList,parametersUnits,fileList)
