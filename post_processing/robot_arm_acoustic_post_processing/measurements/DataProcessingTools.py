@@ -10,15 +10,14 @@ from measpy._tools import wrap, nth_octave_bands
 from unyt import Unit
 from csaps import csaps
 
-#Mesh package
-import open3d as o3d
-
 #Plot tools
 import matplotlib.pyplot as plt
-from matplotlib.ticker import FuncFormatter, ScalarFormatter
+from matplotlib.ticker import ScalarFormatter
 from matplotlib.ticker import MaxNLocator,AutoMinorLocator
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+
+### PLOT PARAMETERS ###
 
 cmap = plt.get_cmap("tab10")
 cmap2 = plt.get_cmap("tab20c")
@@ -40,6 +39,22 @@ def log_formatter(x,pos):
         return(r"$5\times10^{{{exponent}}}$".format(exponent=sci[1]))
     else:   
         return("")
+    
+### DATA PARAMETERS ###
+
+#TFE computation frequencies
+fmin = 60
+fmax = 5000
+
+#TFE smoothing 
+fminOct = 50
+fmaxOct = 5000
+octBand = 12
+octBandFrequencies = np.round(nth_octave_bands(octBand,fminOct,fmaxOct)[0])
+
+#Validity range frequencies
+fminValidity = 50
+fmaxValidity = 1000
 
 def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, dby=True, plot_phase=True, unwrap_phase=True, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
 
@@ -518,22 +533,6 @@ def plot_3d_data(data, points, ax=None, interactive = False, **kwargs):
         ax.set_box_aspect((1,1,1))
 
     return(ax)
-
-#Data processing tools and parameters
-
-#TFE computation frequencies
-fmin = 60
-fmax = 5000
-
-#TFE smoothing 
-fminOct = 50
-fmaxOct = 5000
-octBand = 12
-octBandFrequencies = np.round(nth_octave_bands(octBand,fminOct,fmaxOct)[0])
-
-#Validity range frequencies
-fminValidity = 50
-fmaxValidity = 1000
 
 def save_fig(fig, name, interactive = False):
     if(interactive):

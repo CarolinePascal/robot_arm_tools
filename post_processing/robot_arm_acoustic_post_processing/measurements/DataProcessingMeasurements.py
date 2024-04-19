@@ -28,8 +28,7 @@ from multiprocessing import Pool
 
 from DataProcessingTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname((os.path.abspath(__file__))))) + "/scripts")
-from MeshTools import plotMesh, plotPointCloudFromPath
+from robot_arm_acoustic.MeshTools import plotMesh, plotPointCloudFromPath
 
 INTERACTIVE = False
 
