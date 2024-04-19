@@ -428,7 +428,6 @@ if(realMeasurements == 1)
     //TODO
     //if(computeGradient == 1)
     //{
-        
         //string verificationGradientDataPath = getARGV("-verificationGradientDataPath"); 
     //}
 
@@ -486,13 +485,17 @@ if(realMeasurements == 1)
 //Simulation
 else
 {
-    if(isdir("./BEM_SL") == -1)
+    if(isdir("./simulations") == -1)
     {
-        mkdir("./BEM_SL");
+        mkdir("./simulations");
     }
-    if(isdir("./BEM_CL") == -1)
+    if(isdir("./simulations/BEM_SL") == -1)
     {
-        mkdir("./BEM_CL");
+        mkdir("./simulations/BEM_SL");
+    }
+    if(isdir("./simulations/BEM_CL") == -1)
+    {
+        mkdir("./simulations/BEM_CL");
     }
 
     //Simulation parameters
@@ -522,22 +525,22 @@ else
         outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
     }
 
-    if(isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
+    if(isdir("./simulations/BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
     {
-        mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName);
+        mkdir("./simulations/BEM_SL/" + studiedFunction + "_" + elementTypeName);
     }
-    if(computeGradient && isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    if(computeGradient && isdir("./simulations/BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
     {
-        mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient");
+        mkdir("./simulations/BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient");
     }
 
-    if(isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName) == -1)
+    if(isdir("./simulations/BEM_CL/" + studiedFunction + "_" + elementTypeName) == -1)
     {
-        mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName);
+        mkdir("./simulations/BEM_CL/" + studiedFunction + "_" + elementTypeName);
     }
-    if(computeGradient && isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    if(computeGradient && isdir("./simulations/BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
     {
-        mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient");
+        mkdir("./simulations/BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient");
     }
 
     //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
@@ -600,8 +603,8 @@ else
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
         UhOut<complex> verificationDataGradient = inputFunctionGradient(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./", physicsFactor);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./", physicsFactor);
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./simulations/", physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./simulations/", physicsFactor);
     }
     else
     {
@@ -613,7 +616,7 @@ else
         fespace UhOut(verificationMesh,PkVerification); //Verification data is computed on the mesh vertices !
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./", physicsFactor);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./", physicsFactor); 
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./simulations/", physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./simulations/", physicsFactor); 
     }
 }
