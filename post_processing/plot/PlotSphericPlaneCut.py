@@ -23,7 +23,7 @@ figsize = (10,9)
 #  @param postProcessingID ID of the post-processing function (c.f. PlotTools.py)
 #  @param analyticalFunctionID ID of the analytical function (c.f. AcousticTools.py)
 #  @param errorID ID of the error function (c.f. PlotTools.py)
-def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
+def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="output.pdf",**kwargs):
 
     #Get post-processing and analytical functions
     postProcessingFunction = postProcessingFunctions[postProcessingID]
@@ -46,8 +46,11 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
         parameterValues = np.unique(configurations[:,i])
         fixedParameterValues = []
 
-        if(parameter in kwargs and kwargs[parameter] in parameterValues):
-            fixedParameterValues = [kwargs[parameter]]
+        if(parameter in kwargs and (np.isin(kwargs[parameter],parameterValues).all() or kwargs[parameter] == "*")):
+            if(kwargs[parameter] == "*"):
+                fixedParameterValues = parameterValues
+            else:
+                fixedParameterValues = np.intersect1d(parameterValues,kwargs[parameter]).flatten()
             
         else:
             if(len(parameterValues) == 1):
@@ -212,7 +215,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
                 if(addLegend): 
                     ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0), linestyle="dashed",linewidth=2.5)
                     #ax.plot(Phi,function(numericValuesA), label="FreeFem analytical solution - " + functionName + " (" + unit + ")" + legend, color='g')
-                    ax.plot(Phi,function(numericValuesN), label="Numerical solution", color=cmap(1), alpha=1,linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesN), label="Numerical solution", color=cmap(1), alpha=0.25,linewidth=2.5)
                     return(max(max(function(analyticalValues)),max(function(numericValuesN))),min(min(function(analyticalValues)),min(function(numericValuesN))))
                 else:
                     ax.plot(Phi,function(numericValuesN),color=cmap(1), alpha=0.25,linewidth=2.5)
@@ -277,8 +280,12 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
 
     for i,subax in enumerate(ax):
 
-        subax.set_rmin((maxPlot[i] + minPlot[i])/2 - 1.5*(maxPlot[i] - minPlot[i])/2)
-        subax.set_rmax((maxPlot[i] + minPlot[i])/2 + 1.5*(maxPlot[i] - minPlot[i])/2)
+        if((postProcessingID == "id" and i == 1) or postProcessingID == "phase"):
+            subax.set_rmin(-np.pi)
+            subax.set_rmax(np.pi)
+        #else:
+            #subax.set_rmin((maxPlot[i] + minPlot[i])/2 - 1.5*(maxPlot[i] - minPlot[i])/2)
+            #subax.set_rmax((maxPlot[i] + minPlot[i])/2 + 1.5*(maxPlot[i] - minPlot[i])/2)
         
         subax.set_thetagrids(np.arange(0,360,45),['0',r'$\frac{\pi}{4}$',r'$\frac{\pi}{2}$',r'$\frac{3\pi}{4}$',r'$\pi$',r'$\frac{5\pi}{4}$',r'$\frac{3\pi}{2}$',r'$\frac{7\pi}{4}$'])
 
@@ -288,23 +295,23 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,**kwargs):
         subax.annotate("",xy=(0.5,0.5),xytext=(0.5,1.0),xycoords="axes fraction",arrowprops=arrow)
         subax.annotate('y',xy=(0.5,0.5),xytext=(0.44,0.95),xycoords="axes fraction",color="gray")
 
-        subax.yaxis.set_major_formatter(ScalarFormatter())
-        subax.yaxis.get_major_formatter().set_useOffset(False)
+        subax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False, useMathText=True))
         subax.yaxis.set_major_locator(MaxNLocator(4))
         #subax.yaxis.set_minor_locator(MaxNLocator(2))
         subax.grid(linestyle= '-', which="major")
         #subax.grid(linestyle = '--', which="minor")
-        subax.tick_params(axis='y', which='major', pad=10, labelsize=20)
-        subax.tick_params(axis='x', which='major', pad=10)
+        subax.tick_params(axis='y', which='major', pad=10, labelsize=15)
+        subax.tick_params(axis='x', which='major', pad=5, labelsize=20)
 
     if(len(ax) == 1):
         ax[0].legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=2, reverse=False,  columnspacing=0.5)
     else:
         ax[0].legend(bbox_to_anchor=(-0.2, 1.0, 2.7, .1), loc='lower left', ncol=2, borderaxespad=2, reverse=False, mode="expand",  columnspacing=0.5)
 
-    fig.tight_layout()
-    fig.savefig("SphericPlaneCut3.pdf", dpi = 300, bbox_inches = 'tight')
-    #plt.show()
+    if(not figureName is None):
+        fig.savefig(figureName, dpi = 300, bbox_inches = 'tight')
+    else:
+        plt.show()
 
 if __name__ == "__main__": 
 
@@ -327,14 +334,38 @@ if __name__ == "__main__":
         analytical = None
 
     kwargs = {}
-    kwargs["resolution"] = 0.05
+    kwargs["resolution"] = 0.005
     kwargs["size"] = 0.5
     kwargs["dipoleDistance"] = 0.45
     kwargs["frequency"] = 5000
-    kwargs["sigmaPosition"] = [0.0,0.005]
+    kwargs["sigmaPosition"] = [0.0]
+
+    plotSphericCut(postProcessing,analytical,error,"SphericPlaneCut1.pdf",**kwargs)
+
+    kwargs["resolution"] = 0.25
+
+    plotSphericCut(postProcessing,analytical,error,"SphericPlaneCut2.pdf",**kwargs)
+
+    kwargs["resolution"] = 0.005
+    kwargs["sigmaPosition"] = [0.0005]
+    kwargs["iteration"] = "*"
+    print(kwargs)
+
+    plotSphericCut(postProcessing,analytical,error,"SphericPlaneCutSigma1.pdf",**kwargs)
+
+    kwargs["sigmaPosition"] = [0.0025]
     kwargs["iteration"] = "*"
 
+    plotSphericCut(postProcessing,analytical,error,"SphericPlaneCutSigma2.pdf",**kwargs)
 
-    plotSphericCut(postProcessing,analytical,error,**kwargs)
+    kwargs["sigmaPosition"] = [0.005]
+    kwargs["iteration"] = "*"
+
+    plotSphericCut(postProcessing,analytical,error,"SphericPlaneCutSigma3.pdf",**kwargs)
+
+    kwargs["sigmaPosition"] = [0.0125]
+    kwargs["iteration"] = "*"
+
+    plotSphericCut(postProcessing,analytical,error,"SphericPlaneCutSigma4.pdf",**kwargs)
 
 
