@@ -25,7 +25,7 @@ from DataProcessingMeasurements import sphereFit
 sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname((os.path.abspath(__file__))))) + "/scripts")
 from MeshTools import plotMesh, plotPointCloudFromPath
 
-INTERACTIVE = True
+INTERACTIVE = False
 
 if __name__ == "__main__":
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
 	else:
 		raise ValueError("Invalid element type")
 
-	newResolution = trimesh.Trimesh(newVertices, newFaces).edges_unique_length.max()
+	newResolution = float(trimesh.Trimesh(newVertices, newFaces).edges_unique_length.max())
 
 	#Compute initial-new measurements points correspondances
 	correspondances = []
