@@ -1,10 +1,8 @@
 #!/usr/bin/python3
 
 #System packages
-import sys
 import os
 import csv
-import copy
 
 #Utility packages
 import numpy as np
