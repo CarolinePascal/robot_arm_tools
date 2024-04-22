@@ -6,4 +6,4 @@ build/
 *.pdf
 *.ipynb
 
-config/meshes/*_uncertainty/
+config/meshes/
