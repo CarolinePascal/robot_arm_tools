@@ -17,28 +17,7 @@ from matplotlib.ticker import MaxNLocator,AutoMinorLocator
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-### PLOT PARAMETERS ###
-
-cmap = plt.get_cmap("tab10")
-cmap2 = plt.get_cmap("tab20c")
-markers = ["^","s","o","v","D","x","*","+"]
-plotly_markers = ["triangle-up","square","circle","triangle-down","diamond","x","star","cross"]
-plt_to_plotly_markers = dict(zip(markers,plotly_markers))
-
-figsize = (10,9)
-
-arrow = dict(arrowstyle='<-',lw=0.5,color="gray")
-
-plt.rc('font', **{'size': 24, 'family': 'serif', 'serif': ['Computer Modern']})
-plt.rc('text', usetex=True)
-
-def log_formatter(x,pos):
-    sci = "{:.0e}".format(x)
-    sci = [int(item) for item in sci.split("e")]
-    if(sci[0] == 5):
-        return(r"$5\times10^{{{exponent}}}$".format(exponent=sci[1]))
-    else:   
-        return("")
+from robot_arm_acoustic_post_processing.PlotTools import *
     
 ### DATA PARAMETERS ###
 
@@ -56,6 +35,20 @@ octBandFrequencies = np.round(nth_octave_bands(octBand,fminOct,fmaxOct)[0])
 fminValidity = 50
 fmaxValidity = 1000
 
+### PLOT FUNCTIONS ###
+
+## Function displaying frequency data (weighting function plot)
+#  @param weighting        The weighting function
+#  @param parametersList   The frequency range        
+#  @param unit             The weighting unit - default is 1
+#  @param ax               The axis to plot on - default is None
+#  @param logx             Logarithmic x-axis - default is True
+#  @param dby              Decibel y-axis - default is True
+#  @param plot_phase       Plot phase - default is True
+#  @param unwrap_phase     Unwrap phase - default is True
+#  @param validity_range   Frequency validity range (gray shade) - default is None
+#  @param scalingFactor    Scaling factor for the x-axis - default is 1.0
+#  @param interactive      Interactive plot (plotly html) - default is False
 def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, dby=True, plot_phase=True, unwrap_phase=True, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
 
     if dby and (unit != Unit("Pa")) and (unit != Unit("m/s")) and (unit != Unit("1")):
@@ -257,6 +250,15 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
 
     return ax
 
+## Function displaying spatial data (point plot)
+#  @param data              The spatial data
+#  @param points            The points indexes   
+#  @param unit              The data unit - default is 1
+#  @param ax                The axis to plot on - default is None
+#  @param dby               Decibel y-axis - default is True
+#  @param plot_phase        Plot phase - default is True
+#  @param unwrap_phase      Unwrap phase - default is True
+#  @param interactive       Interactive plot (plotly html) - default is False
 def plot_spatial_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=True, unwrap_phase=True, **kwargs):
 
     if dby and (unit != Unit("Pa")) and (unit != Unit("m/s")) and (unit != Unit("1")):
@@ -354,6 +356,15 @@ def plot_spatial_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phas
 
     return ax
 
+## Function displaying spatial data (polar plot)
+#  @param data              The spatial data
+#  @param points            The points indexes   
+#  @param unit              The data unit - default is 1
+#  @param ax                The axis to plot on - default is None
+#  @param dby               Decibel y-axis - default is True
+#  @param plot_phase        Plot phase - default is True
+#  @param unwrap_phase      Unwrap phase - default is True
+#  @param interactive       Interactive plot (plotly html) - default is False
 def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=True, unwrap_phase=True, **kwargs):
 
     if dby and (unit != Unit("Pa")) and (unit != Unit("m/s")) and (unit != Unit("1")):
@@ -399,7 +410,7 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
     points_to_plot = np.arange(0,2*np.pi,2*np.pi/len(valid_indices))
     points_to_plot = np.append(points_to_plot,points_to_plot[0])
 
-    points_labels = np.append(points[valid_indices] + 1, points[valid_indices][0] + 1)
+    points_labels = np.append(points[valid_indices], points[valid_indices][0])
     modulus_to_plot = modulus_to_plot[valid_indices]
     modulus_to_plot = np.append(modulus_to_plot,modulus_to_plot[0])
 
@@ -485,6 +496,11 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
 
     return ax
 
+## Function displaying spatial data (3D plot)
+#  @param data              The spatial data
+#  @param points            The points coordinates  
+#  @param ax                The axis to plot on - default is None
+#  @param interactive       Interactive plot (plotly html) - default is False
 def plot_3d_data(data, points, ax=None, interactive = False, **kwargs):
 
     if type(ax) == type(None):
@@ -534,6 +550,10 @@ def plot_3d_data(data, points, ax=None, interactive = False, **kwargs):
 
     return(ax)
 
+## Function saving a figure
+#  @param fig              The figure to save
+#  @param name             The name of the file
+#  @param interactive      Interactive plot (plotly html) - default is False
 def save_fig(fig, name, interactive = False):
     if(interactive):
         fig.update_layout(margin=dict(l=0, r=0, b=0, t=0))
@@ -542,6 +562,10 @@ def save_fig(fig, name, interactive = False):
         fig.tight_layout()
         fig.savefig(name, dpi = 300, bbox_inches = 'tight')
 
+## Function setting the title of a figure
+#  @param ax               The axis to set the title on
+#  @param title            The title
+#  @param interactive      Interactive plot (plotly html) - default is False
 def set_title(ax, title, interactive = False):
     if(interactive):
         ax.update_layout(title_text=title)
@@ -551,6 +575,16 @@ def set_title(ax, title, interactive = False):
         except TypeError:
             ax.set_title(title, pad=60)
 
+### ERROR FUNCTIONS ###
+
+## Function plotting the absolute error between two weighting functions
+#  @param wExp             The experimental weighting function
+#  @param wTh              The theoretical weighting function
+#  @param frequencies      The frequency range
+#  @param ax               The axis to plot on - default is None
+#  @param validity_range   Frequency validity range (gray shade) - default is None
+#  @param scalingFactor    Scaling factor for the x-axis - default is 1.0
+#  @param interactive      Interactive plot (plotly html) - default is False
 def plot_absolute_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
     wAbs = ms.Weighting(freqs = wTh.freqs, amp = np.abs(wExp.amp/wTh.amp), phase = np.unwrap(wrap(wExp.phase - wTh.phase)))
 
@@ -558,6 +592,14 @@ def plot_absolute_error(wExp, wTh, frequencies, ax, validity_range = None, scali
 
     return(wAbs)          
 
+## Function plotting the relative error between two weighting functions
+#  @param wExp             The experimental weighting function
+#  @param wTh              The theoretical weighting function
+#  @param frequencies      The frequency range
+#  @param ax               The axis to plot on - default is None
+#  @param validity_range   Frequency validity range (gray shade) - default is None
+#  @param scalingFactor    Scaling factor for the x-axis - default is 1.0
+#  @param interactive      Interactive plot (plotly html) - default is False
 def plot_relative_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
     valuesRel = (wExp.amp*np.exp(1j*wExp.phase) - wTh.amp*np.exp(1j*wTh.phase)) / (wTh.amp*np.exp(1j*wTh.phase))
     wRel = ms.Weighting(freqs = wTh.freqs, amp = np.abs(valuesRel))
@@ -566,6 +608,14 @@ def plot_relative_error(wExp, wTh, frequencies, ax, validity_range = None, scali
 
     return(wRel)
 
+## Function plotting the separated (modulus and phase) relative error between two weighting functions
+#  @param wExp             The experimental weighting function
+#  @param wTh              The theoretical weighting function
+#  @param frequencies      The frequency range
+#  @param ax               The axis to plot on - default is None
+#  @param validity_range   Frequency validity range (gray shade) - default is None
+#  @param scalingFactor    Scaling factor for the x-axis - default is 1.0
+#  @param interactive      Interactive plot (plotly html) - default is False
 def plot_relative_separated_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
     ampValuesRelSep = np.abs(wExp.amp - wTh.amp)/np.abs(wTh.amp)
     phaseValuesRelSep = np.unwrap(wrap(wExp.phase - wTh.phase))/(2*np.pi)
@@ -580,6 +630,10 @@ def plot_relative_separated_error(wExp, wTh, frequencies, ax, validity_range = N
 
     return(wRelSep)
 
+## Function computing the L2 errors between two weighting functions
+#  @param wExp             The experimental weighting function
+#  @param wTh              The theoretical weighting function
+#  @param frequencyRange   The frequency range
 def compute_l2_errors(wExp, wTh, frequencyRange = None):
 
     if(frequencyRange is None):
@@ -591,16 +645,31 @@ def compute_l2_errors(wExp, wTh, frequencyRange = None):
 
     return(errorAbs,errorRel)
 
+## Function plotting the absolute error between two spatial datasets
+#  @param dataExp          The experimental spatial data
+#  @param dataTh           The theoretical spatial data
+#  @param points           The points indexes
+#  @param ax               The axis to plot on - default is None
 def plot_absolute_error_spatial(dataExp, dataTh, points, ax, **kwargs):
     dataAbs = dataExp/dataTh
     plot_spatial_data(dataAbs, points, unit=Unit("1"), ax=ax, **kwargs)
     return(dataAbs)
 
+## Function plotting the relative error between two spatial datasets
+#  @param dataExp          The experimental spatial data
+#  @param dataTh           The theoretical spatial data
+#  @param points           The points indexes
+#  @param ax               The axis to plot on - default is None
 def plot_relative_error_spatial(dataExp, dataTh, points, ax, **kwargs):
     dataRel = (dataExp - dataTh)/dataTh
     plot_spatial_data(dataRel, points, unit=Unit("1"), ax=ax, plot_phase=False, dby=False, **kwargs)
     return(dataRel)
 
+## Function plotting the separated (modulus and phase) relative error between two spatial datasets
+#  @param dataExp          The experimental spatial data
+#  @param dataTh           The theoretical spatial data
+#  @param points           The points indexes
+#  @param ax               The axis to plot on - default is None
 def plot_relative_separated_error_spatial(dataExp, dataTh, points, ax, **kwargs):
     ampValuesRelSep = np.abs(np.abs(dataExp) - np.abs(dataTh))/np.abs(dataTh)
     phaseValuesRelSep = np.unwrap(wrap(np.angle(dataExp) - np.angle(dataTh)))/(2*np.pi)
@@ -608,6 +677,9 @@ def plot_relative_separated_error_spatial(dataExp, dataTh, points, ax, **kwargs)
     plot_spatial_data(dataRelSep, points, unit=Unit("1"), ax=ax, dby=False, **kwargs)
     return(dataRelSep)
 
+## Function computing the L2 errors between two spatial datasets
+#  @param dataExp          The experimental spatial data
+#  @param dataTh           The theoretical spatial data
 def compute_l2_errors_spatial(dataExp, dataTh):
     errorAbs = np.sqrt(np.sum(np.abs(dataExp - dataTh)**2))
     errorRel = errorAbs/np.sqrt(np.sum(np.abs(dataTh)**2))
