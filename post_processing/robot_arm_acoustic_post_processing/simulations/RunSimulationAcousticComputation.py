@@ -3,7 +3,6 @@
 #System packages
 import subprocess
 import os
-import sys
 import time
 import csv
 import cloup
@@ -13,6 +12,7 @@ import numpy as np
 
 #Mesh packages
 from robot_arm_acoustic.MeshTools import generateSphericMesh, generateCircularMesh
+import robot_arm_acoustic_post_processing
 
 ### Studied function
 function = "monopole"
@@ -44,9 +44,9 @@ def main(method, gradient):
 
     #Generate command (bash)
     if(method == "SFT"):
-        command = "FreeFem++ ../AcousticComputationSFT.edp"
+        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic_post_processing.__file__) + "AcousticComputationSFT.edp"
     else:
-        command = "ff-mpirun -np 4 ../AcousticComputationBEM.edp -wg"
+        command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic_post_processing.__file__) +  "/AcousticComputationBEM.edp -wg"
 
     counter = 1
 
@@ -108,7 +108,7 @@ def main(method, gradient):
 
                                     tmpFileID = " -fileID " + str((1 + j) + (Nsigma*i))
 
-                                    bashCommand = command + " -realMeasurements 0 -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
+                                    bashCommand = command + " -realMeasurements 0 -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -Dgradient=" + str(int(gradient)) + " -ns"
                                     print(bashCommand)
 
                                     t0 = time.time()

@@ -15,6 +15,9 @@ import numpy as np
 #Mesh packages
 import meshio as meshio
 
+#Custom packages
+import robot_arm_acoustic_post_processing
+
 @cloup.command()
 @cloup.option('--method', type=str, default="BEM", help="Computation method (BEM or SFT)")
 @cloup.option('--measurementsMeshPath', type=str, default="./robotMesh.mesh", help="Path to the measurements mesh")
@@ -27,9 +30,9 @@ def main(method, measurementsMeshPath, measurementsDataFolder, verificationMeshP
 
     #Generate command (bash)
     if(method == "SFT"):
-        command = "FreeFem++ ../AcousticComputationSFT.edp"
+        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic_post_processing.__file__) + "AcousticComputationSFT.edp"
     else:
-        command = "ff-mpirun -np 4 ../AcousticComputationBEM.edp -wg"
+        command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic_post_processing.__file__) +  "/AcousticComputationBEM.edp -wg"
 
     #Get studied frequencies
     Frequencies = sorted([int(os.path.basename(file).split(".")[0].split("_")[-1]) for file in glob.glob("data_*.csv")])
@@ -59,7 +62,7 @@ def main(method, measurementsMeshPath, measurementsDataFolder, verificationMeshP
 
         ### Run computation
 
-        bashCommand = command + " -frequency " + str(frequency) + " -realMeasurements 1 -measurementsMeshPath " + measurementsMeshPath + " -measurementsDataPath " + measurementsDataFolder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verificationMeshPath + " -verificationDataPath " + verificationDataFolder + "data_" + str(frequency) + ".csv -verificationGradientDataPath " + verificationDataFolder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(gradient) + " -ns"
+        bashCommand = command + " -frequency " + str(frequency) + " -realMeasurements 1 -measurementsMeshPath " + measurementsMeshPath + " -measurementsDataPath " + measurementsDataFolder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verificationMeshPath + " -verificationDataPath " + verificationDataFolder + "data_" + str(frequency) + ".csv -verificationGradientDataPath " + verificationDataFolder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(int(gradient)) + " -ns"
         print(bashCommand)
 
         t0 = time.time()
