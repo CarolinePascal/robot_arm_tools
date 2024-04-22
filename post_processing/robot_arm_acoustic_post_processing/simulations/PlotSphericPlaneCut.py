@@ -1,28 +1,23 @@
 #!/usr/bin/python3
 
 #System packages
-import sys
 import csv
 
 #Utility packages
 import numpy as np
 
-#Acoustic packages
-from measpy._tools import wrap
-
 #Custom tools packages
-from AcousticTools import *
-from PlotTools import *
+from robot_arm_acoustic_post_processing.simulations.AcousticTools import *
+from robot_arm_acoustic_post_processing.simulations.PlotTools import *
 
-from matplotlib.ticker import ScalarFormatter,FormatStrFormatter
+from matplotlib.ticker import ScalarFormatter
 from matplotlib.ticker import MaxNLocator
-
-figsize = (10,9)
 
 ## Function plotting the error between computed values and analytical values for an output files folder on the z=0 plane for a given parameters configuration
 #  @param postProcessingID ID of the post-processing function (c.f. PlotTools.py)
 #  @param analyticalFunctionID ID of the analytical function (c.f. AcousticTools.py)
 #  @param errorID ID of the error function (c.f. PlotTools.py)
+#  @param figureName Name of the output figure
 def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="output.pdf",**kwargs):
 
     #Get post-processing and analytical functions
@@ -30,7 +25,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
     analyticalFunction = analyticalFunctions[analyticalFunctionID]
     errorFunction = errorFunctions[errorID]
 
-    P,parametersList,parametersUnits,fileList = getParametersConfigurations()
+    parametersConfigurations,parametersList,parametersUnits,fileList = getParametersConfigurations()
 
     #Get indices frequency (mandatory parameter !) and dipole distance (optional parameter, default is 0)
     frequencyIndex = np.where(parametersList=="frequency")[0][0]
@@ -40,17 +35,24 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
         dipoleDistanceIndex = None
 
     #Registering the desired parameters configurations
-    configurations = P
+    configurations = parametersConfigurations
+    singleParametersList = []
+    multipleParametersList = []
 
     for i,parameter in enumerate(parametersList):
         parameterValues = np.unique(configurations[:,i])
-        fixedParameterValues = []
+        if(len(parameterValues) == 1):
+            singleParametersList.append(parameter)
+        else:
+            multipleParametersList.append(parameter)
+        
+        fixedParameterValues = parameterValues
 
-        if(parameter in kwargs and (np.isin(kwargs[parameter],parameterValues).all() or kwargs[parameter] == "*")):
+        if(parameter in kwargs):
             if(kwargs[parameter] == "*"):
                 fixedParameterValues = parameterValues
             else:
-                fixedParameterValues = np.intersect1d(parameterValues,kwargs[parameter]).flatten()
+                fixedParameterValues = kwargs[parameter]
             
         else:
             if(len(parameterValues) == 1):
@@ -59,10 +61,12 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
             else:
                 fixedParameterValues = list(input("What value for " + parameter + " ? (default : *) " + str(np.sort(parameterValues)) + " (" + parametersUnits[i] + ")").split(" "))
 
-                try:
-                    fixedParameterValues = [float(item) for item in fixedParameterValues]
-                except ValueError:
-                    fixedParameterValues = parameterValues
+        try:
+            fixedParameterValues = [float(item) for item in fixedParameterValues if float(item) in parameterValues]
+            if(len(fixedParameterValues) == 0):
+                fixedParameterValues = parameterValues
+        except ValueError:
+            fixedParameterValues = parameterValues
 
         interestIndices = np.hstack([np.where(configurations[:,i] == value)[0] for value in fixedParameterValues])
         
@@ -74,42 +78,15 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
         fig,ax = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='polar'))
         ax = [ax]
 
-    title = "Computed acoustic pressure field"
-    noTitle = True
-    titleCounter = 0
-
-    for j,name in enumerate(parametersList):
-        if(name == "iteration"):
-            continue
-        
-        if(len(np.unique(configurations[:,j])) == 1):
-            if(noTitle):
-                noTitle = False
-                title = "Acoustic pressure field computed for : \n"
-
-            if(titleCounter < 3):
-                title += name + " = " + str(configurations[0,j]) + " " + parametersUnits[j] + " - "
-                titleCounter += 1
-            else:
-                title = title[:-3]
-                title += "\n" + name + " = " + str(configurations[0,j]) + " " + parametersUnits[j] + " - "
-                titleCounter = 0
-
-        else:
-            continue
-
-    if(not noTitle):        
-        title = title[:-3]
-
+    #title = makeTitle(configurations,singleParametersList,parametersList,parametersUnits,"Computed acoustic pressure field")
     #fig.suptitle(title)
 
     for i,configuration in enumerate(configurations):
         #Find the corresponding file names
-        file = fileList[(P==configuration).all(1)][0]
+        file = fileList[(parametersConfigurations == configuration).all(1)][0]
 
         #Get configuration frequency and dipole distance parameters
         f = configuration[frequencyIndex]
-        k = 2*np.pi*f/c
         halfDipoleDistance = configuration[dipoleDistanceIndex]/2 if dipoleDistanceIndex is not None else 0
 
         #Create empty arrays
@@ -164,15 +141,12 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
         if(analyticalFunction is not None):
             absoluteError = np.round(errorFunction(numericValuesN - analyticalValues),6)
             relativeError = np.round(100*errorFunction(numericValuesN - analyticalValues)/errorFunction(analyticalValues),6)
-            #print("Absolute error FreeFem analytical solution = " + str(np.round(errorFunction(numericValuesA - analyticalValues),6)) + " (" + tmpUnit + ")")
-            print("Absolute error numerical solution = " +  str(absoluteError) + " (" + tmpUnit + ")")
-            #print("Relative error FreeFem analytical solution = " + str(np.round(100*errorFunction((numericValuesA - analyticalValues)/analyticalValues),6)) + " %")
-            print("Relative error numerical solution = " +  str(relativeError) + " %")
         else:
             absoluteError = np.round(errorFunction(numericValuesN - numericValuesA),6)
             relativeError = np.round(100*errorFunction(numericValuesN - numericValuesA)/errorFunction(numericValuesA),6)
-            print("Absolute error = " +  str(absoluteError) + " (" + tmpUnit + ")")
-            print("Relative error = " + str(relativeError) + " %")
+
+        print("Absolute error numerical solution = " +  str(absoluteError) + " (" + tmpUnit + ")")
+        print("Relative error numerical solution = " +  str(relativeError) + " %")
 
         #if(len(configurations) == 1):
             #fig.suptitle(title + "\n Relative error = " + str(np.round(relativeError,3)) + " \%")
@@ -190,102 +164,61 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
             numericValuesA = np.vstack((numericValuesA.T,numericValuesA.T[0])).T
             numericValuesN = np.vstack((numericValuesN.T,numericValuesN.T[0])).T
 
-        legend = ""
-        noLegend = True
+        legend = makeLegend(configuration,multipleParametersList,parametersList,parametersUnits,"")
 
-        for j,name in enumerate(parametersList):
-            if(name == "iteration"):
-                continue
-            if(len(np.unique(configurations[:,j])) != 1):
-                if(noLegend):
-                    legend = " with "
-                    noLegend = False
-                legend += name + " = " + str(configuration[j]) + " " + parametersUnits[j] + " - "
-            else:
-                continue
-        if(not noLegend):
-            legend = legend[:-3]
-
-        def plotSphericFunction(function,functionName,unit,ax=None,addLegend=True):
+        def plotSphericFunction(function, functionName, unit, ax=None, legend=""):
 
             if(ax is None):
-                fig,ax = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='polar'))
+                _,ax = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='polar'))
 
             if(analyticalFunction is not None):
-                if(addLegend): 
-                    ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0), linestyle="dashed",linewidth=2.5)
-                    #ax.plot(Phi,function(numericValuesA), label="FreeFem analytical solution - " + functionName + " (" + unit + ")" + legend, color='g')
-                    ax.plot(Phi,function(numericValuesN), label="Numerical solution", color=cmap(1), alpha=0.25,linewidth=2.5)
-                    return(max(max(function(analyticalValues)),max(function(numericValuesN))),min(min(function(analyticalValues)),min(function(numericValuesN))))
+                if(legend != ""): 
+                    ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0),linestyle="dashed",linewidth=2.5)
+                    #ax.plot(Phi,function(numericValuesA), label="FreeFem analytical solution",color=cmap(2),linestyle="dotted",linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesN), label="Numerical solution",color=cmap(1),linewidth=2.5)
                 else:
-                    ax.plot(Phi,function(numericValuesN),color=cmap(1), alpha=0.25,linewidth=2.5)
-                    return(max(function(numericValuesN)),min(function(numericValuesN)))
+                    ax.plot(Phi,function(numericValuesN),color=cmap(1),linewidth=2.5,alpha=0.25)
             else:
-                if(addLegend):
+                if(legend != ""):
                     ax.plot(Phi,function(numericValuesA),label="Measured data - " + functionName + " (" + unit + ")" + legend, color=cmap(i), linestyle="dashed",linewidth=2.5)
                     ax.plot(Phi,function(numericValuesN),label="Computed solution - " + functionName + " (" + unit + ")" + legend, color=cmap(i),linewidth=2.5)
                 else:
                     ax.plot(Phi,function(numericValuesA), color=cmap(i), linestyle="dashed",linewidth=2.5)
                     ax.plot(Phi,function(numericValuesN), color=cmap(i),linewidth=2.5)
-                return(max(max(function(numericValuesA)),max(function(numericValuesN))),min(min(function(numericValuesA)),min(function(numericValuesN))))
+
+            return(ax)
 
         legendFlag = True if(len(configurations) >= 1 and i == 0) else False
-        maxPlot = -np.ones(len(ax))*10**10
-        minPlot = np.ones(len(ax))*10**10
+ 
         if(postProcessingID == "re/im"):
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x : x[0],"real part","Pa",ax[0],legendFlag)
-            if(maxPlot_tmp > maxPlot[0]):
-                maxPlot[0] = maxPlot_tmp
-            if(minPlot_tmp < minPlot[0]):
-                minPlot[0] = minPlot_tmp
+            plotSphericFunction(lambda x : x[0],"real part","Pa",ax[0],legend*legendFlag)
             ax[0].set_title("Real part", y=-0.325)
 
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x : x[1],"imaginary part","Pa",ax[1],legendFlag)
-            if(maxPlot_tmp > maxPlot[1]):
-                maxPlot[1] = maxPlot_tmp
-            if(minPlot_tmp < minPlot[1]):
-                minPlot[1] = minPlot_tmp
+            plotSphericFunction(lambda x : x[1],"imaginary part","Pa",ax[1],legend*legendFlag)
             ax[1].set_title("Imaginary part", y=-0.325)
 
         elif(postProcessingID == "id"):
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(np.abs,"modulus","Pa",ax[0],legendFlag)
-            if(maxPlot_tmp > maxPlot[0]):
-                maxPlot[0] = maxPlot_tmp
-            if(minPlot_tmp < minPlot[0]):
-                minPlot[0] = minPlot_tmp
+            plotSphericFunction(np.abs,"modulus","Pa",ax[0],legend*legendFlag)
             ax[0].set_title("Modulus (Pa)", y=-0.325)
 
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x :np.angle(x),"phase","rad",ax[1],legendFlag)
-            if(maxPlot_tmp > maxPlot[1]):
-                maxPlot[1] = maxPlot_tmp
-            if(minPlot_tmp < minPlot[1]):
-                minPlot[1] = minPlot_tmp
+            plotSphericFunction(lambda x :np.angle(x),"phase","rad",ax[1],legend*legendFlag)
             ax[1].set_title("Phase (rad)", y=-0.325)
 
         elif(postProcessingID == "mod"):
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x:x,"modulus","Pa",ax[0],legendFlag)
-            if(maxPlot_tmp > maxPlot[0]):
-                maxPlot[0] = maxPlot_tmp
-            if(minPlot_tmp < minPlot[0]):
-                minPlot[0] = minPlot_tmp
+            plotSphericFunction(lambda x:x,"modulus","Pa",ax[0],legend*legendFlag)
             ax[0].set_title("Modulus (Pa)", y=-0.325)
 
         elif(postProcessingID == "phase"):
-            maxPlot_tmp, minPlot_tmp = plotSphericFunction(lambda x:x,"phase","rad",ax[0],legendFlag)
-            if(maxPlot_tmp > maxPlot[0]):
-                maxPlot[0] = maxPlot_tmp
-            if(minPlot_tmp < minPlot[0]):
-                minPlot[0] = minPlot_tmp
+            plotSphericFunction(lambda x:x,"phase","rad",ax[0],legend*legendFlag)
             ax[0].set_title("Phase (rad)", y=-0.325)
 
     for i,subax in enumerate(ax):
 
         if((postProcessingID == "id" and i == 1) or postProcessingID == "phase"):
-            subax.set_rmin(-np.pi)
-            subax.set_rmax(np.pi)
+            subax.set_rmin(-1.1*np.pi)
+            subax.set_rmax(1.1*np.pi)
         #else:
-            #subax.set_rmin((maxPlot[i] + minPlot[i])/2 - 1.5*(maxPlot[i] - minPlot[i])/2)
-            #subax.set_rmax((maxPlot[i] + minPlot[i])/2 + 1.5*(maxPlot[i] - minPlot[i])/2)
+            #subax.set_rmax(1.1*subax.get_rmax())
         
         subax.set_thetagrids(np.arange(0,360,45),['0',r'$\frac{\pi}{4}$',r'$\frac{\pi}{2}$',r'$\frac{3\pi}{4}$',r'$\pi$',r'$\frac{5\pi}{4}$',r'$\frac{3\pi}{2}$',r'$\frac{7\pi}{4}$'])
 
@@ -297,9 +230,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
 
         subax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False, useMathText=True))
         subax.yaxis.set_major_locator(MaxNLocator(4))
-        #subax.yaxis.set_minor_locator(MaxNLocator(2))
         subax.grid(linestyle= '-', which="major")
-        #subax.grid(linestyle = '--', which="minor")
         subax.tick_params(axis='y', which='major', pad=10, labelsize=15)
         subax.tick_params(axis='x', which='major', pad=5, labelsize=20)
 

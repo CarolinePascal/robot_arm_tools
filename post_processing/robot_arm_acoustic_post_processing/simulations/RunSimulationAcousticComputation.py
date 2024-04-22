@@ -6,12 +6,12 @@ import os
 import sys
 import time
 import csv
+import cloup
 
 #Utility packages
 import numpy as np
 
 #Mesh packages
-sys.path.append(os.path.dirname(os.path.dirname((os.path.abspath(__file__)))) + "/scripts")
 from robot_arm_acoustic.MeshTools import generateSphericMesh, generateCircularMesh
 
 ### Studied function
@@ -37,58 +37,51 @@ Nsigma = 20
 
 parametersCombinations = len(Frequencies)*len(Radius)*len(Resolutions)*len(DipoleDistances)*max(1,Nsigma*len(np.nonzero(SigmasPosition)[0]))*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0]))
 
-if(__name__ == "__main__"):
+@cloup.command()
+@cloup.option('--method', type=str, default="BEM", help="Computation method (BEM or SFT)")
+@cloup.option('--gradient', is_flag=True, help="Compute the gradient of the acoustic field")
+def main(method, gradient):
 
-    #Get computation method
-    method = "BEM"
-    try:
-        method = sys.argv[1]
-    except IndexError:
-        print("Invalid resolution method, switching to default : " + method)
-
-    if(method == "BEM"):
-        command = "ff-mpirun -np 4 " + os.path.dirname(os.path.abspath(__file__)) + "/AcousticComputationBEM.edp -wg"
-    elif(method == "SFT"):
-        command = "FreeFem++ " + os.path.dirname(os.path.abspath(__file__)) + "/AcousticComputationSFT.edp"
+    #Generate command (bash)
+    if(method == "SFT"):
+        command = "FreeFem++ ../AcousticComputationSFT.edp"
     else:
-        method = "BEM"
-        command = "ff-mpirun -np 4 " + os.path.dirname(os.path.abspath(__file__)) + "/AcousticComputationBEM.edp -wg"
-        print("Invalid resolution method, switching to default : " + method)
+        command = "ff-mpirun -np 4 ../AcousticComputationBEM.edp -wg"
 
     counter = 1
 
     #Generate verification mesh
-    if(gradient == 0):
-        if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/circle/P1/" + str(verificationSize) + "_" + str(verificationResolution) + ".mesh")):
-                generateCircularMesh(verificationSize,verificationResolution,elementType="P1",saveMesh=True)
-    elif(gradient == 1):
-        if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/" + elementType + "/" + str(verificationSize) + "_" + str(verificationResolution) + ".mesh")):
-                generateSphericMesh(verificationSize,verificationResolution,elementType=elementType,saveMesh=True)
+    os.makedirs("./meshes/",exist_ok=True)
+    if(not gradient):
+        generateCircularMesh(verificationSize,verificationResolution,elementType="P1",saveMesh=True,saveFolder="./meshes/")
+    else:
+        generateSphericMesh(verificationSize,verificationResolution,elementType=elementType,saveMesh=True,saveFolder="./meshes/")
 
-    for sigmaMeasure in SigmasMeasure:
-        for i in range(Nsigma):
-            if(sigmaMeasure == 0.0 and i > 0):
-                break
-            for sigmaPosition in SigmasPosition:
-                for j in range(Nsigma):
-                    if(sigmaPosition == 0.0 and j > 0):
+    for radius in Radius:
+        for resolution in Resolutions:
+
+            ### Generate computation mesh
+            size = 2*radius
+            try:
+                generateSphericMesh(size,resolution,elementType=elementType,saveMesh=True,saveFolder="./meshes/")  #No need to generate a new mesh if it already exists
+            except:
+                print("Mesh generation failed, skipping computation")
+                continue
+
+            for sigmaMeasure in SigmasMeasure:
+                for i in range(Nsigma):
+                    if(sigmaMeasure == 0.0 and i > 0):
                         break
-                    for radius in Radius:
-                        for resolution in Resolutions:
 
-                            ### Generate computation mesh
-                            size = 2*radius
-
+                    for sigmaPosition in SigmasPosition:
+                        for j in range(Nsigma):
+                            if(sigmaPosition == 0.0 and j > 0):
+                                break
+  
+                            ### Generate noisy computation mesh
                             if(sigmaPosition != 0.0):
                                 try:
-                                    generateSphericMesh(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True) #Generate a new random mesh !
-                                except:
-                                    print("Mesh generation failed, skipping computation")
-                                    continue
-
-                            if(not os.path.exists(os.path.dirname(os.path.dirname(os.path.abspath(__name__))) + "/config/meshes/sphere/" + elementType + "/" + str(size) + "_" + str(resolution) + ".mesh")):
-                                try:
-                                    generateSphericMesh(size,resolution,elementType=elementType,saveMesh=True)  #No need to generate a new mesh if it already exists
+                                    generateSphericMesh(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True,saveFolder="./meshes/") #Generate a new random mesh !
                                 except:
                                     print("Mesh generation failed, skipping computation")
                                     continue
@@ -120,7 +113,7 @@ if(__name__ == "__main__"):
 
                                     t0 = time.time()
                                     process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-                                    output, error = process.communicate()
+                                    output,_ = process.communicate()
                                     t1 = time.time()
 
                                     with open("computation_time_" + function + "_" + elementType + ".csv","a") as f:
@@ -136,7 +129,12 @@ if(__name__ == "__main__"):
 
                                     killProcess = "killall FreeFem++-mpi"
                                     process = subprocess.Popen(killProcess.split(), stdout=subprocess.PIPE)
-                                    output, error = process.communicate()
+                                    output,_ = process.communicate()
 
                                     #DEBUG
                                     print(output.decode())
+
+
+if(__name__ == "__main__"):
+    main()
+    
