@@ -70,13 +70,13 @@ func meshS getSphericMesh(real size, real resolution, real sigma, string element
     //Load mesh
     if(sigma == 0.0)
     {
-        meshS ThS("../config/meshes/sphere/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+        meshS ThS("./meshes/sphere/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
         ThS = OrientNormal(ThS,unbounded=1);
         return(ThS);
     }
     else
     {
-        meshS ThS("../config/meshes/sphere_uncertainty/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + "_" + sigmaWithDecimal + ".mesh");
+        meshS ThS("./meshes/sphere_uncertainty/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + "_" + sigmaWithDecimal + ".mesh");
         ThS = OrientNormal(ThS,unbounded=1);
         return(ThS); 
     }
