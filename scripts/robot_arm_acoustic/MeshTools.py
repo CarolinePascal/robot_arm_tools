@@ -186,12 +186,12 @@ def generateSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", saveM
         points += delta
 
     if(saveMesh):
-        meshPath = folderName + "/" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("triangle",list(faces))])
 
     if(saveYAML):
-        YAMLPath = folderName + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".yaml"
         saveMeshYAML(YAMLPath, points, faces, size, resolution, elementType, gradientOffset)
 
     return(points, faces)
@@ -221,12 +221,12 @@ def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", s
     points,faces = dualMesh.points, dualMesh.get_cells_type("polygon")
 
     if(saveMesh):
-        meshPath = folderName + "/" + "dual_" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = folderName + "/" + "dual_" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("polygon",list(faces))])
 
     if(saveYAML):
-        YAMLPath = folderName + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".yaml"
         saveMeshYAML(YAMLPath, points, faces, size, resolution, elementType, gradientOffset)
 
     return(points, faces)
@@ -314,12 +314,12 @@ def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", si
                 verticesTmp += delta
 
             if(saveMesh):
-                meshPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ".mesh"
+                meshPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
                 print("Saving mesh at " + meshPath)
                 meshio.write_points_cells(meshPath, list(verticesTmp), [("triangle",list(facesTmp))])
 
             if(saveYAML):
-                YAMLPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ".yaml"
+                YAMLPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ("_" + str(sigma))*(sigma != 0.0) + ".yaml"
                 saveMeshYAML(YAMLPath, verticesTmp, facesTmp, size, resolutionTmp, elementType, gradientOffset)
 
             similarMeshes.append((verticesTmp,facesTmp))
@@ -345,12 +345,12 @@ def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", si
                 verticesTmp += delta
 
             if(saveMesh):
-                meshPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ".mesh"
+                meshPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
                 print("Saving mesh at " + meshPath)
                 meshio.write_points_cells(meshPath, list(verticesTmp), [("triangle",list(facesTmp))])
 
             if(saveYAML):
-                YAMLPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ".yaml"
+                YAMLPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ("_" + str(sigma))*(sigma != 0.0) + ".yaml"
                 saveMeshYAML(YAMLPath, verticesTmp, facesTmp, size, resolutionTmp, elementType, gradientOffset)
 
             similarMeshes.append((verticesTmp,facesTmp))
@@ -392,7 +392,7 @@ def generateCircularMesh(size, resolution, sigma = 0.0, elementType = "P1", save
         points += delta
 
     if(saveMesh):
-        meshPath = folderName + "/" + str(size) + "_" + str(resolution) + ".mesh"
+        meshPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("line",lines)])
 
@@ -414,7 +414,7 @@ def generateCircularMesh(size, resolution, sigma = 0.0, elementType = "P1", save
                 gradientPose[2] += gradientOffset*np.cos(meshPose[4])
             np.insert(meshPoses,1+np.arange(len(meshPoses)),meshPosesGradient,axis=0)
 
-        YAMLPath = folderName + "/" + str(size) + "_" + str(resolution) + ".yaml"
+        YAMLPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".yaml"
 
         print("Saving mesh poses at " + YAMLPath)
         with open(YAMLPath, mode="w+") as file:
