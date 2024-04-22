@@ -6,8 +6,8 @@ setup(
    description='The robot_arm_acoustic package',
    author='Caroline PASCAL',
    author_email='caroline.pascal.2020@ensta-paris.fr',
-   packages=['robot_arm_acoustic','robot_arm_acoustic_post_processing'], 
-   package_dir={'robot_arm_acoustic': 'scripts', 'robot_arm_acoustic_post_processing': '.'},
+   packages=['robot_arm_acoustic'], 
+   package_dir={'': 'scripts'},
    install_requires=[
         #Arrays
         "numpy",
