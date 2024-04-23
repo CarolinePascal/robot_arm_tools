@@ -37,7 +37,7 @@
 	<arg name="mesh_path" default="" unless="$(eval arg('mesh_generation') == 'automatic')"/>
 	<arg name="mesh_path" value="$(find robot_arm_acoustic)/config/meshes/$(arg mesh_type)/$(arg mesh_size)_$(arg mesh_resolution).yaml" if="$(eval arg('mesh_generation') == 'automatic')"/>
 	
-	<node pkg="robot_arm_acoustic" type="MeshTools.py" name="mesh_tools" args="$(arg mesh_type) $(arg mesh_size) $(arg mesh_resolution) P0 0 1 0" if="$(eval arg('mesh_generation') == 'automatic')"/>
+	<node pkg="robot_arm_acoustic" type="MeshTools.py" name="mesh_tools" args="--mesh_type $(arg mesh_type) --mesh_size $(arg mesh_size) --mesh_resolution $(arg mesh_resolution) --element_type P0 --save_mesh --save_yaml" if="$(eval arg('mesh_generation') == 'automatic')"/>
 
 	<param name="meshPath" value="$(arg mesh_path)"/>
 	<param name="meshType" value="$(arg mesh_type)"/>
