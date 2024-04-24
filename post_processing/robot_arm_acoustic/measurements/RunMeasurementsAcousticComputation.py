@@ -16,7 +16,7 @@ import numpy as np
 import meshio as meshio
 
 #Custom packages
-import robot_arm_acoustic_post_processing
+import robot_arm_acoustic
 
 @cloup.command()
 @cloup.option('--method', type=str, default="BEM", help="Computation method (BEM or SFT)")
@@ -30,9 +30,9 @@ def main(method, measurementsMeshPath, measurementsDataFolder, verificationMeshP
 
     #Generate command (bash)
     if(method == "SFT"):
-        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic_post_processing.__file__) + "AcousticComputationSFT.edp"
+        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic.__file__) + "AcousticComputationSFT.edp"
     else:
-        command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic_post_processing.__file__) +  "/AcousticComputationBEM.edp -wg"
+        command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic.__file__) +  "/AcousticComputationBEM.edp -wg"
 
     #Get studied frequencies
     Frequencies = sorted([int(os.path.basename(file).split(".")[0].split("_")[-1]) for file in glob.glob("data_*.csv")])

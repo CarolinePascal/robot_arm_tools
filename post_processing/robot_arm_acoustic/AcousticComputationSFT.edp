@@ -4,6 +4,9 @@ load "iovtk"
 load "medit"
 load "msh3"
 
+load "gsl"
+gslrng ffrng;
+
 include "ComputationTools.edp"
 include "AcousticTools.edp"
 include "MeasurementsTools.edp"
@@ -25,6 +28,18 @@ func complex Plm(int l, int m, real x)
     }  
 }
 
+//Spherical hankel function of the first kind
+func complex sphericalHankelFirstKind(int l, real x)
+{
+    return(gslsfbesseljl(l,x) + 1i*gslsfbesselyl(l,x));
+}
+
+//Spherical hankel function of the second kind
+func complex sphericalHankelSecondKind(int l, real x)
+{
+    return(gslsfbesseljl(l,x) - 1i*gslsfbesselyl(l,x));
+}
+
 //Spherical harmonics
 func complex Ylm(int l, int m, real theta, real phi)
 {
@@ -32,15 +47,15 @@ func complex Ylm(int l, int m, real theta, real phi)
 }
 
 //General spherical Helmholtz equation solution 
-func complex sphericalHelmholtzSolution(complex[int] Alm, real frequency)
+func complex sphericalHelmholtzSolution(complex[int] Alm, int size, real frequency)
 {
-    int lMax = sqrt(Alm.n) - 1;
+    int lMax = sqrt(size) - 1;
     complex output = 0;
     for(int l = 0; l <= lMax; l++)
     {
         for(int m = -l; m <= l; m++)
         {
-            output += Alm[l*l + m + l]*Ylm(l,m,theta,phi)*gslsfbesseljl(l,k(frequency)*r);
+            output += Alm[l*l + m + l]*Ylm(l,m,theta,phi)*sphericalHankelFirstKind(l,k(frequency)*r);
         }
     }
     return(output);
@@ -57,7 +72,7 @@ func Pk = elementType;
 string elementTypeName = Stringification(elementType);
 ENDIFMACRO
 
-func int AcousticSFT(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName)
+func int AcousticSFT(real frequency, int expansionNumber, meshS &measurementsMesh, complex[int] measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName, string outputFolder)
 {
     //Retrieve measurements
     fespace Uh(measurementsMesh,Pk);
@@ -65,35 +80,39 @@ func int AcousticSFT(real frequency, meshS &measurementsMesh, complex[int] measu
     measurements[] = measurementsData;
 
     //Compute general solution coefficients
-    complex[int] Alm((LMAX+1)*(LMAX+1)); 
-    for(int l = 0; l <= LMAX; l++)
+
+    //SFT
+    int lMax = sqrt(expansionNumber) - 1;
+    complex[int] Alm((lMax+1)*(lMax+1)); 
+    for(int l = 0; l <= lMax; l++)
     {
         for(int m = -l; m <= l; m++)
         {
-            Alm[l*l + m + l] = int2d(ThS)(sin(theta)*measurements*conj(Ylm(l,m,theta,phi))/gslsfbesseljl(l,k(frequency)*r));
+            Alm[l*l + m + l] = int2d(measurementsMesh)(measurements*conj(Ylm(l,m,theta,phi))/(r*r*sphericalHankelFirstKind(l,k(frequency)*r)));
         }
     }
+
+    //ESM
 
     //Evaluate the solution on the verification points
     fespace UhOut(verificationMesh,P1);
 
     //Compute the numerical solution
-    UhOut<complex> uN = sphericalHelmholtzSolution(Alm,frequency);
+    UhOut<complex> uN = sphericalHelmholtzSolution(Alm,Alm.n,frequency);
     
     //Compute the analytical solution
     UhOut<complex> uA;
     uA[] = verificationData;
 
     //DEBUG
-    real[int] error(uA.n);
-    for(int i = 0; i < uA.n; i++)
-    {
-        error[i] = abs(uA[][i] - uN[][i]);
-    }
-    cout << "LINF ERROR SL : " << error.max << endl;
+    real l2Error = sqrt(int1d(verificationMesh)(abs(uA-uN)^2))/sqrt(int1d(verificationMesh)(abs(uA)^2));
+    cout << "L2 ERROR SFT (RELATIVE) : " << l2Error << endl;
+    UhOut delta = abs(uA-uN);
+    UhOut reference = abs(uA);
+    cout << "LINF ERROR SFT (RELATIVE) : " << delta[].max/reference[].max << endl;
 
     //Fill output file
-    string outputFilePath = "./SFT/" + outputFileName;
+    string outputFilePath = outputFolder + "SFT/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -110,6 +129,7 @@ func int AcousticSFT(real frequency, meshS &measurementsMesh, complex[int] measu
 //Global parameters
 int realMeasurements = getARGV("-realMeasurements",0);
 real frequency = getARGV("-frequency",100); 
+int expansionNumber = getARGV("-expansionNumber",100);
 
 string fileID = getARGV("-fileID","");
 if(fileID != "")
@@ -117,50 +137,71 @@ if(fileID != "")
     fileID = "_" + fileID;
 }
 
-if(isdir("./SFT") == -1)
-{
-    mkdir("./SFT");
-}
-
 //TODO Gradient
 
 //Real measurements
 if(realMeasurements == 1)
 {
-    string outputFileName = "output_" + frequency + fileID + ".csv";
+    //Real measurements parameters
+    string measurementsMeshPath = getARGV("-measurementsMeshPath","");
+    string measurementsDataPath = getARGV("-measurementsDataPath",""); 
+    string verificationMeshPath = getARGV("-verificationMeshPath","");
+    string verificationDataPath = getARGV("-verificationDataPath",""); 
 
-    meshS measurementsMesh = getMeasurementsMesh();
+    string outputFolder = dirname(measurementsDataPath) + "/";
+    if(isdir(outputFolder + "SFT") == -1)
+    {
+        mkdir(outputFolder + "SFT");
+    }
+    string outputFileName = elementTypeName + "/output_" + frequency + fileID + ".csv";
+
+    meshS measurementsMesh(measurementsMeshPath);
     measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
-    meshL verificationMesh = getVerificationMesh();
+    complex[int] measurementsData = getData(measurementsDataPath);
+
+    meshL verificationMesh(verificationMeshPath);
     verificationMesh = OrientNormal(verificationMesh,unbounded=0);
+    complex[int] verificationData = getData(verificationDataPath);  
 
-    complex[int] verificationData = getVerificationData(frequency);
-    complex[int] measurementsData = getMeasurementsData(frequency);
-
-    AcousticSFT(frequency, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName);
+    AcousticSFT(frequency, expansionNumber, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, outputFolder);
 }
 
 //Simulation
 else
 {
+    if(isdir("./SFT") == -1)
+    {
+        mkdir("./SFT");
+    }
+
     //Simulation parameters
     real size = getARGV("-size",0.1); 
-    real resolution = getARGV("-resolution",0.05);
+    real resolution = getARGV("-resolution",0.01);
     real sigmaPosition = getARGV("-sigmaPosition",0.0);
     real sigmaMeasure = getARGV("-sigmaMeasure",0.0);
 
-    real verificationSize = getARGV("-verificationSize",0.5);
-    real verificationResolution = getARGV("-verificationResolution",0.1);
+    real verificationSize = getARGV("-verificationSize",0.75);
+    real verificationResolution = getARGV("-verificationResolution",0.05);
 
     string studiedFunction = getARGV("-studiedFunction", "monopole");
-    real tmp = getARGV("-dipoleDistance",0.001);
-    halfDipoleDistance = tmp;
+    real dipoleDistance = getARGV("-dipoleDistance",0.001);
+    halfDipoleDistance = dipoleDistance/2;
 
-    string outputFileName = studiedFunction + "/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+    string outputFileName;
+    string intermediateFolder = studiedFunction + "_" + elementTypeName + "/";
 
-    if(isdir("./SFT/" + studiedFunction) == -1)
+    if(studiedFunction == "dipole")
     {
-        mkdir("./SFT/" + studiedFunction);
+        outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+    }
+    else
+    {
+        outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+    }
+
+    if(isdir("./SFT/" + studiedFunction + "_" + elementTypeName) == -1)
+    {
+        mkdir("./SFT/" + studiedFunction + "_" + elementTypeName);
     }
 
     //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
@@ -199,9 +240,16 @@ else
 
     if(sigmaMeasure != 0.0)
     {
+        real modulus, phase;
         for(int i = 0; i < measurementsData.n; i++)
         {
-            measurementsData[][i] = real(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure) + 1i*(imag(measurementsData[][i]) + gslrangaussian(ffrng, sigmaMeasure));
+            modulus = abs(measurementsData[][i]);
+            phase = arg(measurementsData[][i]);
+
+            measurementsData[][i] = (modulus + gslrangaussian(ffrng, sigmaMeasure*modulus))*exp(1i*(phase + gslrangaussian(ffrng, sigmaMeasure*2*pi)));
+
+            modulus = abs(measurementsData[][i]);
+            phase = arg(measurementsData[][i]);
         }
     }
 
@@ -213,7 +261,7 @@ else
     fespace UhOut(verificationMesh,P1); //Verification data is computed on the mesh vertices !
     UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
 
-    AcousticSFT(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName);
+    AcousticSFT(frequency, expansionNumber, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName,"./");
 }
 
 

@@ -119,12 +119,12 @@ func meshL getCircularMesh(real size, real resolution, real sigma, string elemen
     //Load mesh
     if(sigma == 0.0)
     {
-        meshL ThL("../config/meshes/circle/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
+        meshL ThL("./meshes/circle/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + ".mesh");
         return(ThL);
     }
     else
     {
-        meshL ThL("../config/meshes/circle_uncertainty/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + "_" + sigmaWithDecimal + ".mesh");
+        meshL ThL("./meshes/circle_uncertainty/" + elementType + "/" + sizeWithDecimal + "_" + resolutionWithDecimal + "_" + sigmaWithDecimal + ".mesh");
         return(ThL); 
     }
 

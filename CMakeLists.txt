@@ -177,7 +177,7 @@ target_link_libraries(${PROJECT_NAME}_mesh_measurement_node
 ## in contrast to setup.py, you can choose the destination
 catkin_install_python(PROGRAMS
   scripts/CompleteProcedure.sh
-  scripts/robot_arm_acoustic/MeshTools.py
+  post_processing/robot_arm_acoustic/MeshTools.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
 

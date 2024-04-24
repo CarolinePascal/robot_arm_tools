@@ -12,7 +12,7 @@ import numpy as np
 
 #Mesh packages
 from robot_arm_acoustic.MeshTools import generateSphericMesh, generateCircularMesh
-import robot_arm_acoustic_post_processing
+import robot_arm_acoustic
 
 ### Studied function
 function = "monopole"
@@ -44,9 +44,9 @@ def main(method, gradient):
 
     #Generate command (bash)
     if(method == "SFT"):
-        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic_post_processing.__file__) + "AcousticComputationSFT.edp"
+        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic.__file__) + "AcousticComputationSFT.edp"
     else:
-        command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic_post_processing.__file__) +  "/AcousticComputationBEM.edp -wg"
+        command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic.__file__) +  "/AcousticComputationBEM.edp -wg"
 
     counter = 1
 

@@ -172,11 +172,11 @@ def generateSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", saveM
 
     folderName = PACKAGE_PATH + "/config/meshes/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     if(not saveFolder is None):
-        folderName = saveFolder + "/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
+        folderName = saveFolder + "sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     os.makedirs(folderName, exist_ok=True)
 
     if(elementType != "P0" and elementType != "P1"):
-        raise NotImplementedError
+        raise NotImplementedError("Not implemented element type")
 
     bTarget, cTarget = getTargetParameters(size,resolution,elementType)
     points, faces = generateSphericMeshFromParameters(size, bTarget, cTarget, elementType)
@@ -210,11 +210,11 @@ def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", s
 
     folderName = PACKAGE_PATH + "/config/meshes/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     if(not saveFolder is None):
-        folderName = saveFolder + "/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
+        folderName = saveFolder + "sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     os.makedirs(folderName, exist_ok=True)
 
     if(elementType != "P0"):
-        raise NotImplementedError
+        raise NotImplementedError("Not implemented element type")
     
     points,faces = generateSphericMesh(size,resolution,sigma,elementType)
     dualMesh = dm.get_dual(meshio.Mesh(points, [("triangle",faces)]), order=True)
@@ -248,7 +248,7 @@ def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", si
 
     folderName = PACKAGE_PATH + "/config/meshes/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)
     if(not saveFolder is None):
-        folderName = saveFolder + "/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)
+        folderName = saveFolder + "sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType + "/similar_" + str(size) + "_" + str(resolution)
     os.makedirs(folderName, exist_ok=True)
     
     #This is actually a problem that does not always have a solution : some meshes will have similar lower resolution meshes, but others wont have any !
@@ -371,11 +371,11 @@ def generateCircularMesh(size, resolution, sigma = 0.0, elementType = "P1", save
 
     folderName = PACKAGE_PATH + "/config/meshes/circle" + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     if(not saveFolder is None):
-        folderName = saveFolder + "/circle" + "_uncertainty"*(sigma != 0.0) + "/" + elementType
+        folderName = saveFolder + "circle" + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     os.makedirs(folderName, exist_ok=True)
 
     if(elementType != "P1"):
-        raise NotImplementedError
+        raise NotImplementedError("Not implemented element type")
     
     #Circle radius 
     radius = size/2
@@ -646,7 +646,7 @@ def getMeshInfo(vertices,faces,elementType="P0"):
 
 
 @cloup.command()
-@cloup.option("--mesh_type", type=str, default="sphere", help="Type of mesh to generate")
+@cloup.option("--type", type=str, default="sphere", help="Type of mesh to generate")
 @cloup.option("--size", type=float, default=0.1, help="Size (dimension) of the mesh")
 @cloup.option("--resolution", type=float, default=0.01, help="Resolution of the mesh")
 @cloup.option("--sigma", type=float, default=0.0, help="Position error standard deviation of the mesh vertices")
@@ -657,12 +657,12 @@ def getMeshInfo(vertices,faces,elementType="P0"):
 @cloup.option("--dual", is_flag=True, help="Generates the dual mesh on top of the mesh")
 @cloup.option("--similar", is_flag=True, help="Generates similar meshes on top of the mesh (meshes with similar elements nodes but larger resolutions)")
 @cloup.option("--similar_number", type=int, default=3, help="Number of similar meshes to generate")
-@cloup.option("--output_folder", type=str, default=None, help="Folder where to save the mesh")
+@cloup.option("--save_folder", type=str, default=None, help="Folder where to save the mesh")
 @cloup.option("--info", is_flag=True, help="Displays mesh information")
-def main(mesh_type, size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, dual, similar, similar_number, output_folder, info):
+def main(type, size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, dual, similar, similar_number, save_folder, info):
 
-    if(mesh_type == "sphere"):
-        vertices,faces = generateSphericMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, output_folder)
+    if(type == "sphere"):
+        vertices,faces = generateSphericMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, save_folder)
         if(info):
             getMeshInfo(vertices,faces,element_type)
             plotMesh(vertices,faces,element_type,plotNodes=True,plotEdges=True)
@@ -671,14 +671,14 @@ def main(mesh_type, size, resolution, sigma, element_type, save_mesh, save_yaml,
         #Dual mesh
         if(dual):
             print("Dual mesh are hazardous for now !")
-            generateDualSphericMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, output_folder)
+            generateDualSphericMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, save_folder)
                 
         #Similar meshes
         if(similar):
-            generateSimilarSphericMeshes(size, resolution, sigma, element_type, similar_number, save_mesh, save_yaml, gradient_offset, output_folder)            
+            generateSimilarSphericMeshes(size, resolution, sigma, element_type, similar_number, save_mesh, save_yaml, gradient_offset, save_folder)            
 
-    elif(mesh_type == "circle"):
-        vertices,faces = generateCircularMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, output_folder)
+    elif(type == "circle"):
+        vertices,faces = generateCircularMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, save_folder)
         if(info):
             getMeshInfo(vertices,faces,element_type)
             plotMesh(vertices,faces,element_type,plotEdges=True)

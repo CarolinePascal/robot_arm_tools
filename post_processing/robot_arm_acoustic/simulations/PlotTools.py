@@ -8,7 +8,7 @@ import os
 import numpy as np
 
 #Plot packages
-from robot_arm_acoustic_post_processing.PlotTools import *
+from robot_arm_acoustic.PlotTools import *
 
 #Post-processing functions
 postProcessingFunctions = {}

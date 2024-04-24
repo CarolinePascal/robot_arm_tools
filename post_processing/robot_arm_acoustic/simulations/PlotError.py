@@ -12,8 +12,8 @@ import meshio as meshio
 from robot_arm_acoustic.MeshTools import generateSphericMesh
 
 #Custom tools packages
-from robot_arm_acoustic_post_processing.simulations.AcousticTools import *
-from robot_arm_acoustic_post_processing.simulations.PlotTools import *
+from robot_arm_acoustic.simulations.AcousticTools import *
+from robot_arm_acoustic.simulations.PlotTools import *
 from matplotlib.ticker import MaxNLocator
 
 import itertools

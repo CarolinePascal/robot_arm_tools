@@ -7,4 +7,4 @@ build/
 *.ipynb
 
 config/meshes/
-post_processing/robot_arm_acoustic_post_processing/simulations/meshes/
+post_processing/robot_arm_acoustic/simulations/meshes/

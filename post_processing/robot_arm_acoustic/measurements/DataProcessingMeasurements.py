@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 #Multiprocessing package
 from multiprocessing import Pool
 
-from robot_arm_acoustic_post_processing.measurements.PlotTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
+from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
 
 from robot_arm_acoustic.MeshTools import plotMesh, plotPointCloudFromPath
 

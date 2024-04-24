@@ -20,7 +20,7 @@ import meshio as meshio
 #Plot package
 import matplotlib.pyplot as plt
 
-from robot_arm_acoustic_post_processing.measurements.PlotTools import save_fig, set_title, plot_spatial_data, plot_polar_data, plot_absolute_error_spatial, plot_relative_error_spatial, plot_relative_separated_error_spatial, plot_weighting, plot_absolute_error, plot_relative_error, plot_relative_separated_error, compute_l2_errors, compute_l2_errors_spatial, figsize, cmap, cmap2, markers, octBandFrequencies, fminValidity, fmaxValidity
+from robot_arm_acoustic.measurements.PlotTools import save_fig, set_title, plot_spatial_data, plot_polar_data, plot_absolute_error_spatial, plot_relative_error_spatial, plot_relative_separated_error_spatial, plot_weighting, plot_absolute_error, plot_relative_error, plot_relative_separated_error, compute_l2_errors, compute_l2_errors_spatial, figsize, cmap, cmap2, markers, octBandFrequencies, fminValidity, fmaxValidity
 
 def display_point(point):
 	roundedPoint = np.round(point,2)

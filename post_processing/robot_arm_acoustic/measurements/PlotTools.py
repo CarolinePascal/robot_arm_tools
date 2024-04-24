@@ -17,7 +17,7 @@ from matplotlib.ticker import MaxNLocator,AutoMinorLocator
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-from robot_arm_acoustic_post_processing.PlotTools import *
+from robot_arm_acoustic.PlotTools import *
     
 ### DATA PARAMETERS ###
 

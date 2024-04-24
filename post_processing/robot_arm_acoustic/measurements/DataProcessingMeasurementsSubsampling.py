@@ -19,8 +19,8 @@ from measpy._tools import wrap
 #Multiprocessing package
 from multiprocessing import Pool
 
-from robot_arm_acoustic_post_processing.measurements.PlotTools import plot_3d_data, save_fig, figsize
-from robot_arm_acoustic_post_processing.measurements.DataProcessingMeasurements import sphereFit
+from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, save_fig, figsize
+from robot_arm_acoustic.measurements.DataProcessingMeasurements import sphereFit
 
 from robot_arm_acoustic.MeshTools import plotMesh, plotPointCloudFromPath
 
