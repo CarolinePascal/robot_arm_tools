@@ -109,6 +109,10 @@ def main(method, gradient):
                                     tmpFileID = " -fileID " + str((1 + j) + (Nsigma*i))
 
                                     bashCommand = command + " -realMeasurements 0 -frequency " + str(frequency) + " -size " + str(size) + " -resolution " + str(resolution) + " -dipoleDistance " + str(dipoleDistance) + " -sigmaPosition " + str(sigmaPosition) + " -sigmaMeasure " + str(sigmaMeasure) + tmpFileID + " -verificationSize " + str(verificationSize) + " -verificationResolution " + str(verificationResolution) + " -studiedFunction " + function + " -DelementType=" + elementType + " -Dgradient=" + str(int(gradient)) + " -ns"
+
+                                    #Change GSL random seed
+                                    gslPrefix = "GSL_RNG_SEED=" + str(np.random.randint(0,1000000)) + " "
+                                    bashCommand = gslPrefix + bashCommand
                                     print(bashCommand)
 
                                     t0 = time.time()
