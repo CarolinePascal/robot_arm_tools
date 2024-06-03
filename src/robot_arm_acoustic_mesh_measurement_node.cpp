@@ -82,7 +82,7 @@ int main(int argc, char **argv)
     {
         try
         {
-            trajectoryFromFile(meshPath, waypoints);
+            trajectoryFromFile(waypoints, meshPath);
             break;
         }
         catch(const std::exception& e)
