@@ -1,9 +1,9 @@
 int MAXSIZE = 10000;
 
-func complex[int] getData(string dataPath)
+func complex[int] getData(string dataFilePath)
 {
     complex[int] data(MAXSIZE);
-    ifstream file(dataPath);
+    ifstream file(dataFilePath);
 
     string line;
     real tmp;
