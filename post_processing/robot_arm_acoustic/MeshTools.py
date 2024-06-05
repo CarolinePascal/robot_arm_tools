@@ -67,10 +67,10 @@ def saveMeshYAML(YAMLPath, vertices, faces, elementType = "P0", gradientOffset =
     listPoints = None
 
     if(elementType == 'P0'):
-        listPoints = np.average(vertices[faces],axis=1)   #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
+        listPoints = np.average(mesh.vertices[mesh.faces],axis=1)   #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
         
     elif(elementType == 'P1'):
-        listPoints = vertices
+        listPoints = mesh.vertices
 
     #Build 3D poses (position + orientation) from mesh surfacic 3D points
     if(sphericMesh):
@@ -80,45 +80,51 @@ def saveMeshYAML(YAMLPath, vertices, faces, elementType = "P0", gradientOffset =
     else:
         #Get local normals for each point
         if(elementType == 'P0'):
-            normals = mesh.face_normals
+            normals = deepcopy(mesh.face_normals)
         elif(elementType == 'P1'):
-            normals = mesh.vertex_normals
+            normals = deepcopy(mesh.vertex_normals)
+
+        # vec = np.column_stack((mesh.vertices, mesh.vertices + (mesh.vertex_normals * mesh.scale * .05)))
+        # path = trimesh.load_path(vec.reshape((-1, 2, 3)))
+        # trimesh.Scene([mesh, path]).show(smooth=False)
     
         #Build poses from points and normals, oriented along the inward normal
         for (point,normal) in zip(listPoints,normals):
-            k = np.cross(np.array([0,0,1]),normal)
-            theta = np.arccos(np.dot(np.array([0,0,1]),normal))
+
+            k = np.cross(np.array([0,0,1]),-normal)
+            k = k/np.linalg.norm(k)
+            theta = np.arccos(np.dot(np.array([0,0,1]),-normal))
 
             if((normal == np.array([0,0,-1])).all()):
                 rotation = R.from_euler('xyz',[0,0,0])
             elif((normal == np.array([0,0,1])).all()):
                 rotation = R.from_euler('xyz',[0,np.pi,0])
             else:
-                rotation = R.from_rotvec(-k*theta)
+                rotation = R.from_rotvec(k*theta)
 
             meshPoses = np.vstack((meshPoses,np.hstack((point,rotation.as_euler('xyz')))))
 
     #Sort 3D poses from top to bottom
     sortedMeshPoses = np.empty((0,6))
-    sortedMeshPosesVertical = meshPoses[np.argsort(meshPoses[:,2])]
+    sortedMeshPosesVertical = meshPoses[np.argsort(meshPoses[:,2])[::-1]]
 
     #Define a slicing range : we split the sphere vertically according to resolution, and add points by increasing azimuth
-    verticalRange = np.arange(sortedMeshPosesVertical[0,2],sortedMeshPosesVertical[-1,2],resolution/2)
-    verticalRange = np.append(verticalRange,sortedMeshPosesVertical[-1,2])
+    verticalRange = np.arange(sortedMeshPosesVertical[-1,2],sortedMeshPosesVertical[0,2],resolution/2)[::-1]
+    verticalRange = np.append(sortedMeshPosesVertical[0,2],verticalRange)
 
-    minBound = verticalRange[0]
-    for maxBound in verticalRange[1:]:
+    maxBound = verticalRange[0]
+    for minBound in verticalRange[1:]:
 
         #Get poses located in the current vertical range
-        localIndex = np.where((sortedMeshPosesVertical[:,2] >= minBound) & (sortedMeshPosesVertical[:,2] < maxBound))[0]   
+        localIndex = np.where((sortedMeshPosesVertical[:,2] > minBound) & (sortedMeshPosesVertical[:,2] <= maxBound))[0]   
         localMeshPoses = sortedMeshPosesVertical[localIndex]
 
         #Sort poses azimuth-wise
         localSortedMeshPosesAzimuth = localMeshPoses[np.argsort(np.arctan2(localMeshPoses[:,1],localMeshPoses[:,0]))]
         sortedMeshPoses = np.vstack((sortedMeshPoses,localSortedMeshPosesAzimuth))
-        minBound = maxBound
+        maxBound = minBound
 
-    #Because we opted for < maxBound, we have to ensure that no point was left behind for == maxBound
+    #Because we opted for > minBound, we have to ensure that no point was left behind for == minBound
     sortedMeshPoses = np.vstack((sortedMeshPoses,sortedMeshPosesVertical[np.where(sortedMeshPosesVertical[:,2] == verticalRange[-1])[0]]))
 
     #Adding normally offseted poses for gradient measurements/computation
@@ -139,35 +145,35 @@ def saveMeshYAML(YAMLPath, vertices, faces, elementType = "P0", gradientOffset =
 
         sortedMeshPoses = np.insert(sortedMeshPoses,1+np.arange(len(sortedMeshPoses)),sortedMeshPosesGradient,axis=0)
 
-        # _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+        _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-        # ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces,facecolor=(0.0,0.0,0.0,0.0), edgecolor=(0.0,0.0,0.0,0.1))
+        ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces,facecolor=(0.0,0.0,0.0,0.0), edgecolor=(0.0,0.0,0.0,0.1))
 
-        # for item in sortedMeshPoses:
-        #     ax.scatter(item[0],item[1],item[2],c='r')
-        #     normal = (-1)*R.from_euler('xyz',item[3:]).as_matrix()[:,-1]
-        #     ax.quiver(item[0],item[1],item[2],normal[0],normal[1],normal[2])
+        for item in sortedMeshPoses:
+            ax.scatter(item[0],item[1],item[2],c='r')
+            normal = (-0.1)*R.from_euler('xyz',item[3:]).as_matrix()[:,-1]
+            ax.quiver(item[0],item[1],item[2],normal[0],normal[1],normal[2])
 
-        # #Set 3D plot limits and aspect
-        # xlim = ax.get_xlim3d()
-        # deltaX = xlim[1] - xlim[0]
-        # meanX = np.mean(xlim)
-        # ylim = ax.get_ylim3d()
-        # deltaY = ylim[1] - ylim[0]
-        # meanY = np.mean(ylim)
-        # zlim = ax.get_zlim3d()
-        # deltaZ = zlim[1] - zlim[0]
-        # meanZ = np.mean(zlim)
+        #Set 3D plot limits and aspect
+        xlim = ax.get_xlim3d()
+        deltaX = xlim[1] - xlim[0]
+        meanX = np.mean(xlim)
+        ylim = ax.get_ylim3d()
+        deltaY = ylim[1] - ylim[0]
+        meanY = np.mean(ylim)
+        zlim = ax.get_zlim3d()
+        deltaZ = zlim[1] - zlim[0]
+        meanZ = np.mean(zlim)
 
-        # delta = np.max([deltaX,deltaY,deltaZ])
+        delta = np.max([deltaX,deltaY,deltaZ])
 
-        # ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
-        # ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
-        # ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
+        ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
-        # ax.set_box_aspect((1,1,1))
+        ax.set_box_aspect((1,1,1))
 
-        # plt.show()
+        plt.show()
 
     print("Saving mesh poses at " + YAMLPath)
     with open(YAMLPath, mode="w+") as file:
