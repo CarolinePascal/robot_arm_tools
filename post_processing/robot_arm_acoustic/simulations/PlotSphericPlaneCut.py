@@ -53,7 +53,9 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
                 fixedParameterValues = parameterValues
             else:
                 fixedParameterValues = kwargs[parameter]
-            
+                if(not isinstance(fixedParameterValues, list)):
+                    fixedParameterValues = [fixedParameterValues]
+                
         else:
             if(len(parameterValues) == 1):
                 print("Only possible value for " + parameter +" is " + str(configurations[0,i]) +  " (" + parametersUnits[i] + ")")
@@ -65,7 +67,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
             fixedParameterValues = [float(item) for item in fixedParameterValues if float(item) in parameterValues]
             if(len(fixedParameterValues) == 0):
                 fixedParameterValues = parameterValues
-        except ValueError:
+        except (ValueError,TypeError):
             fixedParameterValues = parameterValues
 
         interestIndices = np.hstack([np.where(configurations[:,i] == value)[0] for value in fixedParameterValues])
@@ -173,18 +175,18 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
 
             if(analyticalFunction is not None):
                 if(legend != ""): 
-                    ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0),linestyle="dashed",linewidth=2.5)
                     #ax.plot(Phi,function(numericValuesA), label="FreeFem analytical solution",color=cmap(2),linestyle="dotted",linewidth=2.5)
                     ax.plot(Phi,function(numericValuesN), label="Numerical solution",color=cmap(1),linewidth=2.5)
+                    ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0),linestyle="dashed",linewidth=2.5)
                 else:
                     ax.plot(Phi,function(numericValuesN),color=cmap(1),linewidth=2.5,alpha=0.25)
             else:
                 if(legend != ""):
-                    ax.plot(Phi,function(numericValuesA),label="Measured data - " + functionName + " (" + unit + ")" + legend, color=cmap(i), linestyle="dashed",linewidth=2.5)
                     ax.plot(Phi,function(numericValuesN),label="Computed solution - " + functionName + " (" + unit + ")" + legend, color=cmap(i),linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesA),label="Measured data - " + functionName + " (" + unit + ")" + legend, color=cmap(i), linestyle="dashed",linewidth=2.5)
                 else:
-                    ax.plot(Phi,function(numericValuesA), color=cmap(i), linestyle="dashed",linewidth=2.5)
                     ax.plot(Phi,function(numericValuesN), color=cmap(i),linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesA), color=cmap(i), linestyle="dashed",linewidth=2.5)
 
             return(ax)
 
@@ -217,8 +219,8 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
         if((postProcessingID == "id" and i == 1) or postProcessingID == "phase"):
             subax.set_rmin(-1.1*np.pi)
             subax.set_rmax(1.1*np.pi)
-        #else:
-            #subax.set_rmax(1.1*subax.get_rmax())
+        else:
+            subax.set_rmax(1.1*subax.get_rmax())
         
         subax.set_thetagrids(np.arange(0,360,45),['0',r'$\frac{\pi}{4}$',r'$\frac{\pi}{2}$',r'$\frac{3\pi}{4}$',r'$\pi$',r'$\frac{5\pi}{4}$',r'$\frac{3\pi}{2}$',r'$\frac{7\pi}{4}$'])
 
@@ -273,7 +275,7 @@ if __name__ == "__main__":
 
     plotSphericCut(postProcessing,analytical,error,"SphericPlaneCut1.pdf",**kwargs)
 
-    kwargs["resolution"] = 0.25
+    kwargs["resolution"] = 0.125
 
     plotSphericCut(postProcessing,analytical,error,"SphericPlaneCut2.pdf",**kwargs)
 
