@@ -15,6 +15,19 @@ include "getARGV.idp"
 
 verbosity = 0;
 
+//Real measurements flag macro must be defined here for compilation purposes 
+
+IFMACRO(realMeasurements,0)
+func real k(real frequency){return kref(frequency);}
+ENDIFMACRO
+IFMACRO(realMeasurements,1)
+func real k(real frequency){return kmeas(frequency);}
+ENDIFMACRO
+IFMACRO(!realMeasurements)
+func real k(real frequency){return kref(frequency);}
+macro realMeasurements 0 //
+ENDIFMACRO
+
 //Whole range associated legendre polynomials with spherical harmonics normalization
 func complex Plm(int l, int m, real x)
 {
@@ -127,7 +140,6 @@ func int AcousticSFT(real frequency, int expansionNumber, meshS &measurementsMes
 //MAIN
 
 //Global parameters
-int realMeasurements = getARGV("-realMeasurements",0);
 real frequency = getARGV("-frequency",100); 
 int expansionNumber = getARGV("-expansionNumber",100);
 

@@ -87,7 +87,7 @@ The core of the BEM based SFE tool is implemented in `post_processing\robot_arm_
 #### Simulation 
 
 ```bash
-ffmpi-run -np <n_processors> AcousticComputationBEM.edp -wg -realMeasurements 0 -frequency <f> -size <D> -resolution <h> -dipoleDistance <a> -sigmaPosition <\sigma_P(m)> -sigmaMeasure <sigma_M(%)> + -fileID  <id> -verificationSize <D> -verificationResolution <h> -studiedFunction <function> -DelementType=<P0/P1> -Dgradient=<0/1> -ns
+ffmpi-run -np <n_processors> AcousticComputationBEM.edp -wg -DrealMeasurements=0 -frequency <f> -size <D> -resolution <h> -dipoleDistance <a> -sigmaPosition <\sigma_P(m)> -sigmaMeasure <sigma_M(%)> + -fileID  <id> -verificationSize <D> -verificationResolution <h> -studiedFunction <function> -DelementType=<P0/P1> -Dgradient=<0/1> -ns
 ```
 
 For the simulation to work properly, the computation and reconstruction meshes must already be generated calling the meshing tool `python3 robot_arm_acoustic.MeshTools` with the `--save_folder` option set to `./meshes/`. **By default, the computation mesh is a spheric mesh (P0/P1) and the reconstruction mesh is a circular mesh (P1).**
@@ -100,7 +100,7 @@ python3 -m robot_arm_acoustic.simulations.RunSimulationsAcousticComputation
 #### Real measurements
 
 ```bash
-ffmpi-run -np <n_processors> AcousticComputationBEM.edp -wg -realMeasurements 1 -frequency <f> -measurementsMeshPath <path> -measurementsDataPath <data> -verificationMeshPath <path> -verificationDataPath <path> -verificationGradientDataFolder <path> -DelementType=<P0/P1> -Dgradient=<0/1> -ns"
+ffmpi-run -np <n_processors> AcousticComputationBEM.edp -wg -DrealMeasurements=1 -frequency <f> -measurementsMeshPath <path> -measurementsDataPath <data> -verificationMeshPath <path> -verificationDataPath <path> -verificationGradientDataFolder <path> -DelementType=<P0/P1> -Dgradient=<0/1> -ns"
 
 ```
 

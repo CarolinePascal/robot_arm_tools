@@ -20,13 +20,13 @@ import robot_arm_acoustic
 
 @cloup.command()
 @cloup.option('--method', type=str, default="BEM", help="Computation method (BEM or SFT)")
-@cloup.option('--measurementsMeshPath', type=str, default="./robotMesh.mesh", help="Path to the measurements mesh")
-@cloup.option('--measurementsDataFolder', type=str, default="./", help="Path to the measurements data folder")
-@cloup.option('--verificationMeshPath', type=str, default="../../../Verification/Verification/robotMesh.mesh", help="Path to the verification mesh")
-@cloup.option('--verificationDataFolder', type=str, default="../../../Verification/Verification/", help="Path to the verification data folder")
-@cloup.option('--frequencies', type=str, default="100,250,500,750,1000,2500,5000", help="Studied frequencies")
+@cloup.option('--measurements_mesh_path', type=str, default="./robotMesh.mesh", help="Path to the measurements mesh")
+@cloup.option('--measurements_data_folder', type=str, default="./", help="Path to the measurements data folder")
+@cloup.option('--verification_mesh_path', type=str, default="../../../Verification/Verification/robotMesh.mesh", help="Path to the verification mesh")
+@cloup.option('--verification_data_folder', type=str, default="../../../Verification/Verification/", help="Path to the verification data folder")
+@cloup.option('--frequencies', type=str, default="", help="Studied frequencies")
 @cloup.option('--gradient', is_flag=True, help="Compute the gradient of the acoustic field")
-def main(method, measurementsMeshPath, measurementsDataFolder, verificationMeshPath, verificationDataFolder, frequencies, gradient):
+def main(method, measurements_mesh_path, measurements_data_folder, verification_mesh_path, verification_data_folder, frequencies, gradient):
 
     #Generate command (bash)
     if(method == "SFT"):
@@ -43,7 +43,7 @@ def main(method, measurementsMeshPath, measurementsDataFolder, verificationMeshP
 
     #Infering element type
     #TODO on Freefem side (interpolation, extrapolation)
-    mesh = meshio.read(measurementsMeshPath)
+    mesh = meshio.read(measurements_mesh_path)
     Vertices, Faces = mesh.points, mesh.get_cells_type("triangle")
 
     measurementsNumber = 0
@@ -62,7 +62,7 @@ def main(method, measurementsMeshPath, measurementsDataFolder, verificationMeshP
 
         ### Run computation
 
-        bashCommand = command + " -frequency " + str(frequency) + " -realMeasurements 1 -measurementsMeshPath " + measurementsMeshPath + " -measurementsDataPath " + measurementsDataFolder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verificationMeshPath + " -verificationDataPath " + verificationDataFolder + "data_" + str(frequency) + ".csv -verificationGradientDataPath " + verificationDataFolder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(int(gradient)) + " -ns"
+        bashCommand = command + " -frequency " + str(frequency) + " -DrealMeasurements=1 -measurementsMeshPath " + measurements_mesh_path + " -measurementsDataPath " + measurements_data_folder + "data_" + str(frequency) + ".csv -verificationMeshPath " + verification_mesh_path + " -verificationDataPath " + verification_data_folder + "data_" + str(frequency) + ".csv -verificationGradientDataPath " + verification_data_folder + "gradient/data_" + str(frequency) + ".csv -DelementType=" + elementType + " -Dgradient=" + str(int(gradient)) + " -ns"
         print(bashCommand)
 
         t0 = time.time()

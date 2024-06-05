@@ -20,22 +20,17 @@ htoolEta = 1;
 htoolMinclustersize = 100;
 htoolMaxblocksize = 1000000;
 
-//Element type macro must be defined here for compilation purposes 
+//Element type, gradient computation flag and real measurements flag macro must be defined here for compilation purposes 
 
-IFMACRO(!elementType)
-func Pk = P0;
-string elementTypeName = "P0";
-ENDIFMACRO
 IFMACRO(elementType)
 func Pk = elementType;
 string elementTypeName = Stringification(elementType);
 ENDIFMACRO
-
-IFMACRO(!gradient)
-bool computeGradient = false;
-func PkVerification = P1;
-string elementTypeNameVerification = "P1";
+IFMACRO(!elementType)
+func Pk = P0;
+string elementTypeName = "P0";
 ENDIFMACRO
+
 IFMACRO(gradient,0)
 bool computeGradient = false;
 func PkVerification = P1;
@@ -45,6 +40,22 @@ IFMACRO(gradient,1)
 bool computeGradient = true;
 func PkVerification = Pk;
 string elementTypeNameVerification = elementTypeName;
+ENDIFMACRO
+IFMACRO(!gradient)
+bool computeGradient = false;
+func PkVerification = P1;
+string elementTypeNameVerification = "P1";
+ENDIFMACRO
+
+IFMACRO(realMeasurements,0)
+func real k(real frequency){return kref(frequency);}
+ENDIFMACRO
+IFMACRO(realMeasurements,1)
+func real k(real frequency){return kmeas(frequency);}
+ENDIFMACRO
+IFMACRO(!realMeasurements)
+func real k(real frequency){return kref(frequency);}
+macro realMeasurements 0 //
 ENDIFMACRO
 
 func int AcousticSL(real frequency, meshS &measurementsMesh, complex[int] measurementsData, meshS &verificationMesh, complex[int] verificationData, string outputFileName, complex[int] verificationDataGradient, string outputFileNameGradient, string outputFolder, real physicsFactor)
@@ -388,7 +399,6 @@ func int AcousticCL(real frequency, meshS &measurementsMesh, complex[int] measur
 //MAIN
 
 //Global parameters
-int realMeasurements = getARGV("-realMeasurements",0);
 
 //Because the physics convention is different from the mathematical one...
 real physicsFactor = 1.0;
