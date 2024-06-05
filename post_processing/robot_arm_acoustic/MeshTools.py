@@ -113,14 +113,16 @@ def saveMeshYAML(YAMLPath, vertices, faces, elementType = "P0", gradientOffset =
     verticalRange = np.append(sortedMeshPosesVertical[0,2],verticalRange)
 
     maxBound = verticalRange[0]
+    centroid = np.mean(meshPoses[:3],axis=0)
     for minBound in verticalRange[1:]:
 
         #Get poses located in the current vertical range
         localIndex = np.where((sortedMeshPosesVertical[:,2] > minBound) & (sortedMeshPosesVertical[:,2] <= maxBound))[0]   
         localMeshPoses = sortedMeshPosesVertical[localIndex]
+        centeredLocalMeshPoses = localMeshPoses - centroid
 
         #Sort poses azimuth-wise
-        localSortedMeshPosesAzimuth = localMeshPoses[np.argsort(np.arctan2(localMeshPoses[:,1],localMeshPoses[:,0]))]
+        localSortedMeshPosesAzimuth = localMeshPoses[np.argsort(np.arctan2(centeredLocalMeshPoses[:,1],centeredLocalMeshPoses[:,0]))]
         sortedMeshPoses = np.vstack((sortedMeshPoses,localSortedMeshPosesAzimuth))
         maxBound = minBound
 
@@ -145,35 +147,38 @@ def saveMeshYAML(YAMLPath, vertices, faces, elementType = "P0", gradientOffset =
 
         sortedMeshPoses = np.insert(sortedMeshPoses,1+np.arange(len(sortedMeshPoses)),sortedMeshPosesGradient,axis=0)
 
-        _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+        # _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
 
-        ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces,facecolor=(0.0,0.0,0.0,0.0), edgecolor=(0.0,0.0,0.0,0.1))
+        # ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces,facecolor=(0.0,0.0,0.0,0.0), edgecolor=(0.0,0.0,0.0,0.1))
+        # cmap = plt.get_cmap('jet')
 
-        for item in sortedMeshPoses:
-            ax.scatter(item[0],item[1],item[2],c='r')
-            normal = (-0.1)*R.from_euler('xyz',item[3:]).as_matrix()[:,-1]
-            ax.quiver(item[0],item[1],item[2],normal[0],normal[1],normal[2])
+        # scatter = ax.scatter(sortedMeshPoses[:,0],sortedMeshPoses[:,1],sortedMeshPoses[:,2],c=np.arange(len(sortedMeshPoses)),cmap=cmap)
 
-        #Set 3D plot limits and aspect
-        xlim = ax.get_xlim3d()
-        deltaX = xlim[1] - xlim[0]
-        meanX = np.mean(xlim)
-        ylim = ax.get_ylim3d()
-        deltaY = ylim[1] - ylim[0]
-        meanY = np.mean(ylim)
-        zlim = ax.get_zlim3d()
-        deltaZ = zlim[1] - zlim[0]
-        meanZ = np.mean(zlim)
+        # for item in sortedMeshPoses:
+        #     normal = (-0.1)*R.from_euler('xyz',item[3:]).as_matrix()[:,-1]
+        #     ax.quiver(item[0],item[1],item[2],normal[0],normal[1],normal[2])
 
-        delta = np.max([deltaX,deltaY,deltaZ])
+        # #Set 3D plot limits and aspect
+        # xlim = ax.get_xlim3d()
+        # deltaX = xlim[1] - xlim[0]
+        # meanX = np.mean(xlim)
+        # ylim = ax.get_ylim3d()
+        # deltaY = ylim[1] - ylim[0]
+        # meanY = np.mean(ylim)
+        # zlim = ax.get_zlim3d()
+        # deltaZ = zlim[1] - zlim[0]
+        # meanZ = np.mean(zlim)
 
-        ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
-        ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
-        ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
+        # delta = np.max([deltaX,deltaY,deltaZ])
 
-        ax.set_box_aspect((1,1,1))
+        # ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
+        # ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
+        # ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
-        plt.show()
+        # ax.set_box_aspect((1,1,1))
+
+        # plt.colorbar(scatter)
+        # plt.show()
 
     print("Saving mesh poses at " + YAMLPath)
     with open(YAMLPath, mode="w+") as file:
