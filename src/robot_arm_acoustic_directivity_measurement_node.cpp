@@ -60,7 +60,11 @@ int main(int argc, char **argv)
     //Default (0,0,0) centered trajectory around the z-axis
     sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
 
+<<<<<<< HEAD
     //Translate and rotate trajectory
+=======
+    //TODO FIX
+>>>>>>> Fixing trajectory axis for directivity measurements
     geometry_msgs::Point centerPoint;
     centerPoint.x = centerPose.position.x;
     centerPoint.y = centerPose.position.y;
@@ -69,6 +73,11 @@ int main(int argc, char **argv)
     // std::cout << "RPY: " << RPY[0] << " " << RPY[1] << " " << RPY[2] << std::endl;
     rotateTrajectory(waypoints, centerPoint, RPY[0],RPY[1],RPY[2]);
     
+<<<<<<< HEAD
+=======
+
+    
+>>>>>>> Fixing trajectory axis for directivity measurements
     //Main loop 
     robot.runMeasurementRoutine(waypoints,false,true,-1,true,false);
 
