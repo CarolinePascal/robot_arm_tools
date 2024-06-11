@@ -46,6 +46,16 @@ int main(int argc, char **argv)
         throw std::runtime_error("MISSING PARAMETER");
     }
 
+    bool gradientMeasurements = n.param<bool>("gradientMeasurements",false);
+    double gradientMeasurementsOffset;
+    if(gradientMeasurements)
+    {
+        if(!n.getParam("gradientMeasurementsOffset",gradientMeasurementsOffset))
+        {
+            gradientMeasurements = false;
+        }
+    }
+
     geometry_msgs::Pose centerPose;
     tf2::Quaternion quaternion;
     quaternion.setRPY(centerPoseArray[3],centerPoseArray[4],centerPoseArray[5]);
@@ -60,11 +70,7 @@ int main(int argc, char **argv)
     //Default (0,0,0) centered trajectory around the z-axis
     sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
 
-<<<<<<< HEAD
     //Translate and rotate trajectory
-=======
-    //TODO FIX
->>>>>>> Fixing trajectory axis for directivity measurements
     geometry_msgs::Point centerPoint;
     centerPoint.x = centerPose.position.x;
     centerPoint.y = centerPose.position.y;
@@ -73,11 +79,21 @@ int main(int argc, char **argv)
     // std::cout << "RPY: " << RPY[0] << " " << RPY[1] << " " << RPY[2] << std::endl;
     rotateTrajectory(waypoints, centerPoint, RPY[0],RPY[1],RPY[2]);
     
-<<<<<<< HEAD
-=======
+    if(gradientMeasurements)
+    {
+        std::vector<geometry_msgs::Pose> waypointsGradient;
+        sphericInclinationTrajectory(centerPose,trajectoryRadius + gradientMeasurementsOffset,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypointsGradient);
+        rotateTrajectory(waypointsGradient, centerPoint, RPY[0],RPY[1],RPY[2]);
 
+        int counter = 0;
+        for (int i = 0; i < waypoints.size(); i++)
+        {
+            waypoints.insert(waypoints.begin() + i + 1, waypointsGradient[counter]); // We insert at the next position
+            i++; // We make additional increment only if insertion took place
+            counter++;
+        }
+    }
     
->>>>>>> Fixing trajectory axis for directivity measurements
     //Main loop 
     robot.runMeasurementRoutine(waypoints,false,true,-1,true,false);
 
