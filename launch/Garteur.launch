@@ -23,8 +23,9 @@
 	</node>
 
 	<!-- MEASUREMENT SERVER -->
+	<arg name="measurement_server_storage_folder" default="/home/$(whoami)/Desktop/Garteur/"/>
 	<param name="measurementServerName" value="/ok_server"/>
-	<param name="measurementServerStorageFolder" value="$(env HOME)/Desktop/Garteur/"/>
+	<param name="measurementServerStorageFolder" value="$(arg measurement_server_storage_folder)"/>
 	<node pkg="robot_arm_tools" type="OKMeasurementServer" name="ok_server" output="screen"/>
 	
 	<!-- MAIN NODE -->
