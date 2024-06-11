@@ -9,14 +9,15 @@
 # export ROS_IP=this_computer_IP_address 
 
 import rospy
+from std_srvs.srv import Empty,EmptyResponse
 
 import threading
+import subprocess
 
 import measpy as mp
 from measpy.audio import audio_run_measurement
-import subprocess
 
-from robot_arm_tools import MeasurementServer
+from robot_arm_tools.MeasurementServer import MeasurementServer
 
 ## PropellerMeasurementServer
 #
@@ -25,17 +26,30 @@ class PropellerMeasurementServer(MeasurementServer) :
     
     ## Constructor
     def __init__(self):
+        super().__init__()
 
-        ## Propeller sound measurement
-        self.M1 = mp.Measurement(in_map=[1],
-                    in_desc=['In1'],
-                    in_cal=[1.0],
-                    in_unit=['Pa'],
-                    in_dbfs=[1.0/0.593],
-                    extrat=[0.0,0.0],
-                    out_sig_fades=[0.0,0.0],
-                    dur=5+1)
+        #GLOBAL PARAMETERS
+        self.device = 3
+        self.fs = 48000
 
+        #INPUT PARAMETERS
+        self.dur = 5
+        self.in_dbfs = 1.7108
+        self.in_cal = 1.0
+
+        ## Propeller sound measurement       
+        self.in_sig_pressure = mp.Signal(fs = self.fs,
+                                         unit = "Pa",
+                                         dbfs = self.in_dbfs,
+                                         cal = self.in_cal,
+                                         desc = "input_pressure")
+        
+        self.measurement = mp.Measurement(in_sig = [self.in_sig_pressure],
+                                          in_map = [1],
+                                          dur = self.dur,
+                                          in_device = self.device,
+                                          device_type = "audio")
+                                          
         # ROS Service Client
         rospy.wait_for_service("propeller_server")
 
@@ -43,7 +57,7 @@ class PropellerMeasurementServer(MeasurementServer) :
     def recovery(self):
 
         #sudo chmod -R a+rw /var/run/alsa/
-        subprocess.call("pulseaudio -k && /sbin/alsa force-reload", shell=True)
+        subprocess.run("pulseaudio -k && /sbin/alsa force-reload", shell=True)
         return(True)
 
     ## Method triggering a propeller measurement
@@ -53,7 +67,7 @@ class PropellerMeasurementServer(MeasurementServer) :
         rospy.sleep(2.0)
 
         #Start the measurement on an independant, non-blocking thread
-        thread = threading.Thread(target=audio_run_measurement, args=(self.M1,))
+        thread = threading.Thread(target=audio_run_measurement, args=(self.measurement,))
         thread.start()
         rospy.sleep(0.5)
 
@@ -65,7 +79,7 @@ class PropellerMeasurementServer(MeasurementServer) :
         thread.join()
 
         #Save measurement results
-        self.M1.to_csvwav(self.measurementServerStorageFolder+"noise_measurement"+str(self.measurementCounter))
+        self.measurement.to_dir(self.measurementServerStorageFolder+"noise_measurement"+str(self.measurementServerCounter))
 
         return(True)
 

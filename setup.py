@@ -34,6 +34,6 @@ setup(
       #Acoustic packages
       "unyt",
       "csaps",
-      "measpy==0.0.15",
+      "measpy",
    ]
 )
