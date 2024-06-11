@@ -6,5 +6,6 @@ build/
 *.pdf
 *.ipynb
 
-config/meshes/
+config/meshes/circle*/
+config/meshes/sphere*/
 post_processing/robot_arm_acoustic/simulations/meshes/
