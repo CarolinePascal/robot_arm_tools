@@ -495,18 +495,14 @@ if(realMeasurements == 1)
 //Simulation
 else
 {
-    if(isdir("./BEM_SL") == -1)
-    {
-        mkdir("./BEM_SL");
-    }
-    if(isdir("./BEM_CL") == -1)
-    {
-        mkdir("./BEM_CL");
-    }
-
     //Simulation parameters
+
     real size = getARGV("-size",0.1); 
     real resolution = getARGV("-resolution",0.01);
+    //OR 
+    string measurementsMeshPath = getARGV("-measurementsMeshPath","");
+    string noisyMeasurementsMeshPath = getARGV("-noisyMeasurementsMeshPath","");
+
     real sigmaPosition = getARGV("-sigmaPosition",0.0);
     real sigmaMeasure = getARGV("-sigmaMeasure",0.0);
 
@@ -519,39 +515,90 @@ else
 
     string outputFileName, outputFileNameGradient;
     string intermediateFolder = studiedFunction + "_" + elementTypeName + "/";
-
-    if(studiedFunction == "dipole")
+    string rootFolder;
+    
+    if(measurementsMeshPath != "")
     {
-        outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        rootFolder = basename(measurementsMeshPath);
+        rootFolder = rootFolder(0:rootFolder.find(".")-1) + "/";
+        cout << "Root folder : " << rootFolder << endl;
+        if(isdir(rootFolder) == -1)
+        {
+            mkdir(rootFolder);
+        }
     }
     else
     {
-        outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
-        outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        rootFolder = "./";
     }
 
-    if(isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
+    if(isdir(rootFolder + "BEM_SL") == -1)
     {
-        mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName);
+        mkdir(rootFolder + "BEM_SL");
     }
-    if(computeGradient && isdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    if(isdir(rootFolder + "BEM_CL") == -1)
     {
-        mkdir("./BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient");
+        mkdir(rootFolder + "BEM_CL");
     }
 
-    if(isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName) == -1)
+    if(measurementsMeshPath == "")
     {
-        mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName);
+        if(studiedFunction == "dipole")
+        {
+            outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+            outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        }
+        else
+        {
+            outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+            outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        }
     }
-    if(computeGradient && isdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    else
     {
-        mkdir("./BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient");
+        if(studiedFunction == "dipole")
+        {
+            outputFileName = intermediateFolder + "output_" + frequency + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+            outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + dipoleDistance + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        }
+        else
+        {
+            outputFileName = intermediateFolder + "output_" + frequency + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+            outputFileNameGradient = intermediateFolder + "gradient/output_" + frequency + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
+        }
+    }
+
+    if(isdir(rootFolder + "BEM_SL/" + studiedFunction + "_" + elementTypeName) == -1)
+    {
+        mkdir(rootFolder + "BEM_SL/" + studiedFunction + "_" + elementTypeName);
+    }
+    if(computeGradient && isdir(rootFolder + "BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    {
+        mkdir(rootFolder + "BEM_SL/" + studiedFunction + "_" + elementTypeName + "/gradient");
+    }
+
+    if(isdir(rootFolder + "BEM_CL/" + studiedFunction + "_" + elementTypeName) == -1)
+    {
+        mkdir(rootFolder + "BEM_CL/" + studiedFunction + "_" + elementTypeName);
+    }
+    if(computeGradient && isdir(rootFolder + "BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient") == -1)
+    {
+        mkdir(rootFolder + "BEM_CL/" + studiedFunction + "_" + elementTypeName + "/gradient");
     }
 
     //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
-    meshS measurementsMesh = getSphericMesh(size,resolution,0.0,elementTypeName);
-    measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    meshS measurementsMesh;
+    
+    if(measurementsMeshPath == "")
+    {
+        measurementsMesh = getSphericMesh(size,resolution,0.0,elementTypeName);
+        measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    }
+    else
+    {
+        measurementsMesh = readmeshS(measurementsMeshPath);
+        measurementsMesh = OrientNormal(measurementsMesh,unbounded=1);
+    }
     
     //Create simulated measurements
     fespace Uh(measurementsMesh,Pk);
@@ -568,9 +615,19 @@ else
     //Noisy position measurements
     else
     {
-	    //Retrieve noisy simulation mesh (random position noise)
-        meshS noisyMeasurementsMesh = getSphericMesh(size,resolution,sigmaPosition,elementTypeName);
-        noisyMeasurementsMesh = OrientNormal(noisyMeasurementsMesh,unbounded=1);
+        meshS noisyMeasurementsMesh;
+
+        if(measurementsMeshPath == "")
+        {
+            //Retrieve noisy simulation mesh (random position noise)
+            noisyMeasurementsMesh = getSphericMesh(size,resolution,sigmaPosition,elementTypeName);
+            noisyMeasurementsMesh = OrientNormal(noisyMeasurementsMesh,unbounded=1);
+        }
+        else
+        {
+            noisyMeasurementsMesh = readmeshS(noisyMeasurementsMeshPath);
+            noisyMeasurementsMesh = OrientNormal(noisyMeasurementsMesh,unbounded=1);
+        }
 
         //Retrieve noisy simulated measurements
         fespace UhNoise(noisyMeasurementsMesh,Pk);
@@ -578,10 +635,10 @@ else
         measurementsData[] = noisyMeasurementsData[];
     }
 
-    /*if(mpirank == 0)
+    if(mpirank == 0)
     {
         medit("Measurements",measurementsMesh,abs(measurementsData));
-    }*/
+    }
 
     if(sigmaMeasure != 0.0)
     {
@@ -609,8 +666,8 @@ else
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
         UhOut<complex> verificationDataGradient = inputFunctionGradient(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./", physicsFactor);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, "./", physicsFactor);
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, rootFolder, physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, verificationDataGradient[], outputFileNameGradient, rootFolder, physicsFactor);
     }
     else
     {
@@ -622,7 +679,7 @@ else
         fespace UhOut(verificationMesh,PkVerification); //Verification data is computed on the mesh vertices !
         UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
 
-        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./", physicsFactor);
-        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, "./", physicsFactor); 
+        AcousticSL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, rootFolder, physicsFactor);
+        AcousticCL(frequency, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName, rootFolder, physicsFactor); 
     }
 }
