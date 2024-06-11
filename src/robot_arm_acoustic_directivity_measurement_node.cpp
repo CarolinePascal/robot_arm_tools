@@ -19,7 +19,7 @@ int main(int argc, char **argv)
     //Get trajectory parameters
     ros::NodeHandle n;
     std::vector<double> trajectoryAxis, centerPoseArray;
-    double trajectoryRadius;
+    double trajectoryRadius, azimuth, inclinationMin, inclinationMax;
     int trajectoryStepsNumber;
    
     if(!n.getParam("trajectoryRadius",trajectoryRadius))
@@ -40,6 +40,24 @@ int main(int argc, char **argv)
         throw std::runtime_error("MISSING PARAMETER");
     }
 
+    if(!n.getParam("azimuth",azimuth))
+    {
+        ROS_ERROR("Unable to retrieve azimuth !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    if(!n.getParam("inclinationMin",inclinationMin))
+    {
+        ROS_ERROR("Unable to retrieve inclination min !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
+    if(!n.getParam("inclinationMax",inclinationMax))
+    {
+        ROS_ERROR("Unable to retrieve inclinaton max !");
+        throw std::runtime_error("MISSING PARAMETER");
+    }
+
     geometry_msgs::Pose centerPose;
     centerPose.position.x = centerPoseArray[0];
     centerPose.position.y = centerPoseArray[1];
@@ -49,9 +67,8 @@ int main(int argc, char **argv)
     //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
-    //Default z=1 trajectory
     //sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
-    sphericAzimuthTrajectory(centerPose, trajectoryRadius, 0, 0, 2*M_PI, trajectoryStepsNumber, waypoints);
+    sphericAzimuthTrajectory(centerPose, trajectoryRadius, azimuth, inclinationMin, inclinationMax, trajectoryStepsNumber, waypoints);
 
     //TODO FIX
     //Eigen::Vector3d RPY = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(trajectoryAxis.data()), Eigen::Vector3d(0,0,1)).toRotationMatrix().eulerAngles(0, 1, 2);
