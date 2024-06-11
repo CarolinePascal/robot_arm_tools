@@ -17,7 +17,7 @@ support:
 ceiling:
   type: border
   axis: z
-  offset: 1.0
+  offset: 10.0
   collisions: true
 
 artificial_wall:
