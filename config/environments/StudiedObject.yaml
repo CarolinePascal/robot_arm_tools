@@ -1,0 +1,43 @@
+studied_object:
+  type: mesh
+  file_name: package://robot_arm_acoustic/config/environments/StudiedObject.stl
+  pose:
+    x: 0.0
+    y: 0.0
+    z: 0.0
+    rx: 0.0
+    ry: 0.0
+    rz: 0.0
+  collisions: true
+  robot_base_collisions: true
+
+# speaker_nut:
+#   type: box
+#   pose:
+#     x: 0.48
+#     y: 0.0
+#     z: 0.63
+#     rx: 0.0
+#     ry: 0.0
+#     rz: 0.0
+#   size:
+#     dx: 0.06
+#     dy: 0.14
+#     dz: 0.075
+#   collisions: true
+#   robot_base_collisions: true
+
+speaker_support:
+  type: cylinder
+  pose:
+    x: 0.48
+    y: 0.015
+    z: 1.125
+    rx: 0.0
+    ry: 0.0
+    rz: 0.0
+  size:
+    radius: 0.03
+    height: 1.0
+  collisions: true
+  robot_base_collisions: true

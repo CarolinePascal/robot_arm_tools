@@ -1,0 +1,45 @@
+speaker:
+  type: cylinder
+  pose:
+    x: 0.48
+    y: 0.015
+    z: 0.40
+    rx: 1.5708
+    ry: 0.0
+    rz: 0.0
+  size:
+    radius: 0.07
+    height: 0.30
+  collisions: true
+  robot_base_collisions: true
+
+speaker_support:
+  type: cylinder
+  pose:
+    x: 0.48
+    y: 0.015
+    z: 0.90
+    rx: 0.0
+    ry: 0.0
+    rz: 0.0
+  size:
+    radius: 0.025
+    height: 1.0
+  collisions: true
+  robot_base_collisions: true
+
+speaker_nut:
+  type: box
+  pose:
+    x: 0.48
+    y: 0.015
+    z: 0.60
+    rx: 0.0
+    ry: 0.0
+    rz: 0.0
+  size:
+    dx: 0.05
+    dy: 0.15
+    dz: 0.075
+  collisions: true
+  robot_base_collisions: true
