@@ -30,7 +30,7 @@ from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, save_fig, se
 
 from robot_arm_acoustic.MeshTools import plotMesh, plotPointCloudFromPath
 
-INTERACTIVE = False
+INTERACTIVE = True
 
 def sphereFit(points):
     A = np.zeros((len(points),4))
@@ -62,18 +62,18 @@ if __name__ == "__main__":
 		print("Invalid processing method, defaulting to " + processingMethod + " method")
 
 	#Get interest output signal type
-	outputSignalType = "sweep"
+	outputSignalType = "log_sweep"
 	try:
 		outputSignalType = sys.argv[2].lower()
 	except IndexError:
 		print("Invalid output signal type, defaulting to " + str(outputSignalType) + " output signal")
 
 	#Get transfer function input and output signals names
-	inputSignal = "Out1" #Voltage
-	outputSignal = "In1"   #Pressure
+	inputSignal = 1 #Voltage
+	outputSignal = 0   #Pressure
 	try:
-		inputSignal = sys.argv[3]
-		outputSignal = sys.argv[4]
+		inputSignal = int(sys.argv[3])
+		outputSignal = int(sys.argv[4])
 	except IndexError:
 		print("Invalid input/output signals, defaulting to input : " + inputSignal + " and output : " + outputSignal)
 
@@ -84,7 +84,7 @@ if __name__ == "__main__":
 	except (IndexError, ValueError):
 		print("Invalid frequency, defaulting to f = " + str(Frequencies) + " Hz")
 
-	print("Processing input " + inputSignal + " and output " + outputSignal + " with " + processingMethod + " and " + outputSignalType + " output signal at " + str(Frequencies)  + " Hz")
+	print("Processing input " + str(inputSignal) + " and output " + str(outputSignal) + " with " + processingMethod + " and " + outputSignalType + " output signal at " + str(Frequencies)  + " Hz")
 
 	#Get point cloud path
 	pointCloudPath = None
@@ -132,24 +132,29 @@ if __name__ == "__main__":
 
 	#Retrieve measurements data and locations
 
-	folderName = processingMethod + "_" + outputSignalType + "_" + inputSignal + "_" + outputSignal + "_" + elementType
+	folderName = processingMethod + "_" + outputSignalType + "_" + str(inputSignal) + "_" + str(outputSignal) + "_" + elementType
 	os.makedirs(folderName,exist_ok=True)
 
-	Files = sorted(glob.glob(outputSignalType + "*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
-	
+	#Files = sorted(glob.glob(outputSignalType + "*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
+	Files = sorted(glob.glob(outputSignalType + "*/"), key=lambda file:int(file.split("_")[-1][:-1]))
+
 	Data = np.empty((len(Frequencies),len(Files)),dtype=complex)
 
 	def processing_data(file):
 		print("Data processing file : " + file)
 		
-		M = ms.Measurement.from_csvwav(file.split(".")[0])
+		#M = ms.Measurement.from_csvwav(file.split(".")[0])
+		M = ms.Measurement.from_dir(file)
+		M.sync_render(2,1,0.5)
 		
 		#Check processing method compatibility
 		if(processingMethod == "farina" and M.out_sig != "logsweep"):
 			raise ValueError("Farina method cannot be used with non log sweep signals")
 
-		P = M.data[outputSignal]
-		V = M.data[inputSignal]
+		#P = M.data[outputSignal]
+		#V = M.data[inputSignal]
+		P = M.in_sig[outputSignal]
+		V = M.in_sig[inputSignal]
 		
 		TFE = None
 		if(processingMethod == "farina"):
