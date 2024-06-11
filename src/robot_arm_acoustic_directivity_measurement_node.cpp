@@ -57,15 +57,20 @@ int main(int argc, char **argv)
     //Create measurement waypoints poses
     std::vector<geometry_msgs::Pose> waypoints;
 
-    //Default z=1 trajectory
+    //Default (0,0,0) centered trajectory around the z-axis
     sphericInclinationTrajectory(centerPose,trajectoryRadius,M_PI/2,0,2*M_PI,trajectoryStepsNumber,waypoints);
 
-    //TODO FIX
-    //Eigen::Vector3d RPY = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(trajectoryAxis.data()), Eigen::Vector3d(0,0,1)).toRotationMatrix().eulerAngles(0, 1, 2);
-    //rotateTrajectory(waypoints, geometry_msgs::Point(centerPose.position.x,centerPose.position.y,centerPose.position.z), RPY[0],RPY[1],RPY[2]);
-
+    //Translate and rotate trajectory
+    geometry_msgs::Point centerPoint;
+    centerPoint.x = centerPose.position.x;
+    centerPoint.y = centerPose.position.y;
+    centerPoint.z = centerPose.position.z;
+    Eigen::Vector3d RPY = Eigen::Quaterniond::FromTwoVectors(Eigen::Vector3d(0,0,1),Eigen::Vector3d(trajectoryAxis.data())).toRotationMatrix().eulerAngles(0, 1, 2);
+    // std::cout << "RPY: " << RPY[0] << " " << RPY[1] << " " << RPY[2] << std::endl;
+    rotateTrajectory(waypoints, centerPoint, RPY[0],RPY[1],RPY[2]);
+    
     //Main loop 
-    robot.runMeasurementRoutine(waypoints,false,true,-1);
+    robot.runMeasurementRoutine(waypoints,false,true,-1,true,false);
 
     //Shut down ROS node   
     ros::shutdown();
