@@ -142,14 +142,20 @@ if __name__ == "__main__":
 
 	def processing_data(file):
 		print("Data processing file : " + file)
-		
+		fileNumber = int(file.split("_")[-1][:-1])
+
+		if(os.path.isfile(folderName + "/data_measurement_" + str(fileNumber) + ".csv")):
+			inputData = np.loadtxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",delimiter=",")
+			inputFrequencies = inputData[:,0]
+
+			if(np.isin(inputFrequencies,Frequencies).all()):
+				index = [np.where(Frequencies==f)[0][0] for f in inputFrequencies]
+				output = inputData[index,1] + 1j*inputData[index,2]
+				return(output)
+			
 		#M = ms.Measurement.from_csvwav(file.split(".")[0])
 		M = ms.Measurement.from_dir(file)
 		M.sync_render(2,1,0.5)
-		
-		#Check processing method compatibility
-		if(processingMethod == "farina" and M.out_sig != "logsweep"):
-			raise ValueError("Farina method cannot be used with non log sweep signals")
 
 		#P = M.data[outputSignal]
 		#V = M.data[inputSignal]
@@ -166,6 +172,10 @@ if __name__ == "__main__":
 		for j,f in enumerate(Frequencies):
 			output[j] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
 			#output[j] = 100.0
+
+		#Save data for given measurement
+		fileNumber = int(file.split("_")[-1][:-1])
+		np.savetxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",np.array([Frequencies,np.real(output),np.imag(output)]).T,delimiter=",")
 
 		return(output)
 
