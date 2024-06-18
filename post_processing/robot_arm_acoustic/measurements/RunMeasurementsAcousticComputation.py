@@ -35,7 +35,7 @@ def main(method, measurements_mesh_path, measurements_data_folder, verification_
         command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic.__file__) +  "/AcousticComputationBEM.edp -wg"
 
     #Get studied frequencies
-    Frequencies = sorted([int(os.path.basename(file).split(".")[0].split("_")[-1]) for file in glob.glob("data_*.csv")])
+    Frequencies = sorted([int(os.path.basename(file).split(".")[0].split("_")[-1]) for file in glob.glob("data_[0-9]*.csv")])
     try:
         Frequencies = [int(item) for item in frequencies.split(",")]
     except (IndexError, ValueError):
