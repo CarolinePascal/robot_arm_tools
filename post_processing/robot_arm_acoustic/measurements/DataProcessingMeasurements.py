@@ -214,11 +214,12 @@ if __name__ == "__main__":
 	if(not meshPath is None):
 
 		### TO ADPAT DEPENDING ON MESH TYPE ###
+		centroid = np.array([0,0,0])
 		#centroid = np.array([0.4419291797546691,-0.012440529880238332,0.5316684442730065])
 		#centroid = np.mean(Points,axis=0)
-		centroid, radius = sphereFit(Points)
-		print("Estimated sphere centroid : " + str(centroid) + " m")
-		print("Estimated sphere radius : " + str(radius) + " m")
+		#centroid, radius = sphereFit(Points)
+		#print("Estimated sphere centroid : " + str(centroid) + " m")
+		#print("Estimated sphere radius : " + str(radius) + " m")
 		########################################
 		
 		mesh = meshio.read(meshPath)
@@ -236,6 +237,9 @@ if __name__ == "__main__":
 		#Compute mesh resolution
 		detailedMesh = trimesh.Trimesh(MeasurementsVertices, Faces)
 		meshResolution = detailedMesh.edges_unique_length.max()
+		meshSize = detailedMesh.extents.max()
+		print("Mesh resolution : " + str(meshResolution) + " m")
+		print("Mesh size : " + str(meshSize) + " m")
 
 		#Set the measurements points
 		if(elementType == "P0"):
@@ -269,25 +273,35 @@ if __name__ == "__main__":
 			for i in missing:
 				print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoints[i]))
 				
-		else:
-
-			missing = []
+		else: 
 			
+			MeasurementsPointsMask = np.ma.array(MeasurementsPoints, mask=False)
+
 			#Reorder data according to the mesh and find missing measurements
-			for i,MeasurementsPoint in enumerate(MeasurementsPoints):
+			for i,point in enumerate(Points):
 
 				#Find the closest measurement point to the current mesh point
-				distances = np.linalg.norm(Points - MeasurementsPoint,axis=1)
+				distances = np.linalg.norm(MeasurementsPointsMask - point,axis=1)
 				indexMin = np.argmin(distances)
 
-				#If the closest measurement point is too far away, we consider that the Measurements point is missing
-				#Else, we assign the corresponding data value to the mesh point
-				print(distances[indexMin])
-				if(distances[indexMin] > resolution/2):
-					print("Missing measurement detected at point " + str(i) + " : " + str(MeasurementsPoint) + " (" + str(distances[indexMin]) + " m)")
-					missing.append(i)
+				#Assign the corresponding data value to the mesh point
+				print("Found closest point for point " + str(i) + " at distance " + str(distances[indexMin]))
+
+				#Should not happen, but just in case
+				if(distances[indexMin] > 0.005):
+					print("\033[33m[WARNING] Found closest point for point " + str(i) + " at distance " + str(distances[indexMin]) + "m - Point considered as missing \033[0m")
 				else:
-					OrderedData[:,i] = Data[:,indexMin]
+					print("Found closest point for point " + str(i) + " at distance " + str(distances[indexMin]))
+
+					OrderedData[:,indexMin] = Data[:,i]
+					MeasurementsPointsMask.mask[indexMin] = True
+
+		#Check if the number of missing points is correct
+		missing = np.where((MeasurementsPointsMask.mask==False).all(axis=1))[0]
+		if(len(missing) != len(MeasurementsPoints) - len(Points)):
+			print("\033[33m[WARNING] Found " + str(len(missing)) + " missing points out of " + str(len(MeasurementsPoints) - len(Points)) + " expected\033[0m")
+			print("Mesh points : " + str(len(MeasurementsPoints)))
+			print("Measurements points : " + str(len(Points)))
 
 		#Fill missing mesh points
 		filledPoints = deepcopy(Points)
@@ -326,11 +340,13 @@ if __name__ == "__main__":
 	#Circular verification mesh
 	else:
 		#Compute mesh resolution and bounding radius
-		resolution = np.mean(np.linalg.norm(Points - np.roll(Points,-1,axis=0),axis=1))
-		radius = np.mean(np.linalg.norm(Points - np.average(Points,axis=1)))
+		meshResolution = np.mean(np.linalg.norm(Points - np.roll(Points,-1,axis=0),axis=1))
+		meshSize = 2*np.mean(np.linalg.norm(Points - np.average(Points,axis=0),axis=1))
+		print("Resolution : " + str(meshResolution) + " m")
+		print("Size : " + str(meshSize) + " m")
 
 		#Save mesh
-		meshio.write_points_cells("robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
+		meshio.write_points_cells(folderName + "/robotMesh.mesh", Points, [("line",np.vstack((np.arange(len(Points)),np.roll(np.arange(len(Points)),-1))).T)])
 
 	def processing_frequency(input):
 
@@ -348,7 +364,7 @@ if __name__ == "__main__":
 			raise ValueError("Invalid element type")
 
 		#Neighbours value filtering
-		if(not meshPath is None and meshResolution < 0.1*np.sqrt(radius)):	 #Very arbitrary criterion
+		if(not meshPath is None and meshResolution < 0.1*np.sqrt(meshSize/2)):	 #Very arbitrary criterion
 			filteredData = deepcopy(data)
 
 			counter = 0
