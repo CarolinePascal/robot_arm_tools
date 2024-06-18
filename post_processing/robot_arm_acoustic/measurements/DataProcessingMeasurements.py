@@ -160,11 +160,22 @@ if __name__ == "__main__":
 		#P = M.data[outputSignal]
 		#V = M.data[inputSignal]
 		P = M.in_sig[outputSignal]
-		V = M.in_sig[inputSignal]
+		V = None
+
+		if(processingMethod == "farina"):
+			V = M.out_sig[inputSignal]
+		else:
+			V = M.in_sig[inputSignal]
+		
+		#Check processing method compatibility
+		if(processingMethod == "farina" and not "sweep" in V.desc):
+			raise ValueError("Farina method cannot be used with non log sweep signals")
 		
 		TFE = None
 		if(processingMethod == "farina"):
-			TFE = P.tfe_farina([fmin,fmax])
+			unfilteredTFE,filteredTFE,_,delay = P.harmonic_disto(nh=2,win_max_length=2**18,freq_min=V.freq_min, freq_max=V.freq_max,delay=0.0)
+			TFE = unfilteredTFE[0]
+			TFE.unit = (P.unit/V.unit)
 		else:
 			TFE = P.tfe_welch(V) #Also possible for dB values : (P*V.rms).tfe_welch(V)
 		
