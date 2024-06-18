@@ -494,12 +494,12 @@ def generateSphericMeshFromParameters(size, b, c, elementType = "P0"):
 #  @param resolution Target resolution of the mesh
 #  @param sigma Mesh vertices position standard deviation
 #  @param elementType Type of element for triangular faces
-#  @param saveMesh Wether to save mesh file or not
+#  @param save Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
 #  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @param saveFolder Folder where to save the mesh
 #  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
+def generateSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", save = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
 
     folderName = PACKAGE_PATH + "/config/meshes/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     if(not saveFolder is None):
@@ -515,7 +515,7 @@ def generateSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", saveM
     if(sigma != 0.0):
         points, _ = addNoiseToMesh(points, faces, sigma)
 
-    if(saveMesh):
+    if(save):
         meshPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
         saveMesh(meshPath, points, faces)
 
@@ -530,12 +530,12 @@ def generateSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", saveM
 #  @param resolution Target resolution of the mesh
 #  @param sigma Mesh vertices position standard deviation
 #  @param elementType Type of element for triangular faces
-#  @param saveMesh Wether to save mesh file or not
+#  @param save Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
 #  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @param saveFolder Folder where to save the mesh
 #  @return points, faces Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
+def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", save = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
 
     folderName = PACKAGE_PATH + "/config/meshes/sphere" + "_legacy"*LEGACY + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     if(not saveFolder is None):
@@ -549,7 +549,7 @@ def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", s
     dualMesh = dm.get_dual(meshio.Mesh(points, [("triangle",faces)]), order=True)
     points,faces = dualMesh.points, dualMesh.get_cells_type("polygon")
 
-    if(saveMesh):
+    if(save):
         meshPath = folderName + "/" + "dual_" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
         saveMesh(meshPath, points, faces)
 
@@ -564,12 +564,12 @@ def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", s
 #  @param resolution Target resolution of the mesh
 #  @param sigma Mesh vertices position standard deviation
 #  @param elementType Type of element for triangular faces
-#  @param saveMesh Wether to save mesh file or not
+#  @param save Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
 #  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @param saveFolder Folder where to save the mesh
 #  @return list((points, faces)) Generated mesh points (vertices) and triangular faces (cells, triangles)
-def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", similarNumber = 3, saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
+def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", similarNumber = 3, save = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
 
     vertices,faces = generateSphericMesh(size,resolution,0.0,elementType)
     similarMeshes = []
@@ -640,7 +640,7 @@ def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", si
             if(sigma != 0.0):
                 verticesTmp, _ = addNoiseToMesh(verticesTmp, facesTmp, sigma)
 
-            if(saveMesh):
+            if(save):
                 meshPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
                 saveMesh(meshPath, verticesTmp, facesTmp)
 
@@ -669,7 +669,7 @@ def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", si
             if(sigma != 0.0):
                 verticesTmp, _ = addNoiseToMesh(verticesTmp, facesTmp, sigma)
 
-            if(saveMesh):
+            if(save):
                 meshPath = folderName + "/" + str(size) + "_" + str(resolutionTmp) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
                 saveMesh(meshPath, verticesTmp, facesTmp)
 
@@ -688,12 +688,12 @@ def generateSimilarSphericMeshes(size, resolution, sigma, elementType = "P0", si
 #  @param resolution Target resolution of the mesh
 #  @param sigma Mesh vertices position standard deviation
 #  @param elementType Type of element for lines
-#  @param saveMesh Wether to save mesh file or not
+#  @param save Wether to save mesh file or not
 #  @param saveYAML Wether to save mesh poses in YAML file or not
 #  @param gradientOffset If saveYAML is True, adds additionnal one in two measurements points for gradient computation with given normal offset
 #  @param saveFolder Folder where to save the mesh
 #  @return points, faces Generated mesh points (vertices) and lines (cells)
-def generateCircularMesh(size, resolution, sigma = 0.0, elementType = "P1", saveMesh = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
+def generateCircularMesh(size, resolution, sigma = 0.0, elementType = "P1", save = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
 
     folderName = PACKAGE_PATH + "/config/meshes/circle" + "_uncertainty"*(sigma != 0.0) + "/" + elementType
     if(not saveFolder is None):
@@ -716,7 +716,7 @@ def generateCircularMesh(size, resolution, sigma = 0.0, elementType = "P1", save
     if(sigma != 0.0):
         points, _ = addNoiseToMesh(points, lines, sigma)
 
-    if(saveMesh):
+    if(save):
         meshPath = folderName + "/" + str(size) + "_" + str(resolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
         print("Saving mesh at " + meshPath)
         meshio.write_points_cells(meshPath, list(points), [("line",lines)])
