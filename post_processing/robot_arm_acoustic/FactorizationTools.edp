@@ -1,60 +1,119 @@
 load "PETSc"
+string solver;
+if(!HasType("MATSOLVER", "mumps") && !HasType("MATSOLVER", "superlu"))
+    exit(0);
+else
+    solver = (HasType("MATSOLVER", "mumps") ? "mumps" : "superlu");
 
-func real[int] regularizedFactorization(matrix A, real[int] b, real lambda, bool verbose)
+func complex[int] regularizedFactorization(matrix<complex>& A, complex[int]& b, real lambda, bool verbose)
 {
-    string solver;
-    if(!HasType("MATSOLVER", "mumps") && !HasType("MATSOLVER", "superlu"))
-        exit(0);
-    else
-        solver = (HasType("MATSOLVER", "mumps") ? "mumps" : "superlu");
+    //Tool matrices and vectors
+    matrix<complex> ATA = A'*A;
+    matrix realATA = ATA.re;
+    matrix imagATA = ATA.im;
+
+    complex[int] ATb = A'*b;
+    real[int] realATb = ATb.re;
+    real[int] imagATb = ATb.im;
+
+    real bTb = real(b'*b);
 
     //OBJECTIVE : Solve min_x ||Ax - b||² + \lambda||x||²
-    load "ffrandom"
-    srandomdev();
-    int maxrang = 2^31 - 1;
-
     int m = A.m;
-    real[int] D(m);
+    real[int] D(2*m);
     D = 1;
-    int[int][int] restriction(1);
-    restriction[0].resize(0);
     matrix sp = D;
-    Mat H(sp, restriction, D);
-
-    //Minimized function : J(x) = (Ax - b)^T.(Ax - b) + \lambda(x^T.x)
-    func real J(real[int]& in) {
-        real[int] out = A*in;
-        out -= b;
-        return out'*out + lambda*(in'*in);
-    }
+    Mat H(sp);
 
     //Actual minimization target : f(x) = (Ax - b)^T.(Ax - b)
-    func real f(real[int] in)
+    func real f(real[int]& in)
     {
-        real[int] out = A*in;
-        out -= b;
-        return out'*out;
+        real[int] realIn = in(0:m-1);
+        real[int] imagIn = in(m:2*m-1);
+
+        real out = 0;
+
+        //x^T.A^T.A.x
+        real[int] tmp = realATA*realIn;
+        out += realIn'*tmp;
+        tmp = realATA*imagIn;
+        out += imagIn'*tmp;
+        tmp = imagATA*realIn;
+        out += 2*(imagIn'*tmp);
+        //cout << "x^T.A^T.A.x = " << out << endl;
+    
+        // -b^T.A.x - x^T.A^T.b
+        //real out2 = 0;
+        real scalarTmp = realATb'*realIn;
+        out += -2*scalarTmp;
+        //out2 += -2*scalarTmp;
+        scalarTmp = imagATb'*imagIn;
+        out += -2*scalarTmp;
+        //out2 += -2*scalarTmp;
+        //cout << "-b^T.A.x - x^T.A^T.b = " << out2 << endl;
+
+        //b^T.b
+        out += bTb;
+        //cout << "b^T.b = " << bTb << endl;
+
+        return out;
+    }
+
+    //Regularized minimization target : J(x) = (Ax - b)^T.(Ax - b) + \lambda(x^T.x)
+    func real J(real[int]& in) 
+    {
+        real[int] realIn = in(0:m-1);
+        real[int] imagIn = in(m:2*m-1);
+
+        real out = 0;
+
+        //f(x) = (Ax - b)^T.(Ax - b)
+        out += f(in);
+
+        //\lambda x^T.x
+        out += lambda*(realIn'*realIn + imagIn'*imagIn);
+
+        return out;
     }
 
     //Gradient of J(x) = 2A^T.A.x - 2A^T.b + 2\lambdax
-    func real[int] DJ(real[int]& in) {
-        matrix tmp = A'*A;
-        real[int] out = tmp*in;
-        out *= 2;
-        
-        real[int] tmp2 = A'*b;
-        out -= 2*tmp2;
+    func real[int] DJ(real[int]& in) 
+    {
+        real[int] out(2*m);
+        out = 0;
 
-        out += 2*lambda*in;
+        real[int] realIn = in(0:m-1);
+        real[int] imagIn = in(m:2*m-1);
+
+        real[int] arrayTmp = realATA*realIn;
+        out(0:m-1) += arrayTmp;
+        arrayTmp = imagATA*imagIn;
+        out(0:m-1) -= arrayTmp;
+
+        arrayTmp = realATA*imagIn;
+        out(m:2*m-1) += arrayTmp;
+        arrayTmp = imagATA*realIn;
+        out(m:2*m-1) += arrayTmp;
+
+        out(0:m-1) += -realATb;
+        out(m:2*m-1) += -imagATb;
+
+        out(0:m-1) += lambda*realIn;
+        out(m:2*m-1) += lambda*imagIn;
+
+        out *= 2;
+
         return out;
     }
 
     //Hessian of J(x) = 2A^T.A + 2\lambdaI
-    func int funcH(real[int]& in) {
-        matrix out = A'*A;
+    func int funcH(real[int]& in) 
+    {
+        matrix negimagATA = -imagATA;
+        matrix out = [[realATA,negimagATA],[imagATA,realATA]];
         out = 2*out;
 
-        real[int] diag(A.m);
+        real[int] diag(2*m);
         diag = 2*lambda;
         matrix tmp = diag;
         out += tmp;
@@ -65,20 +124,17 @@ func real[int] regularizedFactorization(matrix A, real[int] b, real lambda, bool
 
     //WORKING : Solve with TAO
     //Solve
-    real[int] x(m);
-    for(int i = 0; i < m; i++)
-    {
-        x[i] = random()/maxrang;
-    }
+    real[int] x(2*m);
+    x = 1;
 
     if(mpirank == 0 && verbose)
     {
         cout << "J([" ;
-        for(int i = 0; i < x.n-1 ; i++)
+        for(int i = 0; i < 2*m-1 ; i++)
         {
             cout << x[i] << ", ";
         }
-        cout << x[x.n-1] << "]) = " << J(x) << endl;
+        cout << x[2*m-1] << "]) = " << J(x) << endl;
     }
 
     //Unconstrained minimization
@@ -96,23 +152,80 @@ func real[int] regularizedFactorization(matrix A, real[int] b, real lambda, bool
 
     //TaoSolve(H, J, DJ, x, sparams = "-tao_monitor -tao_type bnls -pc_type lu -pc_factor_mat_solver_type " + solver, HessianRoutine = funcH);
 
-    TaoSolve(H, J, DJ, x, sparams = "-tao_monitor -tao_type gpcg -pc_type lu -pc_factor_mat_solver_type " + solver, HessianRoutine = funcH);
+    TaoSolve(H, J, DJ, x, sparams = "-tao_view -tao_monitor -tao_type bnls -pc_type lu -pc_factor_mat_solver_type " + solver, HessianRoutine = funcH);
 
     if(mpirank == 0 && verbose)
     {
         cout << "J([" ;
-        for(int i = 0; i < x.n-1 ; i++)
+        for(int i = 0; i < 2*m-1 ; i++)
         {
             cout << x[i] << ", ";
         }
-        cout << x[x.n-1] << "]) = " << J(x) << endl;
+        cout << x[2*m-1] << "]) = " << J(x) << endl;
 
-        real[int] output = A*x;
-        cout << "A*x = " << output << endl;
-        cout << "b = " << b << endl;
         cout << "||Ax - b||^2 = " << f(x) << endl;
         cout << "||x||^2 = " << x'*x << endl;
     }
 
-    return x;
+    complex[int] output(m);
+    for(int i = 0; i < m; i++)
+    {
+        output[i] =  x[i] + 1i*x[i+m];
+    }
+
+    return output;
 }
+
+// load "ffrandom"
+// srandomdev();
+// int maxrang = 2^31 - 1;
+
+// bool verbose = true;
+// real lambda = 0.0001;
+
+// int n,m;
+// n = 5;
+// m = 5;
+// matrix<complex> B(n,m);
+
+// for(int k = 0; k < B.n; k++)
+// {
+//     for(int j = 0; j < B.m; j++) 
+//     {
+//         real r = random();
+//         r /= maxrang;
+//         real i = random();
+//         i /= maxrang;
+//         B(k,j) = 10*(r + 1i*i);
+//     }
+// }
+
+// complex[int] b(n);
+// for(int k = 0; k < n; k++)
+// {
+//     real r = random();
+//     r /= maxrang;
+//     real i = random();
+//     i /= maxrang;
+//     b[k] = 10*(r + 1i*i);
+// }
+
+// //matrix<complex> copy = B;
+// complex[int] x = regularizedFactorization(B, b, lambda, verbose);
+
+// load "lapack"
+
+// complex[int,int] Bcopy(n,m);
+// for(int i = 0; i < n; i++)
+// {
+//     for(int j = 0; j < m; j++)
+//     {
+//         Bcopy(i,j) = B(i,j);
+//     }
+// }
+
+// complex[int,int] Binvcopy = Bcopy^-1;
+// matrix<complex> Binv = Binvcopy;
+// complex[int] res = Binv*b;
+// cout << res << endl;
+// cout << x << endl;
