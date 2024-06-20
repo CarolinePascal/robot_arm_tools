@@ -152,7 +152,13 @@ func complex[int] regularizedFactorization(matrix<complex>& A, complex[int]& b, 
 
     //TaoSolve(H, J, DJ, x, sparams = "-tao_monitor -tao_type bnls -pc_type lu -pc_factor_mat_solver_type " + solver, HessianRoutine = funcH);
 
-    TaoSolve(H, J, DJ, x, sparams = "-tao_view -tao_monitor -tao_type bnls -pc_type lu -pc_factor_mat_solver_type " + solver, HessianRoutine = funcH);
+    string parameters = "-tao_type bnls -pc_type lu -pc_factor_mat_solver_type " + solver;
+    if(verbose)
+    {
+        parameters = parameters + " -tao_view -tao_monitor";
+    }
+
+    TaoSolve(H, J, DJ, x, sparams = parameters, HessianRoutine = funcH);
 
     if(mpirank == 0 && verbose)
     {
@@ -227,5 +233,5 @@ func complex[int] regularizedFactorization(matrix<complex>& A, complex[int]& b, 
 // complex[int,int] Binvcopy = Bcopy^-1;
 // matrix<complex> Binv = Binvcopy;
 // complex[int] res = Binv*b;
-// cout << res << endl;
-// cout << x << endl;
+// cout << "Theoretical result : " << res << endl;
+// cout << "Regularized result : " << x << endl;
