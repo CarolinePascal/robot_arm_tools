@@ -10,6 +10,7 @@ gslrng ffrng;
 include "ComputationTools.edp"
 include "AcousticTools.edp"
 include "MeasurementsTools.edp"
+include "FactorizationTools.edp"
 
 include "getARGV.idp"
 
@@ -105,7 +106,68 @@ func int AcousticSFT(real frequency, int expansionNumber, meshS &measurementsMes
         }
     }
 
+    //Evaluate the solution on the verification points
+    fespace UhOut(verificationMesh,P1);
+
+    //Compute the numerical solution
+    UhOut<complex> uN = sphericalHelmholtzSolution(Alm,Alm.n,frequency);
+    
+    //Compute the analytical solution
+    UhOut<complex> uA;
+    uA[] = verificationData;
+
+    //DEBUG
+    if(mpirank == 0)
+    {
+        real l2Error = sqrt(int1d(verificationMesh)(abs(uA-uN)^2))/sqrt(int1d(verificationMesh)(abs(uA)^2));
+        cout << "L2 ERROR SFT (RELATIVE) : " << l2Error << endl;
+        UhOut delta = abs(uA-uN);
+        UhOut reference = abs(uA);
+        cout << "LINF ERROR SFT (RELATIVE) : " << delta[].max/reference[].max << endl;
+    }
+
+    //Fill output file
+    string outputFilePath = outputFolder + "SFT/" + outputFileName;
+    ofstream file(outputFilePath);
+    int np = file.precision(20);
+
+    for (int i = 0; i < verificationMesh.nv; i++)
+    {
+        file << verificationMesh(i).x << ";" << verificationMesh(i).y << ";" << verificationMesh(i).z << ";" << real(uA[][i]) << ";" << imag(uA[][i]) << ";" << real(uN[][i]) << ";" << imag(uN[][i]) << endl;
+    }
+
+    return(0);
+}
+
+func int AcousticESM(real frequency, int expansionNumber, meshS &measurementsMesh, complex[int] &measurementsData, meshL &verificationMesh, complex[int] verificationData, string outputFileName, string outputFolder)
+{
+    //Retrieve measurements points
+    fespace Uh(measurementsMesh,Pk);
+
+    //Compute general solution coefficients
+
     //ESM
+    int lMax = sqrt(expansionNumber) - 1;
+    matrix<complex> H(measurementsData.n,(lMax+1)*(lMax+1));
+    for(int l = 0; l <= lMax; l++)
+    {
+        for(int m = -l; m <= l; m++)
+        {
+            Uh<complex> localExpansion = Ylm(l,m,theta,phi)*sphericalHankelFirstKind(l,k(frequency)*r);
+            for(int i = 0; i < measurementsData.n; i++)
+            {
+                H(i,l*l + m + l) = localExpansion[][i];
+            }
+        }
+    }
+
+    if(mpirank == 0)
+    {
+        cout << "Measurements number : " << measurementsData.n << endl;
+        cout << "Expansion number : " << (lMax+1)*(lMax+1) << endl;
+        cout << "H : " << H.n << " x " << H.m << endl;
+    }
+    complex[int] Alm = regularizedFactorization(H, measurementsData, 0.0001, true);
 
     //Evaluate the solution on the verification points
     fespace UhOut(verificationMesh,P1);
@@ -118,14 +180,17 @@ func int AcousticSFT(real frequency, int expansionNumber, meshS &measurementsMes
     uA[] = verificationData;
 
     //DEBUG
-    real l2Error = sqrt(int1d(verificationMesh)(abs(uA-uN)^2))/sqrt(int1d(verificationMesh)(abs(uA)^2));
-    cout << "L2 ERROR SFT (RELATIVE) : " << l2Error << endl;
-    UhOut delta = abs(uA-uN);
-    UhOut reference = abs(uA);
-    cout << "LINF ERROR SFT (RELATIVE) : " << delta[].max/reference[].max << endl;
+    if(mpirank == 0)
+    {
+        real l2Error = sqrt(int1d(verificationMesh)(abs(uA-uN)^2))/sqrt(int1d(verificationMesh)(abs(uA)^2));
+        cout << "L2 ERROR ESM (RELATIVE) : " << l2Error << endl;
+        UhOut delta = abs(uA-uN);
+        UhOut reference = abs(uA);
+        cout << "LINF ERROR ESM (RELATIVE) : " << delta[].max/reference[].max << endl;
+    }
 
     //Fill output file
-    string outputFilePath = outputFolder + "SFT/" + outputFileName;
+    string outputFilePath = outputFolder + "ESM/" + outputFileName;
     ofstream file(outputFilePath);
     int np = file.precision(20);
 
@@ -141,7 +206,8 @@ func int AcousticSFT(real frequency, int expansionNumber, meshS &measurementsMes
 
 //Global parameters
 real frequency = getARGV("-frequency",100); 
-int expansionNumber = getARGV("-expansionNumber",100);
+int expansionNumber = getARGV("-expansionNumber",0);
+string method = getARGV("-method","SFT");
 
 string fileID = getARGV("-fileID","");
 if(fileID != "")
@@ -161,9 +227,9 @@ if(realMeasurements == 1)
     string verificationDataPath = getARGV("-verificationDataPath",""); 
 
     string outputFolder = dirname(measurementsDataPath) + "/";
-    if(isdir(outputFolder + "SFT") == -1)
+    if(isdir(outputFolder + method) == -1)
     {
-        mkdir(outputFolder + "SFT");
+        mkdir(outputFolder + method);
     }
     string outputFileName = elementTypeName + "/output_" + frequency + fileID + ".csv";
 
@@ -175,20 +241,36 @@ if(realMeasurements == 1)
     verificationMesh = OrientNormal(verificationMesh,unbounded=0);
     complex[int] verificationData = getData(verificationDataPath);  
 
-    AcousticSFT(frequency, expansionNumber, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, outputFolder);
+    if(expansionNumber == 0)
+    {
+        expansionNumber = measurementsData.n;
+    }
+
+    if(method == "ESM")
+    {
+        AcousticESM(frequency, expansionNumber, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, outputFolder);
+    }
+    else if(method == "SFT")
+    {
+        AcousticSFT(frequency, expansionNumber, measurementsMesh, measurementsData, verificationMesh, verificationData, outputFileName, outputFolder);
+    }
+    else
+    {
+        cout << "Unknown method" << endl;
+    }
 }
 
 //Simulation
 else
 {
-    if(isdir("./SFT") == -1)
+    if(isdir("./" + method) == -1)
     {
-        mkdir("./SFT");
+        mkdir("./" + method);
     }
 
     //Simulation parameters
     real size = getARGV("-size",0.1); 
-    real resolution = getARGV("-resolution",0.01);
+    real resolution = getARGV("-resolution",0.015);
     real sigmaPosition = getARGV("-sigmaPosition",0.0);
     real sigmaMeasure = getARGV("-sigmaMeasure",0.0);
 
@@ -211,9 +293,9 @@ else
         outputFileName = intermediateFolder + "output_" + frequency + "_" + resolution + "_" + size + "_" + sigmaPosition + "_" + sigmaMeasure + fileID + ".csv";
     }
 
-    if(isdir("./SFT/" + studiedFunction + "_" + elementTypeName) == -1)
+    if(isdir("./" + method + "/" + studiedFunction + "_" + elementTypeName) == -1)
     {
-        mkdir("./SFT/" + studiedFunction + "_" + elementTypeName);
+        mkdir("./" + method + "/" + studiedFunction + "_" + elementTypeName);
     }
 
     //Retrieve simulation mesh (assumed perfect, as we can't precisely predict the robot pose error a posteriori)
@@ -253,7 +335,7 @@ else
     if(sigmaMeasure != 0.0)
     {
         real modulus, phase;
-        for(int i = 0; i < measurementsData.n; i++)
+        for(int i = 0; i < measurementsData[].n; i++)
         {
             modulus = abs(measurementsData[][i]);
             phase = arg(measurementsData[][i]);
@@ -273,7 +355,23 @@ else
     fespace UhOut(verificationMesh,P1); //Verification data is computed on the mesh vertices !
     UhOut<complex> verificationData = inputFunction(frequency,studiedFunction);
 
-    AcousticSFT(frequency, expansionNumber, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName,"./");
+    if(expansionNumber == 0)
+    {
+        expansionNumber = measurementsData[].n;
+    }
+
+    if(method == "ESM")
+    {
+        AcousticESM(frequency, expansionNumber, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName,"./");
+    }
+    else if(method == "SFT")
+    {
+        AcousticSFT(frequency, expansionNumber, measurementsMesh, measurementsData[], verificationMesh, verificationData[], outputFileName,"./");
+    }
+    else
+    {
+        cout << "Unknown method" << endl;
+    }
 }
 
 

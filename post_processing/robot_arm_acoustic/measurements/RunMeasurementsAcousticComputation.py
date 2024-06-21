@@ -30,7 +30,9 @@ def main(method, measurements_mesh_path, measurements_data_folder, verification_
 
     #Generate command (bash)
     if(method == "SFT"):
-        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic.__file__) + "AcousticComputationSFT.edp"
+        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic.__file__) + "AcousticComputationExpansion.edp -method SFT"
+    elif(method == "ESM"):
+        command = "FreeFem++ " + os.path.dirname(robot_arm_acoustic.__file__) + "AcousticComputationExpansion.edp -method ESM"
     else:
         command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic.__file__) +  "/AcousticComputationBEM.edp -wg"
 

@@ -10,6 +10,7 @@ gslrng ffrng;
 include "ComputationTools.edp"
 include "AcousticTools.edp"
 include "MeasurementsTools.edp"
+include "FactorizationTools.edp"
 
 include "getARGV.idp"
 
@@ -643,7 +644,7 @@ else
     if(sigmaMeasure != 0.0)
     {
         real modulus, phase;
-        for(int i = 0; i < measurementsData.n; i++)
+        for(int i = 0; i < measurementsData[].n; i++)
         {
             modulus = abs(measurementsData[][i]);
             phase = arg(measurementsData[][i]);
