@@ -270,7 +270,7 @@ else
 
     //Simulation parameters
     real size = getARGV("-size",0.1); 
-    real resolution = getARGV("-resolution",0.015);
+    real resolution = getARGV("-resolution",0.01);
     real sigmaPosition = getARGV("-sigmaPosition",0.0);
     real sigmaMeasure = getARGV("-sigmaMeasure",0.0);
 
