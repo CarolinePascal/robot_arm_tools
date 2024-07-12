@@ -15,7 +15,7 @@ from robot_arm_acoustic.MeshTools import generateSphericMesh, generateCircularMe
 import robot_arm_acoustic
 
 ### Studied function
-function = "monopole"
+function = "infinitesimalDipole"
 gradient = 0
 
 ### Studied parameters
@@ -25,8 +25,7 @@ verificationRadius = 0.5
 verificationSize = 2*verificationRadius
 verificationResolution = np.round(2*np.pi*verificationRadius/100,4)
 
-#Frequencies = [100,250,500,750,1000,2500,5000]
-Frequencies = [100]
+Frequencies = [100,250,500,750,1000,2500,5000]
 Radius = [0.1*verificationRadius,0.25*verificationRadius,0.5*verificationRadius]
 Resolutions = [0.01*verificationRadius,0.025*verificationRadius,0.05*verificationRadius,0.075*verificationRadius,0.1*verificationRadius] 
 
@@ -34,8 +33,8 @@ DipoleDistances = [0.05*verificationRadius,0.1*verificationRadius,0.15*verificat
 
 #SigmasPosition = [0.001*verificationRadius,0.0025*verificationRadius,0.005*verificationRadius,0.0075*verificationRadius,0.01*verificationRadius,0.025*verificationRadius]
 SigmasPosition = [0.0]
-#SigmasMeasure = [0.01,0.05,0.1]
-SigmasMeasure = [0.0]
+SigmasMeasure = [0.01,0.05,0.1,0.2,0.3]
+#SigmasMeasure = [0.0]
 Nsigma = 20
 
 parametersCombinations = len(Frequencies)*len(Radius)*len(Resolutions)*len(DipoleDistances)*max(1,Nsigma*len(np.nonzero(SigmasPosition)[0]))*max(1,Nsigma*len(np.nonzero(SigmasMeasure)[0]))
@@ -57,9 +56,9 @@ def main(method, gradient, input_mesh_path):
     #Generate verification mesh
     os.makedirs("./meshes/",exist_ok=True)
     if(not gradient):
-        generateCircularMesh(verificationSize,verificationResolution,elementType="P1",saveMesh=True,saveFolder="./meshes/")
+        generateCircularMesh(verificationSize,verificationResolution,elementType="P1",save=True,saveFolder="./meshes/")
     else:
-        generateSphericMesh(verificationSize,verificationResolution,elementType=elementType,saveMesh=True,saveFolder="./meshes/")
+        generateSphericMesh(verificationSize,verificationResolution,elementType=elementType,save=True,saveFolder="./meshes/")
 
     counter = 1
 
@@ -71,7 +70,7 @@ def main(method, gradient, input_mesh_path):
                 ### Generate computation mesh
                 size = 2*radius
                 try:
-                    generateSphericMesh(size,resolution,elementType=elementType,saveMesh=True,saveFolder="./meshes/")  #No need to generate a new mesh if it already exists
+                    generateSphericMesh(size,resolution,elementType=elementType,save=True,saveFolder="./meshes/")  #No need to generate a new mesh if it already exists
                 except:
                     print("Mesh generation failed, skipping computation")
                     continue
@@ -89,7 +88,7 @@ def main(method, gradient, input_mesh_path):
                                 ### Generate noisy computation mesh
                                 if(sigmaPosition != 0.0):
                                     try:
-                                        generateSphericMesh(size,resolution,sigmaPosition,elementType=elementType,saveMesh=True,saveFolder="./meshes/") #Generate a new random mesh !
+                                        generateSphericMesh(size,resolution,sigmaPosition,elementType=elementType,save=True,saveFolder="./meshes/") #Generate a new random mesh !
                                     except:
                                         print("Mesh generation failed, skipping computation")
                                         continue
