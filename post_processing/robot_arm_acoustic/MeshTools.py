@@ -210,7 +210,7 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
         if(interactive):
             ax = go.Figure()
         else:
-           fig,ax = plt.subplots(1,subplot_kw=dict(projection='3d'),figsize=figsize)
+           _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'),figsize=figsize)
 
     if(interactive):
         if(plotEdges):
@@ -234,9 +234,9 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
 
                 ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,hoverinfo='skip',**kwargsEdges))
             else:
-                Xe = vertices[:,0]
-                Ye = vertices[:,1]
-                Ze = vertices[:,2]
+                Xe = np.append(vertices[:,0],vertices[0,0])
+                Ye = np.append(vertices[:,1],vertices[0,1])
+                Ze = np.append(vertices[:,2],vertices[0,2])
 
                 ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,hoverinfo='skip',**kwargsEdges))
 
@@ -270,7 +270,7 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
             else:
                 if(not "color" in kwargsEdges):
                     kwargsEdges["color"] = (0,0,0,0.1)
-                ax.plot(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsEdges)
+                ax.plot(np.append(vertices[:,0],vertices[0,0]),np.append(vertices[:,1],vertices[0,1]),np.append(vertices[:,2],vertices[0,2]),**kwargsEdges)
             
         if(plotNodes):
             kwargsNodes = deepcopy(kwargs)
@@ -406,12 +406,18 @@ def getMeshAreas(mesh):
 def getMeshInfo(vertices,faces,elementType="P0"):
 
     mesh = trimesh.Trimesh(vertices,faces)
+    print(mesh.faces)
 
-    print("MESH RESOLUTION - min, max, avg, std : ")
-    print(getMeshResolution(mesh))
+    if(len(mesh.faces) != 0):
+        print("MESH RESOLUTION - min, max, avg, std : ")
+        print(getMeshResolution(mesh))
 
-    print("MESH AREAS - min, max, avg, std")
-    print(getMeshAreas(mesh))
+        print("MESH AREAS - min, max, avg, std")
+        print(getMeshAreas(mesh))
+    else:
+        distances = np.linalg.norm(np.diff(np.append(vertices,[vertices[0]],axis=0),axis=0),axis=1)
+        print("MESH RESOLUTION - min, max, avg, std : ")
+        print((np.min(distances),np.max(distances),np.average(distances),np.std(distances)))
 
     if elementType == "P0":
         centroids = np.average(vertices[faces],axis=1)  #axis 0 : we choose the face, axis 1 : we choose the point, axis 2 : we choose the coordinate
@@ -430,7 +436,11 @@ def getMeshInfo(vertices,faces,elementType="P0"):
     elif elementType == "P1":
         print("ELEMENTS NODES NUMBER : " + str(len(vertices)))
         print("ELEMENTS NODES DISTANCE - min, max, avg, std : ")
-        print(getMeshResolution(mesh))
+        if(len(mesh.faces) != 0):
+            print(getMeshResolution(mesh))
+        else:
+            distances = np.linalg.norm(np.diff(np.append(vertices,[vertices[0]],axis=0),axis=0),axis=1)
+            print((np.min(distances),np.max(distances),np.average(distances),np.std(distances)))
         print("ELEMENTS NODES ORIGIN DISTANCE - min, max, avg, std : ")
         distancesOrigin = np.linalg.norm(vertices,axis=1)
         print((np.min(distancesOrigin),np.max(distancesOrigin),np.average(distancesOrigin),np.std(distancesOrigin)))
@@ -806,7 +816,7 @@ def main(type, size, resolution, sigma, element_type, save_mesh, save_yaml, grad
         vertices,faces = generateCircularMesh(size, resolution, sigma, element_type, save_mesh, save_yaml, gradient_offset, save_folder)
         if(info):
             getMeshInfo(vertices,faces,element_type)
-            plotMesh(vertices,faces,element_type,plotEdges=True)
+            fig = plotMesh(vertices,faces,element_type,plotEdges=True,meshDimension = 2)
             plt.show()
 
     else:
