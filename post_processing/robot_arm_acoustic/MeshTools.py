@@ -25,6 +25,8 @@ import open3d as o3d
 #Plotting packages
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
+from robot_arm_acoustic.PlotTools import *
+figsize = (10,10)
 
 LEGACY = False
 PACKAGE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -202,13 +204,13 @@ def saveMesh(meshPath, vertices, faces):
 #  @param plotEdges Wether to plot the edges or not
 #  @param plotNodes Wether to plot the elements nodes or not
 #  @param ax Matplotlib axes
-def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, interactive = False, **kwargs):
+def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = False, ax = None, interactive = False, meshDimension = 3, **kwargs):
 
     if(ax is None):
         if(interactive):
             ax = go.Figure()
         else:
-           _,ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+           fig,ax = plt.subplots(1,subplot_kw=dict(projection='3d'),figsize=figsize)
 
     if(interactive):
         if(plotEdges):
@@ -221,15 +223,22 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
             if(not kwargsEdges.pop("facecolor",None) is None):
                 print("Facecolor will not be displayed in interactive mode")
 
-            Xe = []
-            Ye = []
-            Ze = []
-            for T in vertices[faces]:
-                Xe += [T[k%3][0] for k in range(4)]+[None]
-                Ye += [T[k%3][1] for k in range(4)]+[None]
-                Ze += [T[k%3][2] for k in range(4)]+[None]
+            if(meshDimension == 3):
+                Xe = []
+                Ye = []
+                Ze = []
+                for T in vertices[faces]:
+                    Xe += [T[k%3][0] for k in range(4)]+[None]
+                    Ye += [T[k%3][1] for k in range(4)]+[None]
+                    Ze += [T[k%3][2] for k in range(4)]+[None]
 
-            ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,hoverinfo='skip',**kwargsEdges))
+                ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,hoverinfo='skip',**kwargsEdges))
+            else:
+                Xe = vertices[:,0]
+                Ye = vertices[:,1]
+                Ze = vertices[:,2]
+
+                ax.add_trace(go.Scatter3d(x=Xe,y=Ye,z=Ze,hoverinfo='skip',**kwargsEdges))
 
         if(plotNodes):
             kwargsNodes = deepcopy(kwargs)
@@ -250,13 +259,18 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
     else:
         if(plotEdges):
             kwargsEdges = deepcopy(kwargs)
-            if(not "facecolor" in kwargsEdges):
-                kwargsEdges["facecolor"] = (0,0,0.0,0)
-            if(not "edgecolor" in kwargsEdges):
-                kwargsEdges["edgecolor"] = (0,0,0,0.1)
             if(not "linewidth" in kwargsEdges):
                 kwargsEdges["linewidth"] = 2
-            ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces, **kwargsEdges)
+            if(meshDimension == 3):
+                if(not "facecolor" in kwargsEdges):
+                    kwargsEdges["facecolor"] = (0,0,0.0,0)
+                if(not "edgecolor" in kwargsEdges):
+                    kwargsEdges["edgecolor"] = (0,0,0,0.1)
+                ax.plot_trisurf(vertices[:,0],vertices[:,1],vertices[:,2],triangles=faces, **kwargsEdges)
+            else:
+                if(not "color" in kwargsEdges):
+                    kwargsEdges["color"] = (0,0,0,0.1)
+                ax.plot(vertices[:,0],vertices[:,1],vertices[:,2], **kwargsEdges)
             
         if(plotNodes):
             kwargsNodes = deepcopy(kwargs)
@@ -288,6 +302,12 @@ def plotMesh(vertices, faces, elementType = "P0", plotEdges = True, plotNodes = 
         ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
         ax.set_box_aspect((1,1,1))
+
+        ax.set_xlabel(r'$x~(m)$',labelpad=15)
+        ax.set_ylabel(r'$y~(m)$',labelpad=15)
+        ax.set_zlabel(r'$z~(m)$',labelpad=20)
+        ax.tick_params(axis='z', which='major', pad=10)
+        ax.view_init(elev=30., azim=-45)
 
     return(ax)
 
