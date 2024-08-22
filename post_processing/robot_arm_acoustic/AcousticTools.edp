@@ -7,8 +7,8 @@ real R = 287.0;   //Specific perfect gas constant for air
 real gamma = 1.4;   //Perfect gas heat capacity ratio for air
 
 //Sound parameters
-real rho = Pmeas/(R*(273.15+Tmeas));   //kg/m³
-real c = sqrt(R*gamma*(273.15+Tmeas));   //m/s
+real rhomeas = Pmeas/(R*(273.15+Tmeas));   //kg/m³
+real cmeas = sqrt(R*gamma*(273.15+Tmeas));   //m/s
 
 //Reference sound parameters
 real Pref = 20e-6; //Pa
@@ -20,7 +20,7 @@ real Q = 1; //m³/s
 real dipoleMomentum = 1; //m⁴/s
 
 //Frequency parameters
-func real kmeas(real frequency){return 2*pi*frequency/c;}
+func real kmeas(real frequency){return 2*pi*frequency/cmeas;}
 func real kref(real frequency){return 2*pi*frequency/cref;}
 func real omega(real frequency){return 2*pi*frequency;}
 
@@ -35,7 +35,7 @@ func complex Gplus(real frequency){return exp(1i*kref(frequency)*rplus)/(4*pi*rp
 func complex Gminus(real frequency){return exp(1i*kref(frequency)*rminus)/(4*pi*rminus);}
 
 //Monopole 
-func complex monopolePressure(real frequency){return 1i*omega(frequency)*Q*rho*G(frequency);}
+func complex monopolePressure(real frequency){return 1i*omega(frequency)*Q*rhoref*G(frequency);}
 
 func complex dxmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*kref(frequency)*r - 1)*x/(r*r);}
 func complex dymonopolePressure(real frequency){return monopolePressure(frequency)*(1i*kref(frequency)*r - 1)*y/(r*r);}
@@ -43,10 +43,10 @@ func complex dzmonopolePressure(real frequency){return monopolePressure(frequenc
 func complex drmonopolePressure(real frequency){return monopolePressure(frequency)*(1i*kref(frequency)*r - 1)/r;}
 
 //Infinitesimal dipole
-func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*omega(frequency)*rho*kref(frequency)*sin(theta)*cos(phi)*G(frequency)*(1 - 1/(1i*kref(frequency)*r));}
+func complex infinitesimalDipolePressure(real frequency){return dipoleMomentum*omega(frequency)*rhoref*kref(frequency)*sin(theta)*cos(phi)*G(frequency)*(1 - 1/(1i*kref(frequency)*r));}
 
 //Dipole
-func complex dipolePressure(real frequency){return 1i*omega(frequency)*Q*rho*(Gplus(frequency) - Gminus(frequency));}
+func complex dipolePressure(real frequency){return 1i*omega(frequency)*Q*rhoref*(Gplus(frequency) - Gminus(frequency));}
 
 func complex inputFunction(real frequency, string input)
 {
