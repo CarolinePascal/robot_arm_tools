@@ -26,7 +26,9 @@ import plotly.graph_objects as go
 #Multiprocessing package
 from multiprocessing import Pool
 
-from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, save_fig, set_title, fmin, fmax, octBand, figsize, octBandFrequencies
+from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, save_fig, octBand, figsize, octBandFrequencies
+
+from robot_arm_acoustic.measurements.DataProcessingTools import get_transfert_function
 
 from robot_arm_acoustic.MeshTools import plotMesh, plotPointCloudFromPath
 
@@ -153,35 +155,11 @@ if __name__ == "__main__":
 				output = inputData[index,1] + 1j*inputData[index,2]
 				return(output)
 			
-		#M = ms.Measurement.from_csvwav(file.split(".")[0])
-		M = ms.Measurement.from_dir(file)
-		M.sync_render(2,1,0.5)
-
-		#P = M.data[outputSignal]
-		#V = M.data[inputSignal]
-		P = M.in_sig[outputSignal]
-		V = None
-
-		if(processingMethod == "farina"):
-			V = M.out_sig[inputSignal]
-		else:
-			V = M.in_sig[inputSignal]
-		
-		#Check processing method compatibility
-		if(processingMethod == "farina" and not "sweep" in V.desc):
-			raise ValueError("Farina method cannot be used with non log sweep signals")
-		
-		TFE = None
-		if(processingMethod == "farina"):
-			unfilteredTFE,filteredTFE,_,delay = P.harmonic_disto(nh=2,win_max_length=2**18,freq_min=V.freq_min, freq_max=V.freq_max,delay=0.0)
-			TFE = unfilteredTFE[0]
-			TFE.unit = (P.unit/V.unit)
-		else:
-			TFE = P.tfe_welch(V) #Also possible for dB values : (P*V.rms).tfe_welch(V)
+		tfe, _, _ = get_transfert_function(file, inputSignal, outputSignal, processing_method = processingMethod, sync_out_chan = 2, sync_in_chan = 1, sync_added_time = 0.5)
 		
 		output = np.empty(len(Frequencies),dtype=complex)
 		for j,f in enumerate(Frequencies):
-			output[j] = TFE.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
+			output[j] = tfe.nth_oct_smooth_to_weight_complex(octBand,fmin=f,fmax=f).acomplex[0]
 			#output[j] = 100.0
 
 		#Save data for given measurement
