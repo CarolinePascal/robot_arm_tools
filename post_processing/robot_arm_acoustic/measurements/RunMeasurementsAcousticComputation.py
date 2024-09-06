@@ -37,7 +37,7 @@ def main(method, measurements_mesh_path, measurements_data_folder, verification_
         command = "ff-mpirun -np 4 "  + os.path.dirname(robot_arm_acoustic.__file__) +  "/AcousticComputationBEM.edp -wg"
 
     #Get studied frequencies
-    Frequencies = sorted([int(os.path.basename(file).split(".")[0].split("_")[-1]) for file in glob.glob("data_[0-9]*.csv")])
+    Frequencies = sorted([int(os.path.basename(file).split(".")[0].split("_")[-1]) for file in glob.glob(measurements_data_folder + "data_[0-9]*.csv")])
     try:
         Frequencies = [int(item) for item in frequencies.split(",")]
     except (IndexError, ValueError):
@@ -49,7 +49,7 @@ def main(method, measurements_mesh_path, measurements_data_folder, verification_
     Vertices, Faces = mesh.points, mesh.get_cells_type("triangle")
 
     measurementsNumber = 0
-    with open("data_" + str(Frequencies[0]) + ".csv", newline='') as csvfile:
+    with open(measurements_data_folder + "data_" + str(Frequencies[0]) + ".csv", newline='') as csvfile:
         measurementsNumber = sum(1 for _ in csv.reader(csvfile, delimiter=','))
 
     elementType = None
