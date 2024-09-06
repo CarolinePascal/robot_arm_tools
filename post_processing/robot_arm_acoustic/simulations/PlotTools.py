@@ -25,15 +25,16 @@ errorFunctions["RMS"] = lambda X : np.sqrt(np.mean(np.abs(X.T)**2,axis=0))
 errorFunctions["mean"] = lambda X : np.mean(X.T,axis=0)
 
 ## Function returning all the available parameters configurations in an output files folder
+#  @param  folderName                   Folder containing the output files
 #  @return parametersConfigurations     Output files / parameters configurations matrix
 #  @return parametersList               List of the parameters names
 #  @return parametersUnits              List of the parameters units
 #  @return fileLits                     List of the output files names
-def getParametersConfigurations():
+def getParametersConfigurations(folderName="./"):
 
     #Get all output files
-    fileList = np.array(glob.glob("output*"))
-    fileList = np.append(fileList,np.array(glob.glob("position_noise/output*")))
+    fileList = np.array(glob.glob(folderName + "output*"))
+    fileList = np.append(fileList,np.array(glob.glob(folderName + "position_noise/output*")))
     #fileList = np.append(fileList,np.array(glob.glob("measurement_noise/output*")))
     
     #Get parameters names and units, or define them if none given
@@ -41,7 +42,7 @@ def getParametersConfigurations():
     parametersUnits = []
 
     try:
-        with open("parameters.txt") as parametersFile:
+        with open(folderName + "parameters.txt") as parametersFile:
             lines = parametersFile.read().splitlines()
             for line in lines:
                 try:

@@ -25,7 +25,7 @@ def flip(items, ncol):
 #  @param analyticalFunctionID ID of the analytical function (c.f. AcousticTools.py)
 #  @param errorID ID of the error function (c.f. PlotTools.py)
 #  @param figureName Name of the output figure
-def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.pdf",**kwargs):
+def plotError(postProcessingID,analyticalFunctionID,errorID,elementType="P1",figureName="figure.pdf",folderName="./",**kwargs):
 
     #Get post-processing and analytical functions
     postProcessingFunction = postProcessingFunctions[postProcessingID]
@@ -33,7 +33,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
     errorFunction = errorFunctions[errorID]
 
     #Get parameters names, values, units and corresponding output files
-    parametersConfigurations,parametersList,parametersUnits,fileList = getParametersConfigurations()
+    parametersConfigurations,parametersList,parametersUnits,fileList = getParametersConfigurations(folderName)
 
     #Abscissa parameter ?
     if("abscissaParameter" in kwargs and kwargs["abscissaParameter"] in parametersList):
@@ -162,8 +162,10 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
                 continue
             else:
                 fixedParametersList.append(fixedParameter)
-                variableParametersList.remove(fixedParameter)
+                fixedParameterIndex = np.where(parametersList[1:] == fixedParameter)[0][0]
+                variableParametersList = np.delete(variableParametersList,np.where(variableParametersList == fixedParameter)[0][0])
                 fixedValues = list(input("what values ? " + str(np.unique(interestConfigurations[:,fixedParameterIndex])) + " (" + parametersUnits[1:][fixedParameterIndex] + ") ").split(' '))
+                fixedValues = [float(item) for item in fixedValues if float(item) in np.unique(interestConfigurations[:,fixedParameterIndex])]
                 fixedParametersValues.append(fixedValues)
             
             flag = input("Any fixed parameter ? y/n")
@@ -225,7 +227,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
 
     #Get the scaling factors in case of normalisation
     normalisation = False
-    if(parametersUnits[0] == "m"):
+    if(parametersUnits[0] == "m" and parameter != "vertices"):
         if("normalisation" in kwargs): 
             if(kwargs["normalisation"]):
                 normalisation = True
@@ -333,8 +335,11 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
                 sizeIndex = np.where(parametersList=="size")[0][0]
                 #In this case, resolutionIndex = 0
 
-                points,_ = generateSphericMesh(np.round(configuration[sizeIndex],4),np.round(configuration[0],4))
-                plotListAbscissa[interestConfigurationIndex][parameterValueIndex] = len(points)*scalingFactors[interestConfigurationIndex]
+                points,faces = generateSphericMesh(np.round(configuration[sizeIndex],4),np.round(configuration[0],4),elementType=elementType)
+                if(elementType == "P1"):
+                    plotListAbscissa[interestConfigurationIndex][parameterValueIndex] = len(points)*scalingFactors[interestConfigurationIndex]
+                elif(elementType == "P0"):
+                    plotListAbscissa[interestConfigurationIndex][parameterValueIndex] = len(faces)*scalingFactors[interestConfigurationIndex]
             else:
                 plotListAbscissa[interestConfigurationIndex][parameterValueIndex] = parameterValue*scalingFactors[interestConfigurationIndex]
 
@@ -484,6 +489,8 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
             axNi.set_xlabel(r"$\sigma_P$ (m)")
         elif(parameter == "resolution"):
             axNi.set_xlabel(r"$h$ (m)")
+        elif(parameter == "vertices"):
+            axNi.set_xlabel("Vertices number")
         else:
             axNi.set_xlabel(parameter + " (" + parametersUnits[0] + ")")
 
@@ -492,7 +499,7 @@ def plotError(postProcessingID,analyticalFunctionID,errorID,figureName="output.p
             if(errorType == "absolute" and (postProcessingID == "id" or postProcessingID == "mod")):
                 axNi.set_ylabel("average " + errorType + " error (dB)")
             else:
-                axNi.set_ylabel(r"$\log(\epsilon)$ (-)",labelpad=15)
+                axNi.set_ylabel(r"$\log(\epsilon)$",labelpad=15)
               
         else:
             if(errorType == "relative"):
@@ -559,18 +566,11 @@ if __name__ == "__main__":
     kwargs["linearRegression"] = False
     kwargs["errorType"] = "relative"
     kwargs["logScale"] = True
-
+                
     ### Resolution 
     kwargs["abscissaParameter"] = "resolution"
     kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.0],[0.0],[0.45]]
-
-    ### Resolution error unnormalized
-    kwargs["abscissaValues"] = [0.005,0.0125,0.025,0.0375,0.05,0.0625,0.125,0.25]
-    kwargs["normalisation"] = False
-    kwargs["drawSlope"] = True
-    kwargs["slopeValue"] = 2.0
-    plotError(postProcessing,analytical,error,figureName="ResolutionError.pdf",**kwargs)
+    kwargs["fixedValues"] = [[0.5],[500,1000,5000],[0.0],[0.0],[0.45]]
     
     ### Resolution error normalized
     kwargs["abscissaValues"] = [0.005,0.0125,0.025,0.0375,0.05,0.0625,0.125,0.25]
@@ -579,11 +579,18 @@ if __name__ == "__main__":
     kwargs["slopeValue"] = 2.0
     plotError(postProcessing,analytical,error,figureName="NormalizedResolutionError.pdf",**kwargs)
 
+    ### Resolution error unnormalized
+    kwargs["abscissaValues"] = [0.005,0.0125,0.025,0.0375,0.05,0.0625,0.125,0.25]
+    kwargs["normalisation"] = False
+    kwargs["drawSlope"] = True
+    kwargs["slopeValue"] = 2.0
+    plotError(postProcessing,analytical,error,figureName="ResolutionError.pdf",**kwargs)
+
     ### Size error normalized
     kwargs["abscissaParameter"] = "size"
     kwargs["abscissaValues"] = "*"
     kwargs["fixedParameters"] = ["resolution","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.005],[100,500,1000,5000],[0.0],[0.0],[0.05]]
+    kwargs["fixedValues"] = [[0.005],[500,1000,5000],[0.0],[0.0],[0.05]]
     kwargs["normalisation"] = True
     kwargs["drawSlope"] = False
     plotError(postProcessing,analytical,error,figureName="NormalizedSizeError.pdf",**kwargs)
@@ -592,7 +599,7 @@ if __name__ == "__main__":
     kwargs["abscissaParameter"] = "sigmaPosition"
     kwargs["abscissaValues"] = [0.0005,  0.00125, 0.0025,  0.00375, 0.005, 0.0125]
     kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],[0.05],[100,500,1000,5000],[0.0],[0.45]]
+    kwargs["fixedValues"] = [[0.5],[0.05],[500,1000,5000],[0.0],[0.45]]
     kwargs["normalisation"] = False
     kwargs["linearRegression"] = False
     kwargs["robot"] = True
@@ -604,7 +611,7 @@ if __name__ == "__main__":
     kwargs["abscissaParameter"] = "resolution"
     kwargs["abscissaValues"] = [0.005, 0.0125, 0.025,  0.0375, 0.05]
     kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.0005],[0.45]]
+    kwargs["fixedValues"] = [[0.5],[0.005],[500,1000,5000],[0.0],[0.0005],[0.45]]
     kwargs["normalisation"] = False
     kwargs["drawSlope"] = True
     kwargs["slopeValue"] = 2.0
@@ -615,7 +622,7 @@ if __name__ == "__main__":
     kwargs["abscissaParameter"] = "resolution"
     kwargs["abscissaValues"] = [0.0125, 0.025,  0.0375, 0.05]
     kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],[0.05],[100,500,1000,5000],[0.0],[0.0125],[0.45]]
+    kwargs["fixedValues"] = [[0.5],[0.05],[500,1000,5000],[0.0],[0.0125],[0.45]]
     kwargs["normalisation"] = False
     kwargs["drawSlope"] = True
     kwargs["slopeValue"] = 0.5
@@ -626,7 +633,7 @@ if __name__ == "__main__":
     kwargs["abscissaParameter"] = "sigmaPosition"
     kwargs["abscissaValues"] = [0.0005, 0.00125, 0.0025, 0.00375, 0.005]
     kwargs["fixedParameters"] = ["size","resolution","frequency","sigmaMeasure","sigmaPosition","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],[0.005],[100,500,1000,5000],[0.0],[0.005],[0.45]]
+    kwargs["fixedValues"] = [[0.5],[0.005],[500,1000,5000],[0.0],[0.005],[0.45]]
     kwargs["normalisation"] = False
     kwargs["drawSlope"] = True
     kwargs["slopeValue"] = 1.0
@@ -636,7 +643,7 @@ if __name__ == "__main__":
     kwargs["abscissaParameter"] = "resolution"
     kwargs["abscissaValues"] = [0.005,  0.0125, 0.025,  0.0375, 0.05]
     kwargs["fixedParameters"] = ["size","frequency","sigmaPosition","sigmaMeasure","dipoleDistance"]
-    kwargs["fixedValues"] = [[0.5],[100,500,1000,5000],[0.0],[0.0],[0.45]]
+    kwargs["fixedValues"] = [[0.5],[500,1000,5000],[0.0],[0.0],[0.45]]
     kwargs["normalisation"] = False
     kwargs["drawSlope"] = False
     kwargs["linearRegression"] = True
@@ -674,7 +681,7 @@ if __name__ == "__main__":
     axN.set_position([0.165,0.125,0.8,0.85])
 
     axN.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=2, borderaxespad=0.25, reverse=False,columnspacing=1.0, fontsize=20)
-    axN.set_ylabel(r"Error slope (-)",labelpad=15)
+    axN.set_ylabel(r"Error slope",labelpad=15)
     axN.set_xlabel(r"$\sigma_P$ (m)")
     axN.grid(which="major")
     axN.grid(linestyle = '--',which="minor")

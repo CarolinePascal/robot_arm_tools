@@ -1,10 +1,15 @@
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
+import numpy as np
 
 ### PLOT PARAMETERS ###
 
 cmap = plt.get_cmap("tab10")
 cmap2 = plt.get_cmap("tab20c")
+cmap_complement = colors.ListedColormap(plt.get_cmap("tab20c")(np.arange(2,40,4)))
+
 markers = ["^","s","o","v","D","x","*","+"]
+markers_complement = markers[::-1]
 plotly_markers = ["triangle-up","square","circle","triangle-down","diamond","x","star","cross"]
 plt_to_plotly_markers = dict(zip(markers,plotly_markers))
 
