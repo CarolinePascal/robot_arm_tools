@@ -137,7 +137,6 @@ if __name__ == "__main__":
 	folderName = processingMethod + "_" + outputSignalType + "_" + str(inputSignal) + "_" + str(outputSignal) + "_" + elementType
 	os.makedirs(folderName,exist_ok=True)
 
-	#Files = sorted(glob.glob(outputSignalType + "*.wav"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 	Files = sorted(glob.glob(outputSignalType + "*/"), key=lambda file:int(file.split("_")[-1][:-1]))
 
 	Data = np.empty((len(Frequencies),len(Files)),dtype=complex)
