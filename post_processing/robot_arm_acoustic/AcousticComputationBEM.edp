@@ -639,10 +639,10 @@ else
         measurementsData[] = noisyMeasurementsData[];
     }
 
-    if(mpirank == 0)
-    {
-        medit("Measurements",measurementsMesh,abs(measurementsData));
-    }
+    // if(mpirank == 0)
+    // {
+    //     medit("Measurements",measurementsMesh,abs(measurementsData));
+    // }
 
     if(sigmaMeasure != 0.0)
     {
