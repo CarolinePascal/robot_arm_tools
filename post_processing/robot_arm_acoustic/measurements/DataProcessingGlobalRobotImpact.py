@@ -51,7 +51,7 @@ if __name__ == "__main__":
         )
 
     # Get interest output signal type
-    outputSignalType = "log_sweep"
+    outputSignalType = "sweep"
     try:
         outputSignalType = sys.argv[2].lower()
     except IndexError:
@@ -62,11 +62,11 @@ if __name__ == "__main__":
         )
 
     # Get transfer function input and output signals names
-    inputSignal = 1  # Voltage
-    outputSignal = 0  # Pressure
+    inputSignal = "Out1"  # Voltage
+    outputSignal = "In1"  # Pressure
     try:
-        inputSignal = int(sys.argv[3])
-        outputSignal = int(sys.argv[4])
+        inputSignal = sys.argv[3]
+        outputSignal = sys.argv[4]
     except IndexError:
         print(
             "Invalid input/output signals, defaulting to input : "
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     )
 
     ControlPointsFolders = sorted(
-        glob.glob("Measurements_[0-9]/"), key=lambda folder: int(os.path.dirname(folder).split("_")[-1])
+        glob.glob("[0-9]"), key=lambda folder: int(folder)
     )
 
     WWith = []
@@ -95,12 +95,12 @@ if __name__ == "__main__":
     for i, folder in enumerate(ControlPointsFolders):
 
         fileWith = sorted(
-            glob.glob(folder + outputSignalType + "_measurement_" + str(INDEX)),
-            key=lambda file: int(os.path.dirname(file).split("_")[-1]),
+            glob.glob(folder + "/WithRobot/measurement_" + str(INDEX) + ".csv"),
+            key=lambda file: int(file.split(".")[0].split("_")[-1]),
         )[0]
         fileWithout = sorted(
-            glob.glob(folder + outputSignalType + "_measurement_3"),
-            key=lambda file: int(os.path.dirname(file).split("_")[-1]),
+            glob.glob(folder + "/WithoutRobot/measurement_" + str(INDEX) + ".csv"),
+            key=lambda file: int(file.split(".")[0].split("_")[-1]),
         )[0]
 
         tfeWith, _, _ = get_transfert_function(

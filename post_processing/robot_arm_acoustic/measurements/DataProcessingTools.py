@@ -1,5 +1,8 @@
 #!/usr/bin/python3
 
+#System package
+import os
+
 #Acoustics package
 import measpy as ms
 
@@ -15,17 +18,13 @@ def get_transfert_function(source_path, input_signal, output_signal, processing_
 
     print("Data processing : " + source_path)
     
-    measurement = ms.Measurement.from_dir(source_path)
+    measurement = ms.Measurement.from_csvwav(source_path.split(".")[0])
 
-    if sync_out_chan is not None and sync_in_chan is not None:
-        measurement.sync_render(sync_out_chan, sync_in_chan, sync_added_time)
+    #if sync_out_chan is not None and sync_in_chan is not None:
+        #measurement.sync_render(sync_out_chan, sync_in_chan, sync_added_time)
 
-    output = measurement.in_sig[output_signal]
-    input = None
-    if processing_method == "farina":
-        input = measurement.out_sig[input_signal]
-    else:
-        input = measurement.in_sig[input_signal]
+    output = measurement.data[output_signal]
+    input = measurement.data[input_signal]
 
     # Check processing method compatibility
     if processing_method == "farina" and not "sweep" in input.desc:

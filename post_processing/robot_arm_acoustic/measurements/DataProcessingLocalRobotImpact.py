@@ -56,7 +56,7 @@ if __name__ == "__main__":
         )
 
     # Get interest output signal type
-    outputSignalType = "log_sweep"
+    outputSignalType = "sweep"
     try:
         outputSignalType = sys.argv[2].lower()
     except IndexError:
@@ -67,11 +67,11 @@ if __name__ == "__main__":
         )
 
     # Get transfer function input and output signals names
-    inputSignal = 1  # Voltage
-    outputSignal = 0  # Pressure
+    inputSignal = "Out1"  # Voltage
+    outputSignal = "In1"  # Pressure
     try:
-        inputSignal = int(sys.argv[3])
-        outputSignal = int(sys.argv[4])
+        inputSignal = sys.argv[3]
+        outputSignal = sys.argv[4]
     except IndexError:
         print(
             "Invalid input/output signals, defaulting to input : "
@@ -91,12 +91,12 @@ if __name__ == "__main__":
     )
 
     FilesWith = sorted(
-        glob.glob(outputSignalType + "_measurement_[0-9]/"),
-        key=lambda file: int(os.path.dirname(file).split("_")[-1]),
+        glob.glob("WithRobot/measurement_[0-9].csv"),
+        key=lambda file: int(file.split(".")[0].split("_")[-1]),
     )
     FilesWithout = sorted(
-        glob.glob(outputSignalType + "_measurement_3/"),
-        key=lambda file: int(os.path.dirname(file).split("_")[-1]),
+        glob.glob("WithoutRobot/measurement_[0-9].csv"),
+        key=lambda file: int(file.split(".")[0].split("_")[-1]),
     )
 
     WWith = []

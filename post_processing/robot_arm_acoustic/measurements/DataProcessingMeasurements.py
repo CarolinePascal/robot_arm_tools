@@ -64,18 +64,18 @@ if __name__ == "__main__":
 		print("Invalid processing method, defaulting to " + processingMethod + " method")
 
 	#Get interest output signal type
-	outputSignalType = "log_sweep"
+	outputSignalType = "sweep"
 	try:
 		outputSignalType = sys.argv[2].lower()
 	except IndexError:
-		print("Invalid output signal type, defaulting to " + str(outputSignalType) + " output signal")
+		print("Invalid output signal type, defaulting to " + outputSignalType + " output signal")
 
 	#Get transfer function input and output signals names
-	inputSignal = 1 #Voltage
-	outputSignal = 0   #Pressure
+	inputSignal = "Out1"  # Voltage
+	outputSignal = "In1"  # Pressure
 	try:
-		inputSignal = int(sys.argv[3])
-		outputSignal = int(sys.argv[4])
+		inputSignal = sys.argv[3]
+		outputSignal = sys.argv[4]
 	except IndexError:
 		print("Invalid input/output signals, defaulting to input : " + str(inputSignal) + " and output : " + str(outputSignal))
 
@@ -137,7 +137,7 @@ if __name__ == "__main__":
 	folderName = processingMethod + "_" + outputSignalType + "_" + str(inputSignal) + "_" + str(outputSignal) + "_" + elementType
 	os.makedirs(folderName,exist_ok=True)
 
-	Files = sorted(glob.glob(outputSignalType + "*/"), key=lambda file:int(file.split("_")[-1][:-1]))
+	Files = sorted(glob.glob(outputSignalType + "*.csv"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 
 	Data = np.empty((len(Frequencies),len(Files)),dtype=complex)
 
