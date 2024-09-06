@@ -90,11 +90,11 @@ if __name__ == "__main__":
     )
 
     FilesWith = sorted(
-        glob.glob(outputSignalType + "_measurement_[0-9]"),
+        glob.glob(outputSignalType + "_measurement_[0-9]/"),
         key=lambda file: int(file.split("_")[-1]),
     )
     FilesWithout = sorted(
-        glob.glob(outputSignalType + "_measurement_3"),
+        glob.glob(outputSignalType + "_measurement_3/"),
         key=lambda file: int(file.split("_")[-1]),
     )
 

@@ -86,7 +86,7 @@ if __name__ == "__main__":
     )
 
     ControlPointsFolders = sorted(
-        glob.glob("Measurements_[0-9]"), key=lambda folder: int(folder.split("_")[-1])
+        glob.glob("Measurements_[0-9]/"), key=lambda folder: int(folder.split("_")[-1])
     )
 
     WWith = []
@@ -95,11 +95,11 @@ if __name__ == "__main__":
     for i, folder in enumerate(ControlPointsFolders):
 
         fileWith = sorted(
-            glob.glob(folder + "/" + outputSignalType + "_measurement_" + str(INDEX)),
+            glob.glob(folder + outputSignalType + "_measurement_" + str(INDEX)),
             key=lambda file: int(file.split("_")[-1]),
         )[0]
         fileWithout = sorted(
-            glob.glob(folder + "/" + outputSignalType + "_measurement_3"),
+            glob.glob(folder + outputSignalType + "_measurement_3"),
             key=lambda file: int(file.split("_")[-1]),
         )[0]
 
