@@ -49,7 +49,7 @@ fmaxValidity = 1000
 #  @param validity_range   Frequency validity range (gray shade) - default is None
 #  @param scalingFactor    Scaling factor for the x-axis - default is 1.0
 #  @param interactive      Interactive plot (plotly html) - default is False
-def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, dby=True, plot_phase=True, unwrap_phase=True, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
+def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, dby=True, plot_phase=True, unwrap_phase=True, validity_range = None, scalingFactor = 1.0, interactive = False, ylim_modulus = None, ylim_phase = None, **kwargs):
 
     if dby and (unit != Unit("Pa")) and (unit != Unit("m/s")) and (unit != Unit("1")):
         dby = False
@@ -173,6 +173,9 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
         if(validity_range is not None):
             if(len(ax_0.patches) == 0):
                 ax_0.axvspan(scalingFactor*validity_range[0],scalingFactor*validity_range[1],color="gray",alpha=0.175)
+
+        if(ylim_modulus is not None):
+            ax_0.set_ylim(ylim_modulus)
         
     if plot_phase:
         phase_to_plot = interpolated_walues_phase[valid_indices]
@@ -209,7 +212,7 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
                 ax[1].xaxis.set_minor_locator(AutoMinorLocator(2))
 
             ax[1].set_ylabel('Phase (rad)')
-            ax[1].yaxis.set_major_locator(MaxNLocator(5))
+            ax[1].yaxis.set_major_locator(MaxNLocator(6))
             ax[1].yaxis.set_minor_locator(AutoMinorLocator(2))
 
             ax[1].grid(linestyle = '-', which="major")
@@ -220,6 +223,9 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
                     ax[1].axvspan(validity_range[0],validity_range[1],color="gray",alpha=0.175)
 
             ax[1].tick_params(axis='both', which='both', pad=7)
+
+            if(ylim_phase is not None):
+                ax[1].set_ylim(ylim_phase)
     
     if interactive:
         if plot_phase:
@@ -490,7 +496,7 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
 
     spacing = 0.5
     if(plot_phase):
-        ax_0.legend(bbox_to_anchor=(-0.2, 1.0, 2.7, .1), loc='lower left', ncol=ncol, borderaxespad=2, reverse=False, mode="expand", columnspacing=spacing)
+        ax_0.legend(bbox_to_anchor=(0.15, 1.0, 2.0, .1), loc='lower left', ncol=ncol, borderaxespad=2, reverse=False, mode="expand")
     else:
         ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=2, reverse=False, columnspacing=spacing)
 
@@ -644,6 +650,17 @@ def compute_l2_errors(wExp, wTh, frequencyRange = None):
     errorRel = errorAbs/np.sqrt(np.sum(np.abs(wTh.amp*np.exp(1j*wTh.phase))[indexValidity]**2))
 
     return(errorAbs,errorRel)
+
+def compute_max_min_errors(wExp, wTh, frequencyRange = None):
+
+    if(frequencyRange is None):
+        frequencyRange = [np.min(wTh.freqs),np.max(wTh.freqs)]
+
+    indexValidity = np.where((wTh.freqs > frequencyRange[0]) & (wTh.freqs < frequencyRange[1]))
+    errorAbs = np.abs(wExp.amp*np.exp(1j*wExp.phase) - wTh.amp*np.exp(1j*wTh.phase))[indexValidity]
+    errorRel = errorAbs/np.abs(wTh.amp*np.exp(1j*wTh.phase))[indexValidity]
+
+    return(min(errorAbs),max(errorAbs),min(errorRel),max(errorRel))
 
 ## Function plotting the absolute error between two spatial datasets
 #  @param dataExp          The experimental spatial data
