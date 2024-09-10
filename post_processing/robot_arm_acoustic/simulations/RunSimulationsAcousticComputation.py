@@ -123,7 +123,7 @@ def main(method, gradient, input_mesh_path):
 
                                         print(bashCommand)
                                         t0 = time.time()
-                                        output = subprocess.run(bashCommand, capture_output=True, shell=True)
+                                        output = subprocess.run(bashCommand, capture_output=True, text=True, shell=True)
                                         t1 = time.time()
 
                                         with open("computation_time_" + function + "_" + elementType + ".csv","a") as f:
@@ -135,13 +135,13 @@ def main(method, gradient, input_mesh_path):
                                             writer.writerow(data)
 
                                         #DEBUG
-                                        print(output.stdout.decode())
+                                        print(output.stdout)
 
                                         killProcess = "killall FreeFem++-mpi"
-                                        output = subprocess.run(killProcess, capture_output=True, shell=True)
+                                        output = subprocess.run(killProcess, capture_output=True, text=True, shell=True)
 
                                         #DEBUG
-                                        print(output.stdout.decode())
+                                        print(output.stdout)
     
     else:
 
@@ -195,7 +195,7 @@ def main(method, gradient, input_mesh_path):
 
                                 print(bashCommand)
                                 t0 = time.time()
-                                output = subprocess.run(bashCommand, capture_output=True, shell=True)
+                                output = subprocess.run(bashCommand, capture_output=True, text=True, shell=True)
                                 t1 = time.time()
 
                                 mesh_name = os.path.basename(input_mesh_path).split(".")[0]
@@ -208,13 +208,13 @@ def main(method, gradient, input_mesh_path):
                                     writer.writerow(data)
 
                                 #DEBUG
-                                print(output.stdout.decode())
+                                print(output.stdout)
 
                                 killProcess = "killall FreeFem++-mpi"
-                                output = subprocess.run(killProcess, capture_output=True, shell=True)
+                                output = subprocess.run(killProcess, capture_output=True, text=True, shell=True)
 
                                 #DEBUG
-                                print(output.stdout.decode())
+                                print(output.stdout)
 
 
 if(__name__ == "__main__"):

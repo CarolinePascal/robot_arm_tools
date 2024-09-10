@@ -68,8 +68,7 @@ def main(method, measurements_mesh_path, measurements_data_folder, verification_
         print(bashCommand)
 
         t0 = time.time()
-        process = subprocess.Popen(bashCommand.split(), stdout=subprocess.PIPE)
-        output,_ = process.communicate()
+        output = subprocess.run(bashCommand, capture_output=True, text=True, shell=True)
         t1 = time.time()
 
         with open("computation_time_"+ elementType + ".csv","a") as f:
@@ -78,14 +77,13 @@ def main(method, measurements_mesh_path, measurements_data_folder, verification_
             writer.writerow(data)
 
         #DEBUG
-        print(output.decode())
+        print(output)
 
         killProcess = "killall FreeFem++-mpi"
-        process = subprocess.Popen(killProcess.split(), stdout=subprocess.PIPE)
-        output,_ = process.communicate()
+        output = subprocess.run(killProcess, capture_output=True, text=True, shell=True)
 
         #DEBUG
-        print(output.decode())
+        print(output)
 
 if __name__ == "__main__":
     main()
