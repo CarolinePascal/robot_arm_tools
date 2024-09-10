@@ -24,7 +24,7 @@ from robot_arm_acoustic.measurements.DataProcessingMeasurements import sphereFit
 
 from robot_arm_acoustic.MeshTools import plotMesh, plotPointCloudFromPath
 
-INTERACTIVE = False
+INTERACTIVE = True
 
 if __name__ == "__main__":
 
@@ -68,7 +68,8 @@ if __name__ == "__main__":
 		raise ValueError("Invalid element type")
 
 	###TO ADAPT DEPENDING ON MESH###
-	center,radius = sphereFit(initMeasurementsPoints)
+	center = np.array([0,0,0])
+	#center,radius = sphereFit(initMeasurementsPoints)
 	################################
 	
 	initResolution = trimesh.Trimesh(initVertices, initFaces).edges_unique_length.max()
@@ -98,7 +99,7 @@ if __name__ == "__main__":
 		correspondances.append(index)
 
 	#Get inital measurements data
-	Files = sorted(glob.glob("data*.csv"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
+	Files = sorted(glob.glob("data_[0-9]*.csv"), key=lambda file:int(os.path.basename(file).split(".")[0].split("_")[-1]))
 
 	#Sub-sample initial measuements 
 	folderName = os.getcwd() + "/" + str(np.round(newResolution,3))

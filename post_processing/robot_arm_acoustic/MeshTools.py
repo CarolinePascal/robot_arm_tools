@@ -17,6 +17,7 @@ from scipy.spatial import ConvexHull
 import meshio
 import trimesh
 import dualmesh as dm
+import pymeshfix as pymeshfix
 
 #Point cloud packages
 import point_cloud_utils as pcu
@@ -588,6 +589,75 @@ def generateDualSphericMesh(size, resolution, sigma = 0.0, elementType = "P0", s
         saveMeshYAML(YAMLPath, points, faces, elementType, gradientOffset)
 
     return(points, faces)
+
+def generateSimilarMeshes(vertices, faces, sigma, elementType = "P0", similarNumber = 3, save = False, saveYAML = False, gradientOffset = 0.0, saveFolder = None):
+
+    #Get mesh resolution
+    mesh = trimesh.Trimesh(vertices, faces)
+    resolution = mesh.edges_unique_length.max()
+    print("resolution : " + str(resolution))
+
+    similarResolutions = [resolution*(1+i) for i in range(similarNumber)]
+    similarMeshes = []
+
+    if(saveFolder is None):
+        saveFolder = "./"
+    folderName = saveFolder + "similar"
+    os.makedirs(folderName, exist_ok=True)
+
+    if (elementType == "P0"):
+        raise NotImplementedError("Not implemented element type")
+    
+    if(elementType == "P1"):
+        mesh = o3d.geometry.TriangleMesh(o3d.utility.Vector3dVector(vertices), o3d.utility.Vector3iVector(faces))
+        mesh.compute_vertex_normals()
+        pointCloud = o3d.geometry.PointCloud()
+        pointCloud.points = mesh.vertices
+        pointCloud.colors = mesh.vertex_colors
+        pointCloud.normals = mesh.vertex_normals
+
+        for similarResolution in similarResolutions:
+
+            #print("similarResolution : " + str(similarResolution))
+
+            #Downsample mesh regularly
+            sampledPointCloud = pointCloud.voxel_down_sample(voxel_size = similarResolution)
+            #o3d.visualization.draw_geometries([sampledPointCloud], point_show_normal=True)
+
+            #sampledMesh = o3d.geometry.TriangleMesh.create_from_point_cloud_alpha_shape(sampledPointCloud, alpha=0.05)
+            #sampledMesh,_ = o3d.geometry.TriangleMesh.create_from_point_cloud_poisson(sampledPointCloud, depth=10)
+            radii = np.linspace(similarResolution/2, similarResolution, 10)
+            sampledMesh = o3d.geometry.TriangleMesh.create_from_point_cloud_ball_pivoting(sampledPointCloud, o3d.utility.DoubleVector(radii))
+
+            #sampledMesh.compute_vertex_normals()
+            #o3d.visualization.draw_geometries([sampledMesh])
+
+            sampledVertices, sampledFaces = pymeshfix.clean_from_arrays(sampledMesh.vertices, sampledMesh.triangles)
+
+            #sampledMesh = o3d.geometry.TriangleMesh(vertices=o3d.utility.Vector3dVector(sampledVertices), triangles=o3d.utility.Vector3iVector(sampledFaces))
+            #sampledMesh.compute_vertex_normals()
+            #o3d.visualization.draw_geometries([sampledMesh]) 
+
+            #Get new mesh resolution
+            sampledResolution = float(trimesh.Trimesh(sampledVertices,sampledFaces).edges_unique_length.max())
+            sampledResolution = np.round(sampledResolution,3)
+            #print("sampledResolution : " + str(sampledResolution))
+
+            if(sigma != 0.0):
+                sampledVertices, _ = addNoiseToMesh(sampledVertices, sampledFaces, sigma)
+
+            if(save):
+                meshPath = folderName + "/" + str(sampledResolution) + ("_" + str(sigma))*(sigma != 0.0) + ".mesh"
+                saveMesh(meshPath, sampledVertices, sampledFaces)
+
+            if(saveYAML):
+                YAMLPath = folderName + "/" + str(sampledResolution) + ("_" + str(sigma))*(sigma != 0.0) + ".yaml"
+                saveMeshYAML(YAMLPath, sampledVertices, sampledFaces, elementType, gradientOffset)
+
+            similarMeshes.append((sampledVertices,sampledFaces))
+
+    return(similarMeshes)
+
 
 ## Function creating similar spheric meshes (meshes with similar elements nodes but larger resolutions)
 #  @param size Size of the sphere as its diameter
