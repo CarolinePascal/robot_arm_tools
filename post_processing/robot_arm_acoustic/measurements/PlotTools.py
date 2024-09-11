@@ -11,9 +11,14 @@ from unyt import Unit
 from csaps import csaps
 
 #Plot tools
+from scipy.spatial import ConvexHull
+
 import matplotlib.pyplot as plt
 from matplotlib.ticker import ScalarFormatter
 from matplotlib.ticker import MaxNLocator,AutoMinorLocator
+from matplotlib.cm import ScalarMappable, get_cmap
+from matplotlib.colors import Normalize
+
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
@@ -496,11 +501,93 @@ def plot_polar_data(data, points, unit=Unit("1"), ax=None, dby=True, plot_phase=
 
     spacing = 0.5
     if(plot_phase):
-        ax_0.legend(bbox_to_anchor=(0.15, 1.0, 2.0, .1), loc='lower left', ncol=ncol, borderaxespad=2, reverse=False, mode="expand")
+        ax_0.legend(bbox_to_anchor=(0.15, 1.0, 2.0, .1), loc='lower left', ncol=ncol, borderaxespad=2, reverse=False, mode="expand", columnspacing=spacing)
     else:
         ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=2, reverse=False, columnspacing=spacing)
 
     return ax
+
+## Function displaying balloon plot (3D plot)
+#  @param data              The spatial data
+#  @param points            The points coordinates
+#  @param ax                The axis to plot on - default is None
+#  @param interactive       Interactive plot (plotly html) - default is False
+def plot_balloon(data, points, ax=None, interactive = False, **kwargs):
+
+    if type(ax) == type(None):
+        if(interactive):
+            ax = go.Figure()
+        else:
+            _, ax = plt.subplots(1,subplot_kw=dict(projection='3d'))
+
+    #Get points spheric coordinates
+    plot_points = points - np.mean(points,axis=0)
+    r = np.linalg.norm(plot_points,axis=1)
+    theta = np.arctan2(plot_points[:,1],plot_points[:,0])
+    phi = np.arccos(plot_points[:,2]/r)
+
+    #Compute baloon plot data
+    new_r = np.abs(data)
+    new_plot_points = np.array([new_r*np.sin(phi)*np.cos(theta),new_r*np.sin(phi)*np.sin(theta),new_r*np.cos(phi)]).T
+    new_plot_mesh = ConvexHull(new_plot_points)
+    new_max_bound = np.max(new_r)
+
+    if(interactive):
+        ax.add_trace(go.Mesh3d(x=new_plot_mesh.points[:,0],y=new_plot_mesh.points[:,1],z=new_plot_mesh.points[:,2],i=new_plot_mesh.simplices[:,0],j=new_plot_mesh.simplices[:,1],k=new_plot_mesh.simplices[:,2],intensity=new_r,colorscale="Jet")
+        )
+        ax.add_trace(go.Scatter3d(x=[0,1.1*new_max_bound],y=[0,0],z=[0,0],mode="lines+text",line = dict(width = 3, color = "black"),text=["","x"],textfont=dict(size=18)))
+        ax.add_trace(go.Scatter3d(x=[0,0],y=[0,1.1*new_max_bound],z=[0,0],mode="lines+text",line = dict(width = 3, color = "black"),text=["","y"],textfont=dict(size=18)))
+        ax.add_trace(go.Scatter3d(x=[0,0],y=[0,0],z=[0,1.1*new_max_bound],mode="lines+text",line = dict(width = 3, color = "black"),text=["","z"],textfont=dict(size=18)))       
+
+        ax.update_layout(scene = {"xaxis_title":"x","yaxis_title":"y","zaxis_title":"z"})
+        ax.update_layout(scene = dict(xaxis = dict(range=[-1.1*new_max_bound, 1.1*new_max_bound]),
+                                      yaxis = dict(range=[-1.1*new_max_bound, 1.1*new_max_bound]),
+                                      zaxis = dict(range=[-1.1*new_max_bound, 1.1*new_max_bound])))
+        if("label" in kwargs):
+            ax.update_layout(coloraxis_colorbar={"title":kwargs["label"]})
+        ax.update_scenes(aspectmode='cube')
+
+    else:
+        ax.quiver(*np.zeros((3,3)), *np.eye(3), length=new_max_bound, color="black",arrow_length_ratio=0.1)
+        p3dc = ax.plot_trisurf(new_plot_mesh.points[:,0],new_plot_mesh.points[:,1],new_plot_mesh.points[:,2],triangles=new_plot_mesh.simplices)
+        
+        norm = Normalize()
+        colors = get_cmap("jet")(norm([np.mean(new_r[s]) for s in new_plot_mesh.simplices]))
+        p3dc.set_fc(colors)
+
+        cbar = plt.colorbar(ScalarMappable(cmap="jet", norm=norm), fraction=0.04, pad = 0.1) 
+        if("label" in kwargs):
+            cbar.set_label(kwargs["label"],labelpad=10)
+        
+        # xlim = ax.get_xlim()
+        # deltaX = xlim[1] - xlim[0]
+        # meanX = np.mean(xlim)
+        # ylim = ax.get_ylim()
+        # deltaY = ylim[1] - ylim[0]
+        # meanY = np.mean(ylim)
+        # zlim = ax.get_zlim()
+        # deltaZ = zlim[1] - zlim[0]
+        # meanZ = np.mean(zlim)
+
+        # delta = np.max([deltaX,deltaY,deltaZ])
+
+        # ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
+        # ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
+        # ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
+
+        ax.set_xlim3d(-1.1*new_max_bound, 1.1*new_max_bound)
+        ax.set_ylim3d(-1.1*new_max_bound, 1.1*new_max_bound)
+        ax.set_zlim3d(-1.1*new_max_bound, 1.1*new_max_bound)
+
+        ax.set_box_aspect((1,1,1))
+
+        ax.set_xlabel(r'$x~(m)$',labelpad=15)
+        ax.set_ylabel(r'$y~(m)$',labelpad=15)
+        ax.set_zlabel(r'$z~(m)$',labelpad=20)
+        ax.tick_params(axis='z', which='major', pad=10)
+        ax.view_init(elev=30., azim=-45)
+
+    return(ax)
 
 ## Function displaying spatial data (3D plot)
 #  @param data              The spatial data
@@ -524,10 +611,7 @@ def plot_3d_data(data, points, ax=None, interactive = False, **kwargs):
 
     else:
         sc = ax.scatter(*points.T, c = data, s=40, cmap = "jet")
-        ax.set_xlabel("x (m)",labelpad=15)
-        ax.set_ylabel("y (m)",labelpad=15)
-        ax.set_zlabel("z (m)",labelpad=15)
-        cbar = plt.colorbar(sc, fraction=0.04, pad = 0.075) 
+        cbar = plt.colorbar(sc, fraction=0.04, pad = 0.1) 
         
         if("label" in kwargs):
             cbar.set_label(kwargs["label"],labelpad=10)
@@ -544,15 +628,17 @@ def plot_3d_data(data, points, ax=None, interactive = False, **kwargs):
 
         delta = np.max([deltaX,deltaY,deltaZ])
 
-        ax.set_xlim(meanX - 0.5*delta, meanX + 0.5*delta)
-        ax.set_ylim(meanY - 0.5*delta, meanY + 0.5*delta)
-        ax.set_zlim(meanZ - 0.5*delta, meanZ + 0.5*delta)
-
-        ax.grid(linestyle= '-', which="major")
-        ax.grid(linestyle = '--', which="minor")
-        ax.tick_params(axis='z', which='both', pad=10)
+        ax.set_xlim3d(meanX - 0.5*delta, meanX + 0.5*delta)
+        ax.set_ylim3d(meanY - 0.5*delta, meanY + 0.5*delta)
+        ax.set_zlim3d(meanZ - 0.5*delta, meanZ + 0.5*delta)
 
         ax.set_box_aspect((1,1,1))
+
+        ax.set_xlabel(r'$x~(m)$',labelpad=15)
+        ax.set_ylabel(r'$y~(m)$',labelpad=15)
+        ax.set_zlabel(r'$z~(m)$',labelpad=20)
+        ax.tick_params(axis='z', which='major', pad=10)
+        ax.view_init(elev=30., azim=-45)
 
     return(ax)
 

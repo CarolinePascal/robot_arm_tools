@@ -26,7 +26,7 @@ import plotly.graph_objects as go
 #Multiprocessing package
 from multiprocessing import Pool
 
-from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, save_fig, octBand, figsize, octBandFrequencies
+from robot_arm_acoustic.measurements.PlotTools import plot_3d_data, plot_balloon, save_fig, octBand, figsize, octBandFrequencies
 
 from robot_arm_acoustic.measurements.DataProcessingTools import get_transfert_function
 
@@ -77,7 +77,7 @@ if __name__ == "__main__":
 		inputSignal = int(sys.argv[3])
 		outputSignal = int(sys.argv[4])
 	except IndexError:
-		print("Invalid input/output signals, defaulting to input : " + inputSignal + " and output : " + outputSignal)
+		print("Invalid input/output signals, defaulting to input : " + str(inputSignal) + " and output : " + str(outputSignal))
 
 	#Get interest frequencies
 	Frequencies = octBandFrequencies
@@ -376,12 +376,15 @@ if __name__ == "__main__":
 		if(INTERACTIVE):
 			axAmp = go.Figure()
 			axPhase = go.Figure()
+			axBalloon = go.Figure()
 		else:
 			figAmp,axAmp = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 			figPhase,axPhase = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
+			figBalloon,axBalloon = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='3d'))
 
 		plot_3d_data(np.abs(data), Points, axAmp, label = r"$|$H$|$ (Pa/V)", interactive=INTERACTIVE)
 		plot_3d_data(wrap(np.angle(data)), Points, axPhase, label = "Phase (rad)", interactive=INTERACTIVE)
+		plot_balloon(np.abs(data), Points, axBalloon, label = r"$|$H$|$ (Pa/V)",interactive=INTERACTIVE)
 
 		if(pointCloudPath is not None):
 			plotPointCloudFromPath(pointCloudPath, ax = axAmp, interactive=INTERACTIVE)
@@ -399,9 +402,11 @@ if __name__ == "__main__":
 		if(INTERACTIVE):
 			save_fig(axAmp, folderName + "/amplitude_" + str(int(f)) + ".html",interactive=True)
 			save_fig(axPhase, folderName + "/phase_" + str(int(f)) + ".html",interactive=True)
+			save_fig(axBalloon, folderName + "/balloon_" + str(int(f)) + ".html",interactive=True)
 		else:
 			save_fig(figAmp, folderName + "/amplitude_" + str(int(f)) + ".pdf")
 			save_fig(figPhase, folderName + "/phase_" + str(int(f)) + ".pdf")
+			save_fig(figBalloon, folderName + "/balloon_" + str(int(f)) + ".pdf")
 			plt.close("all")
 
 		#Save data at given frequency
