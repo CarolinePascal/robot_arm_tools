@@ -77,7 +77,7 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
     if(postProcessingID == "re/im" or postProcessingID == "id"):
         fig,ax = plt.subplots(1,2,figsize=figsize,subplot_kw=dict(projection='polar'))
     elif(postProcessingID == "mod" or postProcessingID == "phase"):
-        fig,ax = plt.subplots(1,figsize=figsize,subplot_kw=dict(projection='polar'))
+        fig,ax = plt.subplots(1,figsize=(figsize[0]*0.5,figsize[0]),subplot_kw=dict(projection='polar'))
         ax = [ax]
 
     #title = makeTitle(configurations,singleParametersList,parametersList,parametersUnits,"Computed acoustic pressure field")
@@ -176,8 +176,8 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
             if(analyticalFunction is not None):
                 if(legend != ""): 
                     #ax.plot(Phi,function(numericValuesA), label="FreeFem analytical solution",color=cmap(2),linestyle="dotted",linewidth=2.5)
-                    ax.plot(Phi,function(numericValuesN), label="Numerical solution",color=cmap(1),linewidth=2.5)
-                    ax.plot(Phi,function(analyticalValues), label="Analytical solution", color=cmap(0),linestyle="dashed",linewidth=2.5)
+                    ax.plot(Phi,function(numericValuesN), label="Numeric",color=cmap(1),linewidth=2.5)
+                    ax.plot(Phi,function(analyticalValues), label="Analytic", color=cmap(0),linestyle="dashed",linewidth=2.5)
                 else:
                     ax.plot(Phi,function(numericValuesN),color=cmap(1),linewidth=2.5,alpha=0.25)
             else:
@@ -217,29 +217,32 @@ def plotSphericCut(postProcessingID,analyticalFunctionID,errorID,figureName="out
     for i,subax in enumerate(ax):
 
         if((postProcessingID == "id" and i == 1) or postProcessingID == "phase"):
-            subax.set_rmin(-1.1*np.pi)
-            subax.set_rmax(1.1*np.pi)
+            thetamax = subax.get_rmax()
+            subax.set_rmin(thetamax - np.pi)
+            subax.set_rmax(thetamax + np.pi)
         else:
-            subax.set_rmax(1.1*subax.get_rmax())
+            rmax = subax.get_rmax()
+            subax.set_rmax(10**(1.5/20)*rmax)
+            subax.set_rmin(10**(-1.5/20)*rmax)
         
         subax.set_thetagrids(np.arange(0,360,45),['0',r'$\frac{\pi}{4}$',r'$\frac{\pi}{2}$',r'$\frac{3\pi}{4}$',r'$\pi$',r'$\frac{5\pi}{4}$',r'$\frac{3\pi}{2}$',r'$\frac{7\pi}{4}$'])
 
         arrow = dict(arrowstyle='<-',color="gray")
         subax.annotate("",xy=(0.5,0.5),xytext=(1.0,0.5),xycoords="axes fraction",arrowprops=arrow)
-        subax.annotate('x',xy=(0.5,0.5),xytext=(0.95,0.44),xycoords="axes fraction",color="gray")
+        subax.annotate('x',xy=(0.5,0.5),xytext=(0.94,0.435),xycoords="axes fraction",color="gray")
         subax.annotate("",xy=(0.5,0.5),xytext=(0.5,1.0),xycoords="axes fraction",arrowprops=arrow)
-        subax.annotate('y',xy=(0.5,0.5),xytext=(0.44,0.95),xycoords="axes fraction",color="gray")
+        subax.annotate('y',xy=(0.5,0.5),xytext=(0.435,0.94),xycoords="axes fraction",color="gray")
 
         subax.yaxis.set_major_formatter(ScalarFormatter(useOffset=False, useMathText=True))
         subax.yaxis.set_major_locator(MaxNLocator(4))
-        subax.grid(linestyle= '-', which="major")
+        subax.grid(linestyle= '--', which="major")
         subax.tick_params(axis='y', which='major', pad=10, labelsize=15)
         subax.tick_params(axis='x', which='major', pad=5, labelsize=20)
 
     if(len(ax) == 1):
         ax[0].legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=4, borderaxespad=2, reverse=False,  columnspacing=0.5)
     else:
-        ax[0].legend(bbox_to_anchor=(-0.2, 1.0, 2.7, .1), loc='lower left', ncol=2, borderaxespad=2, reverse=False, mode="expand",  columnspacing=0.5)
+        ax[0].legend(bbox_to_anchor=(-0.2, 1.0, 2.7, .1), loc='lower left', ncol=2, borderaxespad=2, reverse=False, mode="expand", columnspacing=0.5)
 
     if(not figureName is None):
         fig.savefig(figureName, dpi = 300, bbox_inches = 'tight')
