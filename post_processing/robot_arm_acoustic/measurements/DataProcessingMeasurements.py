@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
 	def processing_data(file):
 		print("Data processing file : " + file)
-		fileNumber = int(file.split("_")[-1][:-1])
+		fileNumber = int(os.path.basename(file).split(".")[0].split("_")[-1])
 
 		if(os.path.isfile(folderName + "/data_measurement_" + str(fileNumber) + ".csv")):
 			inputData = np.loadtxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",delimiter=",")
