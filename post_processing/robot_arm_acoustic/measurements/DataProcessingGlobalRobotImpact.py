@@ -35,7 +35,7 @@ from robot_arm_acoustic.measurements.DataProcessingTools import get_transfert_fu
 INTERACTIVE = False
 
 # Reference signal INDEX
-INDEX = 2
+INDEX = 0
 
 if __name__ == "__main__":
 
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     )
 
     ControlPointsFolders = sorted(
-        glob.glob("Measurements_[0-9]/"), key=lambda folder: int(folder.split("_")[-1])
+        glob.glob("Measurements_[0-9]/"), key=lambda folder: int(os.path.dirname(folder).split("_")[-1])
     )
 
     WWith = []
@@ -96,11 +96,11 @@ if __name__ == "__main__":
 
         fileWith = sorted(
             glob.glob(folder + outputSignalType + "_measurement_" + str(INDEX)),
-            key=lambda file: int(file.split("_")[-1]),
+            key=lambda file: int(os.path.dirname(file).split("_")[-1]),
         )[0]
         fileWithout = sorted(
             glob.glob(folder + outputSignalType + "_measurement_3"),
-            key=lambda file: int(file.split("_")[-1]),
+            key=lambda file: int(os.path.dirname(file).split("_")[-1]),
         )[0]
 
         tfeWith, _, _ = get_transfert_function(
@@ -147,7 +147,9 @@ if __name__ == "__main__":
             ax=axAllAbs,
             validity_range=[fminValidity, fmaxValidity],
             interactive=INTERACTIVE,
-            ylim_phase=[-np.pi / 4, np.pi / 4],
+            # ylim_phase=[-0.25, 0.25],
+            # ylim_modulus=[-1.5, 1.5],
+            ylim_phase=[-0.8, 0.8],
             ylim_modulus=[-4.5, 4.5],
             marker=markers[i],
             color=cmap(i),

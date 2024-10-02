@@ -157,10 +157,8 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
                 ax_0.set_xlabel(r'$hk$')
             else:
                 ax_0.set_xlabel('Frequency (Hz)')
-            ax_0.yaxis.set_major_locator(MaxNLocator(10))
-        else:
-            ax_0.yaxis.set_major_locator(MaxNLocator(5))
 
+        ax_0.yaxis.set_major_locator(MaxNLocator(5))
         ax_0.yaxis.set_minor_locator(AutoMinorLocator(2))
         ax_0.set_ylabel(modulus_label,labelpad=15)
 
@@ -257,7 +255,10 @@ def plot_weighting(weighting, frequencies, unit=Unit("1"), ax=None, logx=True, d
         else:
             ncol = 6
             spacing = 0.5
-        ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=0.25, reverse=False,columnspacing=spacing,fontsize = 20)
+
+        h,l = ax_0.get_legend_handles_labels()
+        if(len(h) > 0 and len(l) > 0):
+            ax_0.legend(bbox_to_anchor=(0.5,1.0), loc='lower center', ncol=ncol, borderaxespad=0.25, reverse=False,columnspacing=spacing,fontsize = 20)
 
     return ax
 
@@ -678,7 +679,7 @@ def set_title(ax, title, interactive = False):
 #  @param scalingFactor    Scaling factor for the x-axis - default is 1.0
 #  @param interactive      Interactive plot (plotly html) - default is False
 def plot_absolute_error(wExp, wTh, frequencies, ax, validity_range = None, scalingFactor = 1.0, interactive = False, **kwargs):
-    wAbs = ms.Weighting(freqs = wTh.freqs, amp = np.abs(wExp.amp/wTh.amp), phase = np.unwrap(wrap(wExp.phase - wTh.phase)))
+    wAbs = ms.Weighting(freqs = wTh.freqs, amp = np.abs(wExp.amp/wTh.amp), phase = wrap(wExp.phase - wTh.phase))
 
     plot_weighting(wAbs, frequencies, unit=Unit("1"), ax=ax, validity_range=validity_range, scalingFactor=scalingFactor, interactive=interactive, **kwargs)
 

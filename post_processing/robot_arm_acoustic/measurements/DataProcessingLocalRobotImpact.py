@@ -29,6 +29,7 @@ import matplotlib.pyplot as plt
 import glob
 import sys
 import numpy as np
+import os
 
 np.set_printoptions(threshold=sys.maxsize)
 
@@ -91,11 +92,11 @@ if __name__ == "__main__":
 
     FilesWith = sorted(
         glob.glob(outputSignalType + "_measurement_[0-9]/"),
-        key=lambda file: int(file.split("_")[-1]),
+        key=lambda file: int(os.path.dirname(file).split("_")[-1]),
     )
     FilesWithout = sorted(
         glob.glob(outputSignalType + "_measurement_3/"),
-        key=lambda file: int(file.split("_")[-1]),
+        key=lambda file: int(os.path.dirname(file).split("_")[-1]),
     )
 
     WWith = []
@@ -146,7 +147,7 @@ if __name__ == "__main__":
             axAllWithRel = make_subplots(rows=1, cols=1)
             axAllWithRelSep = make_subplots(rows=2, cols=1)
         else:
-            figAllWith, axAllWith = plt.subplots(2, figsize=figsize)
+            figAllWith, axAllWith = plt.subplots(3, figsize=(figsize[0],1.45*figsize[1]))
             figAllWithAbs, axAllWithAbs = plt.subplots(2, figsize=figsize)
             figAllWithRel, axAllWithRel = plt.subplots(1, figsize=figsize)
             figAllWithRelSep, axAllWithRelSep = plt.subplots(2, figsize=figsize)
@@ -178,6 +179,21 @@ if __name__ == "__main__":
                 color=cmap(i),
                 label="Absolute error " + str(i + 1),
             )
+
+            plot_absolute_error(
+                w,
+                WWith[INDEX],
+                Freqs,
+                plot_phase=False,
+                ax=axAllWith[2],
+                validity_range=[fminValidity, fmaxValidity],
+                interactive=INTERACTIVE,
+                ylim_modulus=[-0.25, 1.8],
+                marker=markers[i],
+                color=cmap(i),
+                label=None,
+            )
+            axAllWith[1].set_xlabel('')
 
             plot_relative_error(
                 w,
