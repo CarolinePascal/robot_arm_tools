@@ -147,6 +147,7 @@ if __name__ == "__main__":
 
 		if(os.path.isfile(folderName + "/data_measurement_" + str(fileNumber) + ".csv")):
 			inputData = np.loadtxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",delimiter=",")
+			inputData = np.reshape(inputData,(-1,3))
 			inputFrequencies = inputData[:,0]
 
 			if(np.isin(inputFrequencies,Frequencies).all()):
@@ -162,8 +163,19 @@ if __name__ == "__main__":
 			#output[j] = 100.0
 
 		#Save data for given measurement
-		fileNumber = int(file.split("_")[-1][:-1])
-		np.savetxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",np.array([Frequencies,np.real(output),np.imag(output)]).T,delimiter=",")
+		if(os.path.isfile(folderName + "/data_measurement_" + str(fileNumber) + ".csv")):
+			inputData = np.loadtxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",delimiter=",")
+			inputData = np.reshape(inputData,(-1,3))
+			for line,frequency in zip(output,Frequencies):
+				if(not np.isin(frequency,inputData[:,0])):
+					try:
+						index = np.where(inputData[:,0] > frequency)[0][0]
+					except IndexError:
+						index = len(inputData)
+					inputData = np.insert(inputData,index,[frequency,np.real(line),np.imag(line)],axis=0)
+			np.savetxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",inputData,delimiter=",")
+		else:
+			np.savetxt(folderName + "/data_measurement_" + str(fileNumber) + ".csv",np.array([Frequencies,np.real(output),np.imag(output)]).T,delimiter=",")
 
 		return(output)
 
